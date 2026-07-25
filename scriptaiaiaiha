@@ -1,258 +1,181 @@
 -- ============================================
--- EXECUTOR MENU (Đã tối ưu)
+-- EXECUTOR MENU (Thu nhỏ + Đầy đủ tính năng)
+-- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
-local Players = game:GetService("Players")
+local player = game.Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 local TweenService = game:GetService("TweenService")
-local Lighting = game:GetService("Lighting")
+local lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
--- ==================== CẤU HÌNH ====================
-local CONFIG = {
-    FLY_SPEED = 50,
-    CARPET_SIZE = 30,
-    WALK_SPEED = 16,
-    JUMP_POWER = 50,
-    FOV = 70,
-    OFFSET_X = 0,
-    OFFSET_Y = 0,
-    MAX_LOOP = 1000,
-    MIN_CARPET = 10,
-    MIN_FOV = 30,
-    MAX_FOV = 120,
-    MIN_SIZE = {260, 200},
-}
-
--- ==================== TRẠNG THÁI ====================
-local State = {
-    isFlying = false,
-    isStandingOnAir = false,
-    isFogOn = false,
-    isFlyWalkMode = false,
-    isNoClip = false,
-    isCustomCamera = false,
-    isExecuting = false,
-    menuVisible = false,
-    carpetTargetY = nil,
-    camAngleX = 0,
-    camAngleY = 0,
-    totalExecutions = 0,
-}
-
-local References = {
-    character = nil,
-    flyBodyVelocity = nil,
-    flyBodyGyro = nil,
-    flyPlatform = nil,
-    standPlatform = nil,
-    standBodyPosition = nil,
-    currentThread = nil,
-    currentIndicator = nil,
-    savedScripts = {},
-    mobileKeys = {FlyUp = false, FlyDown = false},
-    activeTouches = {},
-}
-
--- ==================== TẠO GUI ====================
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ExecutorMenu"
-screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
-
--- ==================== TIỆN ÍCH ====================
-local function createInstance(className, props)
-    local inst = Instance.new(className)
-    for k, v in pairs(props or {}) do
-        inst[k] = v
-    end
-    return inst
-end
-
-local function addCorner(parent, radius)
-    return createInstance("UICorner", {Parent = parent, CornerRadius = UDim.new(0, radius or 8)})
-end
-
-local function addStroke(parent, color, thickness)
-    return createInstance("UIStroke", {
-        Parent = parent,
-        Color = color or Color3.fromRGB(120, 120, 120),
-        Thickness = thickness or 1.5
-    })
-end
-
-local function tweenProperty(obj, props, duration)
-    TweenService:Create(obj, TweenInfo.new(duration or 0.2, Enum.EasingStyle.Quad), props):Play()
-end
+screenGui.IgnoreGuiInset = true
 
 -- ==================== NÚT TOGGLE ====================
-local toggleButton = createInstance("TextButton", {
-    Size = UDim2.new(0, 42, 0, 42),
-    Position = UDim2.new(1, -52, 1, -52),
-    Text = "⚙",
-    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-    BackgroundTransparency = 0.3,
-    TextColor3 = Color3.fromRGB(50, 50, 50),
-    Font = Enum.Font.GothamBold,
-    TextSize = 20,
-    BorderSizePixel = 0,
-    Draggable = true,
-    Parent = screenGui
-})
-addCorner(toggleButton, 21)
-addStroke(toggleButton)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Size = UDim2.new(0, 42, 0, 42)
+toggleButton.Position = UDim2.new(1, -52, 1, -52)
+toggleButton.Text = "⚙"
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.BackgroundTransparency = 0.3
+toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextSize = 20
+toggleButton.BorderSizePixel = 0
+toggleButton.Parent = screenGui
+Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(120, 120, 120)
+Instance.new("UIStroke", toggleButton).Thickness = 2
 
--- ==================== KHUNG CHÍNH ====================
-local mainFrame = createInstance("Frame", {
-    Size = UDim2.new(0, 320, 0, 400),
-    Position = UDim2.new(0.5, -160, 0.5, -200),
-    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-    BackgroundTransparency = 0.5,
-    BorderSizePixel = 0,
-    Visible = false,
-    ClipsDescendants = true,
-    Parent = screenGui
-})
-addCorner(mainFrame, 12)
-addStroke(mainFrame, Color3.fromRGB(100, 100, 100), 2.5)
+-- ==================== KHUNG CHÍNH (THU NHỎ) ====================
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 320, 0, 400) -- giảm từ 360x480 xuống 320x400
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -200)
+mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+mainFrame.BackgroundTransparency = 0.5
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner", mainFrame)
+mainCorner.CornerRadius = UDim.new(0, 12)
+
+local mainStroke = Instance.new("UIStroke", mainFrame)
+mainStroke.Color = Color3.fromRGB(100, 100, 100)
+mainStroke.Thickness = 2.5
 
 -- ==================== THANH TIÊU ĐỀ ====================
-local titleBar = createInstance("Frame", {
-    Size = UDim2.new(1, 0, 0, 28),
-    BackgroundColor3 = Color3.fromRGB(240, 240, 240),
-    BackgroundTransparency = 0.4,
-    BorderSizePixel = 0,
-    Draggable = true,
-    Parent = mainFrame
-})
-addCorner(titleBar, 12)
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 28)
+titleBar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+titleBar.BackgroundTransparency = 0.4
+titleBar.BorderSizePixel = 0
+titleBar.Parent = mainFrame
+titleBar.Draggable = true
+Instance.new("UICorner", titleBar).CornerRadius = UDim.new(0, 12)
 
-createInstance("TextLabel", {
-    Size = UDim2.new(1, -40, 1, 0),
-    Position = UDim2.new(0, 12, 0, 0),
-    Text = "⚡ Executor Pro",
-    BackgroundTransparency = 1,
-    TextColor3 = Color3.fromRGB(50, 50, 50),
-    Font = Enum.Font.GothamBold,
-    TextSize = 14,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    Parent = titleBar
-})
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -40, 1, 0)
+titleLabel.Position = UDim2.new(0, 12, 0, 0)
+titleLabel.Text = "⚡ Executor Pro"
+titleLabel.BackgroundTransparency = 1
+titleLabel.TextColor3 = Color3.fromRGB(50, 50, 50)
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextSize = 14
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = titleBar
 
-local closeButton = createInstance("TextButton", {
-    Size = UDim2.new(0, 28, 0, 28),
-    Position = UDim2.new(1, -32, 0, 0),
-    Text = "✕",
-    BackgroundTransparency = 1,
-    TextColor3 = Color3.fromRGB(120, 120, 120),
-    Font = Enum.Font.GothamBold,
-    TextSize = 16,
-    BorderSizePixel = 0,
-    Parent = titleBar
-})
+local closeButton = Instance.new("TextButton")
+closeButton.Size = UDim2.new(0, 28, 0, 28)
+closeButton.Position = UDim2.new(1, -32, 0, 0)
+closeButton.Text = "✕"
+closeButton.BackgroundTransparency = 1
+closeButton.TextColor3 = Color3.fromRGB(120, 120, 120)
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextSize = 16
+closeButton.BorderSizePixel = 0
+closeButton.Parent = titleBar
 
--- ==================== RESIZE HANDLE ====================
-local resizeHandle = createInstance("TextButton", {
-    Size = UDim2.new(0, 16, 0, 16),
-    Position = UDim2.new(1, -18, 1, -18),
-    Text = "↘",
-    BackgroundColor3 = Color3.fromRGB(200, 200, 200),
-    BackgroundTransparency = 0.5,
-    TextColor3 = Color3.fromRGB(50, 50, 50),
-    Font = Enum.Font.GothamBold,
-    TextSize = 12,
-    BorderSizePixel = 0,
-    Parent = mainFrame
-})
-addCorner(resizeHandle, 4)
+-- ==================== TAY CẦM KÉO RESIZE ====================
+local resizeHandle = Instance.new("TextButton")
+resizeHandle.Size = UDim2.new(0, 16, 0, 16)
+resizeHandle.Position = UDim2.new(1, -18, 1, -18)
+resizeHandle.Text = "↘"
+resizeHandle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+resizeHandle.BackgroundTransparency = 0.5
+resizeHandle.TextColor3 = Color3.fromRGB(50, 50, 50)
+resizeHandle.Font = Enum.Font.GothamBold
+resizeHandle.TextSize = 12
+resizeHandle.BorderSizePixel = 0
+resizeHandle.Parent = mainFrame
+Instance.new("UICorner", resizeHandle).CornerRadius = UDim.new(0, 4)
 
 -- ==================== SCROLLING FRAME ====================
-local scrollFrame = createInstance("ScrollingFrame", {
-    Size = UDim2.new(1, 0, 1, -28),
-    Position = UDim2.new(0, 0, 0, 28),
-    BackgroundTransparency = 1,
-    BorderSizePixel = 0,
-    ScrollBarThickness = 6,
-    ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80),
-    ClipsDescendants = true,
-    CanvasSize = UDim2.new(0, 0, 0, 0),
-    Parent = mainFrame
-})
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Size = UDim2.new(1, 0, 1, -28)
+scrollFrame.Position = UDim2.new(0, 0, 0, 28)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
+scrollFrame.ClipsDescendants = true
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.Parent = mainFrame
 
--- ==================== UI HELPERS ====================
-local function createLabel(text, y, parent)
-    return createInstance("TextLabel", {
-        Size = UDim2.new(1, -16, 0, 14),
-        Position = UDim2.new(0, 8, 0, y),
-        Text = text,
-        BackgroundTransparency = 1,
-        TextColor3 = Color3.fromRGB(60, 60, 60),
-        Font = Enum.Font.GothamMedium,
-        TextSize = 10,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = parent or scrollFrame
-    })
+-- ===== HÀM TẠO STYLE (THU NHỎ) =====
+local function createLabel(text, y)
+local lbl = Instance.new("TextLabel")
+lbl.Size = UDim2.new(1, -16, 0, 14)
+lbl.Position = UDim2.new(0, 8, 0, y)
+lbl.Text = text
+lbl.BackgroundTransparency = 1
+lbl.TextColor3 = Color3.fromRGB(60, 60, 60)
+lbl.Font = Enum.Font.GothamMedium
+lbl.TextSize = 10
+lbl.TextXAlignment = Enum.TextXAlignment.Left
+lbl.Parent = scrollFrame
+return lbl
 end
 
-local function createTextBox(placeholder, y, height, multiline, parent)
-    local box = createInstance("TextBox", {
-        Size = UDim2.new(1, -16, 0, height),
-        Position = UDim2.new(0, 8, 0, y),
-        PlaceholderText = placeholder,
-        PlaceholderColor3 = Color3.fromRGB(160, 160, 160),
-        Text = "",
-        BackgroundColor3 = Color3.fromRGB(245, 245, 245),
-        BackgroundTransparency = 0.3,
-        TextColor3 = Color3.fromRGB(30, 30, 30),
-        Font = Enum.Font.GothamMedium,
-        TextSize = 12,
-        BorderSizePixel = 0,
-        ClearTextOnFocus = false,
-        Parent = parent or scrollFrame
-    })
-    if multiline then
-        box.MultiLine = true
-        box.TextWrapped = true
-        box.TextXAlignment = Enum.TextXAlignment.Left
-        box.TextYAlignment = Enum.TextYAlignment.Top
-    end
-    addCorner(box, 5)
-    addStroke(box, Color3.fromRGB(140, 140, 140), 1.2)
-    return box
+local function createTextBox(placeholder, y, height, multiline)
+local box = Instance.new("TextBox")
+box.Size = UDim2.new(1, -16, 0, height)
+box.Position = UDim2.new(0, 8, 0, y)
+box.PlaceholderText = placeholder
+box.PlaceholderColor3 = Color3.fromRGB(160, 160, 160)
+box.Text = ""
+box.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+box.BackgroundTransparency = 0.3
+box.TextColor3 = Color3.fromRGB(30, 30, 30)
+box.Font = Enum.Font.GothamMedium
+box.TextSize = 12
+box.BorderSizePixel = 0
+box.ClearTextOnFocus = false
+if multiline then
+box.MultiLine = true
+box.TextWrapped = true
+box.TextXAlignment = Enum.TextXAlignment.Left
+box.TextYAlignment = Enum.TextYAlignment.Top
+end
+box.Parent = scrollFrame
+Instance.new("UICorner", box).CornerRadius = UDim.new(0, 5)
+Instance.new("UIStroke", box).Color = Color3.fromRGB(140, 140, 140)
+Instance.new("UIStroke", box).Thickness = 1.2
+return box
 end
 
-local function createButton(text, y, w, h, accentColor, parent)
-    local btn = createInstance("TextButton", {
-        Size = UDim2.new(0, w, 0, h),
-        Position = UDim2.new(0.5, -w/2, 0, y),
-        Text = text,
-        BackgroundColor3 = accentColor or Color3.fromRGB(0, 160, 100),
-        BackgroundTransparency = 0.2,
-        TextColor3 = Color3.fromRGB(255, 255, 255),
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        BorderSizePixel = 0,
-        Parent = parent or scrollFrame
-    })
-    addCorner(btn, 6)
-    addStroke(btn, accentColor and accentColor:Lerp(Color3.new(0,0,0), 0.4) or Color3.fromRGB(0, 100, 70), 1.2)
-    
-    btn.MouseEnter:Connect(function()
-        tweenProperty(btn, {BackgroundColor3 = (accentColor or Color3.fromRGB(0, 160, 100)):Lerp(Color3.new(1,1,1), 0.3)})
-    end)
-    btn.MouseLeave:Connect(function()
-        tweenProperty(btn, {BackgroundColor3 = accentColor or Color3.fromRGB(0, 160, 100)})
-    end)
-    return btn
+local function createButton(text, y, w, h, accentColor)
+local btn = Instance.new("TextButton")
+btn.Size = UDim2.new(0, w, 0, h)
+btn.Position = UDim2.new(0.5, -w/2, 0, y)
+btn.Text = text
+btn.BackgroundColor3 = accentColor or Color3.fromRGB(0, 160, 100)
+btn.BackgroundTransparency = 0.2
+btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+btn.Font = Enum.Font.GothamBold
+btn.TextSize = 11
+btn.BorderSizePixel = 0
+btn.Parent = scrollFrame
+Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+local btnStroke = Instance.new("UIStroke", btn)
+btnStroke.Color = accentColor and accentColor:Lerp(Color3.new(0,0,0), 0.4) or Color3.fromRGB(0, 100, 70)
+btnStroke.Thickness = 1.2
+btn.MouseEnter:Connect(function()
+TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor and accentColor:Lerp(Color3.new(1,1,1), 0.3) or Color3.fromRGB(0, 200, 130)}):Play()
+end)
+btn.MouseLeave:Connect(function()
+TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor or Color3.fromRGB(0, 160, 100)}):Play()
+end)
+return btn
 end
 
--- ==================== NỘI DUNG CHÍNH ====================
+-- ===== NỘI DUNG CUỘN (GIẢM KHOẢNG CÁCH) =====
 local yPos = 2
-
 createLabel("👤 Tên", yPos)
 local nameBox = createTextBox("Nhập tên...", yPos+14, 22, false)
 
@@ -270,92 +193,97 @@ createLabel("⏱️ Khoảng thời gian chờ", yPos)
 local delayBox = createTextBox("0", yPos+14, 22, false)
 delayBox.Size = UDim2.new(0, 50, 0, 22)
 
--- Dropdown đơn vị thời gian
-local unitButton = createInstance("TextButton", {
-    Size = UDim2.new(0, 60, 0, 22),
-    Position = UDim2.new(0, 70, 0, yPos+14),
-    Text = "Giây",
-    BackgroundColor3 = Color3.fromRGB(245, 245, 245),
-    BackgroundTransparency = 0.3,
-    TextColor3 = Color3.fromRGB(50, 50, 50),
-    Font = Enum.Font.GothamBold,
-    TextSize = 11,
-    BorderSizePixel = 0,
-    Parent = scrollFrame
-})
-addCorner(unitButton, 5)
-addStroke(unitButton, Color3.fromRGB(140, 140, 140), 1.2)
+-- Chọn đơn vị thời gian
+local unitButton = Instance.new("TextButton")
+unitButton.Size = UDim2.new(0, 60, 0, 22)
+unitButton.Position = UDim2.new(0, 70, 0, yPos+14)
+unitButton.Text = "Giây"
+unitButton.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+unitButton.BackgroundTransparency = 0.3
+unitButton.TextColor3 = Color3.fromRGB(50, 50, 50)
+unitButton.Font = Enum.Font.GothamBold
+unitButton.TextSize = 11
+unitButton.BorderSizePixel = 0
+unitButton.Parent = scrollFrame
+Instance.new("UICorner", unitButton).CornerRadius = UDim.new(0, 5)
+Instance.new("UIStroke", unitButton).Color = Color3.fromRGB(140, 140, 140)
+Instance.new("UIStroke", unitButton).Thickness = 1.2
 
-local dropdownFrame = createInstance("Frame", {
-    Size = UDim2.new(0, 60, 0, 44),
-    Position = UDim2.new(0, 70, 0, yPos+14+22),
-    BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-    BackgroundTransparency = 0.2,
-    BorderSizePixel = 0,
-    Visible = false,
-    Parent = scrollFrame
-})
-addCorner(dropdownFrame, 5)
-addStroke(dropdownFrame, Color3.fromRGB(140, 140, 140), 1.2)
+local dropdownFrame = Instance.new("Frame")
+dropdownFrame.Size = UDim2.new(0, 60, 0, 44)
+dropdownFrame.Position = UDim2.new(0, 70, 0, yPos+14+22)
+dropdownFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+dropdownFrame.BackgroundTransparency = 0.2
+dropdownFrame.BorderSizePixel = 0
+dropdownFrame.Visible = false
+dropdownFrame.Parent = scrollFrame
+Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 5)
+Instance.new("UIStroke", dropdownFrame).Color = Color3.fromRGB(140, 140, 140)
+Instance.new("UIStroke", dropdownFrame).Thickness = 1.2
 
-local function createDropdownOption(text, y)
-    return createInstance("TextButton", {
-        Size = UDim2.new(1, 0, 0, 22),
-        Position = UDim2.new(0, 0, 0, y),
-        Text = text,
-        BackgroundColor3 = Color3.fromRGB(245, 245, 245),
-        BackgroundTransparency = 0.3,
-        TextColor3 = Color3.fromRGB(50, 50, 50),
-        Font = Enum.Font.GothamBold,
-        TextSize = 11,
-        BorderSizePixel = 0,
-        Parent = dropdownFrame
-    })
-end
+local secOption = Instance.new("TextButton")
+secOption.Size = UDim2.new(1, 0, 0, 22)
+secOption.Text = "Giây"
+secOption.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+secOption.BackgroundTransparency = 0.3
+secOption.TextColor3 = Color3.fromRGB(50, 50, 50)
+secOption.Font = Enum.Font.GothamBold
+secOption.TextSize = 11
+secOption.BorderSizePixel = 0
+secOption.Parent = dropdownFrame
 
-local secOption = createDropdownOption("Giây", 0)
-local minOption = createDropdownOption("Phút", 22)
+local minOption = Instance.new("TextButton")
+minOption.Size = UDim2.new(1, 0, 0, 22)
+minOption.Position = UDim2.new(0, 0, 0, 22)
+minOption.Text = "Phút"
+minOption.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+minOption.BackgroundTransparency = 0.3
+minOption.TextColor3 = Color3.fromRGB(50, 50, 50)
+minOption.Font = Enum.Font.GothamBold
+minOption.TextSize = 11
+minOption.BorderSizePixel = 0
+minOption.Parent = dropdownFrame
 
 unitButton.MouseButton1Click:Connect(function()
-    dropdownFrame.Visible = not dropdownFrame.Visible
+dropdownFrame.Visible = not dropdownFrame.Visible
+end)
+secOption.MouseButton1Click:Connect(function()
+unitButton.Text = "Giây"
+dropdownFrame.Visible = false
+end)
+minOption.MouseButton1Click:Connect(function()
+unitButton.Text = "Phút"
+dropdownFrame.Visible = false
 end)
 
-local function selectUnit(text)
-    unitButton.Text = text
-    dropdownFrame.Visible = false
-end
-
-secOption.MouseButton1Click:Connect(function() selectUnit("Giây") end)
-minOption.MouseButton1Click:Connect(function() selectUnit("Phút") end)
-
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        local pos = input.Position
-        local objs = screenGui:GetGuiObjectsAtPosition(pos.X, pos.Y)
-        local found = false
-        for _, o in ipairs(objs) do
-            if o == unitButton or o:IsDescendantOf(dropdownFrame) then
-                found = true
-                break
-            end
-        end
-        if not found then dropdownFrame.Visible = false end
-    end
+if gameProcessed then return end
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+local pos = input.Position
+local objs = screenGui:GetGuiObjectsAtPosition(pos.X, pos.Y)
+local found = false
+for _, o in ipairs(objs) do
+if o == unitButton or o:IsDescendantOf(dropdownFrame) then found = true break end
+end
+if not found then dropdownFrame.Visible = false end
+end
 end)
 
 yPos = yPos + 62
 local runButton = createButton("▶ Chạy Code", yPos, 110, 26, Color3.fromRGB(0, 160, 90))
+runButton.Position = UDim2.new(0.5, -55, 0, yPos)
 
 yPos = yPos + 32
 local statusLabel = createLabel("", yPos)
 statusLabel.TextColor3 = Color3.fromRGB(220, 170, 0)
+statusLabel.TextSize = 10
 
 yPos = yPos + 16
 local countLabel = createLabel("🔄 Tổng số lần đã chạy: 0", yPos)
 countLabel.TextColor3 = Color3.fromRGB(0, 140, 70)
+countLabel.TextSize = 10
 
--- Điều khiển môi trường
+-- ===== ĐIỀU KHIỂN MÔI TRƯỜNG =====
 yPos = yPos + 25
 createLabel("⚙️ Điều khiển môi trường", yPos)
 
@@ -371,16 +299,17 @@ fogButton.Position = UDim2.new(0, 10, 0, yPos)
 local resetEnvButton = createButton("🔄 Reset mặc định", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
 resetEnvButton.Position = UDim2.new(0, 148, 0, yPos)
 
--- Bay
+-- ===== BAY =====
 yPos = yPos + 35
-local speedLabel = createLabel("⚡ Tốc độ bay: " .. CONFIG.FLY_SPEED, yPos)
+createLabel("⚡ Tốc độ bay: 50", yPos)
+local speedLabel = createLabel("⚡ Tốc độ bay: 50", yPos)
 local speedSlider = createTextBox("50", yPos+14, 22, false)
 speedSlider.Size = UDim2.new(0, 50, 0, 22)
 
 local flyButton = createButton("🕊️ Bay: TẮT", yPos+14, 130, 22, Color3.fromRGB(100, 100, 100))
 flyButton.Position = UDim2.new(0, 75, 0, yPos+14)
 
--- Thảm kính & Bay chạy bộ
+-- ===== THẢM KÍNH & BAY CHẠY BỘ =====
 yPos = yPos + 42
 local standAirButton = createButton("🪩 Thảm kính: TẮT", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
 standAirButton.Position = UDim2.new(0, 10, 0, yPos)
@@ -392,12 +321,12 @@ createLabel("📏 Kích thước thảm (studs)", yPos)
 local carpetSizeBox = createTextBox("30", yPos+14, 22, false)
 carpetSizeBox.Size = UDim2.new(0, 50, 0, 22)
 
--- Tốc độ chạy & nhảy
+-- ===== TỐC ĐỘ CHẠY & NHẢY =====
 yPos = yPos + 42
 createLabel("🏃 Tốc độ chạy (WalkSpeed)", yPos)
 local walkSpeedBox = createTextBox("16", yPos+14, 22, false)
 walkSpeedBox.Size = UDim2.new(0, 50, 0, 22)
-local walkSpeedLabel = createLabel("Hiện tại: " .. CONFIG.WALK_SPEED, yPos+14)
+local walkSpeedLabel = createLabel("Hiện tại: 16", yPos+14)
 walkSpeedLabel.Position = UDim2.new(0, 70, 0, yPos+14)
 walkSpeedLabel.Size = UDim2.new(0, 90, 0, 14)
 
@@ -405,17 +334,17 @@ yPos = yPos + 28
 createLabel("📦 Tốc độ nhảy (JumpPower)", yPos)
 local jumpPowerBox = createTextBox("50", yPos+14, 22, false)
 jumpPowerBox.Size = UDim2.new(0, 50, 0, 22)
-local jumpPowerLabel = createLabel("Hiện tại: " .. CONFIG.JUMP_POWER, yPos+14)
+local jumpPowerLabel = createLabel("Hiện tại: 50", yPos+14)
 jumpPowerLabel.Position = UDim2.new(0, 70, 0, yPos+14)
 jumpPowerLabel.Size = UDim2.new(0, 90, 0, 14)
 
--- NoClip
+-- ===== NOCLIP =====
 yPos = yPos + 35
 createLabel("🚪 Đi xuyên tường (NoClip)", yPos)
 local noClipButton = createButton("🚶‍♂️ NoClip: TẮT", yPos+14, 140, 22, Color3.fromRGB(100, 100, 100))
 noClipButton.Position = UDim2.new(0, 10, 0, yPos+14)
 
--- Camera
+-- ===== CAMERA TÙY CHỈNH =====
 yPos = yPos + 42
 createLabel("📷 Camera Tùy Chỉnh", yPos)
 local cameraToggleButton = createButton("📷 Camera: TẮT", yPos+14, 140, 22, Color3.fromRGB(100, 100, 100))
@@ -436,7 +365,7 @@ createLabel("Offset Y (dọc)", yPos)
 local camOffsetYBox = createTextBox("0", yPos+14, 22, false)
 camOffsetYBox.Size = UDim2.new(0, 50, 0, 22)
 
--- Script đã lưu
+-- ===== LƯU SCRIPT =====
 yPos = yPos + 42
 createLabel("💾 Script đã lưu (nhấn để chạy)", yPos)
 
@@ -445,751 +374,491 @@ local saveButton = createButton("➕ Lưu script hiện tại", yPos, 130, 22, C
 saveButton.Position = UDim2.new(0, 10, 0, yPos)
 
 yPos = yPos + 32
-local scriptListFrame = createInstance("Frame", {
-    Size = UDim2.new(1, -16, 0, 0),
-    Position = UDim2.new(0, 8, 0, yPos),
-    BackgroundTransparency = 1,
-    BorderSizePixel = 0,
-    Parent = scrollFrame
-})
-createInstance("UIListLayout", {
-    Parent = scriptListFrame,
-    SortOrder = Enum.SortOrder.LayoutOrder,
-    Padding = UDim.new(0, 4)
-})
+local scriptListFrame = Instance.new("Frame")
+scriptListFrame.Size = UDim2.new(1, -16, 0, 0)
+scriptListFrame.Position = UDim2.new(0, 8, 0, yPos)
+scriptListFrame.BackgroundTransparency = 1
+scriptListFrame.BorderSizePixel = 0
+scriptListFrame.Parent = scrollFrame
 
--- ==================== MOBILE CONTROLS ====================
-local mobileControlsFrame = createInstance("Frame", {
-    Size = UDim2.new(0, 180, 0, 70),
-    Position = UDim2.new(0, 10, 1, -80),
-    BackgroundTransparency = 1,
-    Visible = false,
-    Parent = screenGui
-})
+local scriptListLayout = Instance.new("UIListLayout")
+scriptListLayout.Parent = scriptListFrame
+scriptListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+scriptListLayout.Padding = UDim.new(0, 4)
 
-local function createCircleButton(size, position, text, parent)
-    local btn = createInstance("TextButton", {
-        Size = UDim2.new(0, size, 0, size),
-        Position = position,
-        Text = text,
-        BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-        BackgroundTransparency = 0.3,
-        TextColor3 = Color3.fromRGB(50, 50, 50),
-        Font = Enum.Font.GothamBold,
-        TextSize = 18,
-        BorderSizePixel = 0,
-        Parent = parent
-    })
-    addCorner(btn, size/2)
-    addStroke(btn, Color3.fromRGB(140, 140, 140), 1.5)
-    return btn
+-- ==================== CÀI ĐẶT CHUNG ====================
+local flySpeed = 50
+local carpetSize = 30
+local walkSpeed = 16
+local jumpPower = 50
+local isNoClipOn = false
+local isCustomCamera = false
+local customFov = 70
+local customOffsetX = 0
+local customOffsetY = 0
+
+local flyBodyVelocity, flyBodyGyro, flyPlatform
+local standPlatform, standBodyPosition
+local carpetTargetY = nil
+local isFlying, isStandingOnAir, isFogOn, isFlyWalkMode = false, false, false, false
+local character = player.Character or player.CharacterAdded:Wait()
+local savedScripts = {}
+local totalExecutions = 0
+local menuVisible = false
+
+local executionCancelled = false
+local currentThread = nil
+local currentIndicator = nil
+
+local camAngleX = 0
+local camAngleY = 0
+
+-- ==================== HÀM XỬ LÝ CHUNG ====================
+function applyCharacterSpeed()
+if not character or not character:FindFirstChild("Humanoid") then return end
+local hum = character.Humanoid
+hum.WalkSpeed = walkSpeed
+hum.JumpPower = jumpPower
+walkSpeedLabel.Text = "Hiện tại: " .. walkSpeed
+jumpPowerLabel.Text = "Hiện tại: " .. jumpPower
 end
 
-local btnFlyUp = createCircleButton(38, UDim2.new(0, 8, 0, 8), "⏫", mobileControlsFrame)
-local btnFlyDown = createCircleButton(38, UDim2.new(0, 134, 0, 8), "⏬", mobileControlsFrame)
-
--- ==================== FLY WALK OVERLAY ====================
-local flyWalkOverlay = createInstance("Frame", {
-    Size = UDim2.new(0, 180, 0, 160),
-    Position = UDim2.new(1, -190, 0.5, -80),
-    BackgroundTransparency = 1,
-    Visible = false,
-    Parent = screenGui
-})
-
-local function createOverlayButton(text, y, color)
-    local btn = createInstance("TextButton", {
-        Size = UDim2.new(0, 50, 0, 50),
-        Position = UDim2.new(0.5, -25, 0, y),
-        Text = text,
-        BackgroundColor3 = color,
-        BackgroundTransparency = 0.3,
-        TextColor3 = Color3.fromRGB(255, 255, 255),
-        Font = Enum.Font.GothamBold,
-        TextSize = 20,
-        BorderSizePixel = 0,
-        Parent = flyWalkOverlay
-    })
-    addCorner(btn, 25)
-    addStroke(btn, Color3.fromRGB(255, 255, 255), 2)
-    return btn
+function enableNoClip()
+if not character then return end
+RunService:BindToRenderStep("NoClip", 1, function()
+if not isNoClipOn or not character then return end
+for _, part in ipairs(character:GetDescendants()) do
+if part:IsA("BasePart") then part.CanCollide = false end
+end
+end)
 end
 
-local carpetToggleBtn = createOverlayButton("🪩", 0, Color3.fromRGB(100, 100, 100))
-local upBtn = createOverlayButton("⬆", 60, Color3.fromRGB(0, 150, 0))
-local downBtn = createOverlayButton("⬇", 120, Color3.fromRGB(150, 0, 0))
-
-local closeFlyWalkBtn = createInstance("TextButton", {
-    Size = UDim2.new(0, 34, 0, 34),
-    Position = UDim2.new(1, -44, 0, 10),
-    Text = "✕",
-    BackgroundColor3 = Color3.fromRGB(200, 60, 60),
-    BackgroundTransparency = 0.3,
-    TextColor3 = Color3.fromRGB(255, 255, 255),
-    Font = Enum.Font.GothamBold,
-    TextSize = 18,
-    BorderSizePixel = 0,
-    Parent = flyWalkOverlay
-})
-addCorner(closeFlyWalkBtn, 17)
-addStroke(closeFlyWalkBtn, Color3.fromRGB(255, 255, 255), 2)
-
--- ==================== HÀM TIỆN ÍCH ====================
-local function safeNumber(str, default, min, max)
-    local n = tonumber(str)
-    if not n then return default end
-    if min and n < min then n = min end
-    if max and n > max then n = max end
-    return n
+function disableNoClip()
+RunService:UnbindFromRenderStep("NoClip")
+if character then
+for _, part in ipairs(character:GetDescendants()) do
+if part:IsA("BasePart") then part.CanCollide = true end
+end
+end
 end
 
-local function applyCharacterSpeed()
-    if not References.character or not References.character:FindFirstChild("Humanoid") then return end
-    local hum = References.character.Humanoid
-    hum.WalkSpeed = CONFIG.WALK_SPEED
-    hum.JumpPower = CONFIG.JUMP_POWER
-    walkSpeedLabel.Text = "Hiện tại: " .. CONFIG.WALK_SPEED
-    jumpPowerLabel.Text = "Hiện tại: " .. CONFIG.JUMP_POWER
+function toggleNoClip()
+isNoClipOn = not isNoClipOn
+noClipButton.Text = isNoClipOn and "🚶‍♂️ NoClip: BẬT" or "🚶‍♂️ NoClip: TẮT"
+noClipButton.BackgroundColor3 = isNoClipOn and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(100, 100, 100)
+if isNoClipOn then enableNoClip() else disableNoClip() end
 end
 
--- ==================== NOCLIP ====================
-local function enableNoClip()
-    RunService:BindToRenderStep("NoClip", 1, function()
-        if not State.isNoClip or not References.character then return end
-        for _, part in ipairs(References.character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = false end
-        end
-    end)
-end
+noClipButton.MouseButton1Click:Connect(toggleNoClip)
 
-local function disableNoClip()
-    RunService:UnbindFromRenderStep("NoClip")
-    if References.character then
-        for _, part in ipairs(References.character:GetDescendants()) do
-            if part:IsA("BasePart") then part.CanCollide = true end
-        end
-    end
-end
-
-local function toggleNoClip()
-    State.isNoClip = not State.isNoClip
-    noClipButton.Text = State.isNoClip and "🚶‍♂️ NoClip: BẬT" or "🚶‍♂️ NoClip: TẮT"
-    noClipButton.BackgroundColor3 = State.isNoClip and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(100, 100, 100)
-    if State.isNoClip then enableNoClip() else disableNoClip() end
-end
-
--- ==================== FLY ====================
-local function showMobileControls()
-    mobileControlsFrame.Visible = State.isFlying and UserInputService.TouchEnabled
-end
-
-local function stopFly()
-    if References.flyBodyVelocity then References.flyBodyVelocity:Destroy(); References.flyBodyVelocity = nil end
-    if References.flyBodyGyro then References.flyBodyGyro:Destroy(); References.flyBodyGyro = nil end
-    if References.flyPlatform then References.flyPlatform:Destroy(); References.flyPlatform = nil end
-    
-    if References.character and References.character:FindFirstChild("Humanoid") then
-        References.character.Humanoid.AutoRotate = true
-        References.character.Humanoid.PlatformStand = false
-    end
-    RunService:UnbindFromRenderStep("FlyUpdate")
-    showMobileControls()
-end
-
-local function toggleFly()
-    State.isFlying = not State.isFlying
-    flyButton.Text = State.isFlying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
-    flyButton.BackgroundColor3 = State.isFlying and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(100, 100, 100)
-    
-    if not References.character or not References.character:FindFirstChild("HumanoidRootPart") then return end
-    local root = References.character.HumanoidRootPart
-    local hum = References.character.Humanoid
-    
-    if State.isFlying then
-        if State.isStandingOnAir then toggleStandOnAir() end
-        if State.isFlyWalkMode then toggleFlyWalkMode() end
-        
-        References.flyBodyVelocity = createInstance("BodyVelocity", {
-            MaxForce = Vector3.new(4000, 4000, 4000),
-            Parent = root
-        })
-        References.flyBodyGyro = createInstance("BodyGyro", {
-            MaxForce = Vector3.new(4000, 4000, 4000),
-            Parent = root
-        })
-        hum.AutoRotate = false
-        hum.PlatformStand = true
-        
-        if not References.flyPlatform then
-            References.flyPlatform = createInstance("Part", {
-                Name = "FlyPlatform",
-                Size = Vector3.new(6, 0.2, 6),
-                Transparency = 0.7,
-                Color = Color3.fromRGB(255, 255, 255),
-                Material = Enum.Material.Glass,
-                Anchored = true,
-                CanCollide = false,
-                Parent = workspace
-            })
-        end
-        
-        RunService:BindToRenderStep("FlyUpdate", 1, function()
-            if not State.isFlying or not root or not References.flyBodyVelocity then return end
-            local moveDir = hum.MoveDirection
-            local worldMove = root.CFrame:VectorToWorldSpace(moveDir)
-            if worldMove.Magnitude > 0 then worldMove = worldMove.Unit end
-            
-            local up = UserInputService:IsKeyDown(Enum.KeyCode.Space) or References.mobileKeys.FlyUp
-            local down = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or References.mobileKeys.FlyDown
-            local vertical = (up and 1 or 0) - (down and 1 or 0)
-            
-            References.flyBodyVelocity.Velocity = (worldMove + Vector3.new(0, vertical, 0)) * CONFIG.FLY_SPEED
-            References.flyBodyGyro.CFrame = CFrame.new(root.Position, root.Position + workspace.CurrentCamera.CFrame.LookVector)
-            
-            if References.flyPlatform then
-                References.flyPlatform.Position = Vector3.new(root.Position.X, root.Position.Y - 3.5, root.Position.Z)
-            end
-        end)
-    else
-        stopFly()
-    end
-    showMobileControls()
-end
-
--- ==================== THẢM KÍNH ====================
-local function stopStandOnAir()
-    if References.standPlatform then References.standPlatform:Destroy(); References.standPlatform = nil end
-    if References.standBodyPosition then References.standBodyPosition:Destroy(); References.standBodyPosition = nil end
-    RunService:UnbindFromRenderStep("CarpetUpdate")
-    State.carpetTargetY = nil
-end
-
-local function createCarpet(yOffset)
-    if not References.character or not References.character:FindFirstChild("HumanoidRootPart") then return end
-    local root = References.character.HumanoidRootPart
-    
-    References.standPlatform = createInstance("Part", {
-        Name = "MagicCarpet",
-        Size = Vector3.new(CONFIG.CARPET_SIZE, 0.5, CONFIG.CARPET_SIZE),
-        Transparency = 0.7,
-        Color = Color3.fromRGB(255, 255, 255),
-        Material = Enum.Material.Glass,
-        Anchored = true,
-        CanCollide = true,
-        Position = Vector3.new(root.Position.X, yOffset, root.Position.Z),
-        Parent = workspace
-    })
-    
-    References.standBodyPosition = createInstance("BodyPosition", {
-        MaxForce = Vector3.new(0, 50000, 0),
-        P = 5000,
-        D = 500,
-        Position = Vector3.new(root.Position.X, yOffset + 3, root.Position.Z),
-        Parent = root
-    })
-    
-    State.carpetTargetY = yOffset
-    
-    RunService:BindToRenderStep("CarpetUpdate", 1, function()
-        if not State.isStandingOnAir or not References.standPlatform or not root or not References.standBodyPosition then return end
-        References.standPlatform.Position = Vector3.new(root.Position.X, State.carpetTargetY, root.Position.Z)
-        References.standBodyPosition.Position = Vector3.new(root.Position.X, State.carpetTargetY + 3, root.Position.Z)
-    end)
-end
-
-local function toggleStandOnAir()
-    State.isStandingOnAir = not State.isStandingOnAir
-    standAirButton.Text = State.isStandingOnAir and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
-    standAirButton.BackgroundColor3 = State.isStandingOnAir and Color3.fromRGB(160, 100, 200) or Color3.fromRGB(100, 100, 100)
-    
-    if not References.character or not References.character:FindFirstChild("HumanoidRootPart") then return end
-    local root = References.character.HumanoidRootPart
-    
-    if State.isStandingOnAir then
-        if State.isFlying then toggleFly() end
-        createCarpet(root.Position.Y - 3.5)
-    else
-        stopStandOnAir()
-    end
-end
-
--- ==================== BAY CHẠY BỘ ====================
-local function startFlyWalkMode()
-    if not References.character or not References.character:FindFirstChild("HumanoidRootPart") then return end
-    local root = References.character.HumanoidRootPart
-    
-    if State.isFlying then toggleFly() end
-    
-    if not State.isStandingOnAir then
-        State.isStandingOnAir = true
-        standAirButton.Text = "🪩 Thảm kính: BẬT"
-        standAirButton.BackgroundColor3 = Color3.fromRGB(160, 100, 200)
-        createCarpet(root.Position.Y - 3.5)
-    else
-        State.carpetTargetY = root.Position.Y - 3.5
-    end
-    
-    mainFrame.Visible = false
-    toggleButton.Text = "⚙"
-    State.menuVisible = false
-    flyWalkOverlay.Visible = true
-end
-
-local function stopFlyWalkMode()
-    if State.isStandingOnAir then
-        stopStandOnAir()
-        State.isStandingOnAir = false
-        standAirButton.Text = "🪩 Thảm kính: TẮT"
-        standAirButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    end
-    flyWalkOverlay.Visible = false
-end
-
-local function toggleFlyWalkMode()
-    State.isFlyWalkMode = not State.isFlyWalkMode
-    flyWalkButton.Text = State.isFlyWalkMode and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
-    flyWalkButton.BackgroundColor3 = State.isFlyWalkMode and Color3.fromRGB(200, 150, 50) or Color3.fromRGB(100, 100, 100)
-    if State.isFlyWalkMode then startFlyWalkMode() else stopFlyWalkMode() end
-end
-
--- ==================== CAMERA ====================
-local CAM_RENDER_NAME = "CustomCam"
-
-local function startCustomCamera()
-    local camera = workspace.CurrentCamera
-    if not camera then return end
-    
-    camera.CameraType = Enum.CameraType.Scriptable
-    camera.FieldOfView = CONFIG.FOV
-    State.camAngleX, State.camAngleY = 0, 0
-    UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
-    UserInputService.MouseIconEnabled = false
-    
-    RunService:BindToRenderStep(CAM_RENDER_NAME, Enum.RenderPriority.Camera.Value, function()
-        if not State.isCustomCamera or not References.character or not References.character:FindFirstChild("HumanoidRootPart") then return end
-        local root = References.character.HumanoidRootPart
-        local head = References.character:FindFirstChild("Head")
-        local basePos = (head and head.Position or root.Position) + Vector3.new(0, 2, 0)
-        local lookVector = (CFrame.Angles(0, math.rad(State.camAngleX), 0) * CFrame.Angles(math.rad(State.camAngleY), 0, 0)).LookVector
-        local offset = root.CFrame.RightVector * CONFIG.OFFSET_X + Vector3.new(0, CONFIG.OFFSET_Y, 0)
-        local camPos = basePos + offset - lookVector * 5
-        camera.CFrame = CFrame.new(camPos, basePos + lookVector * 10)
-    end)
-end
-
-local function stopCustomCamera()
-    RunService:UnbindFromRenderStep(CAM_RENDER_NAME)
-    if workspace.CurrentCamera then
-        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
-        workspace.CurrentCamera.FieldOfView = 70
-    end
-    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-    UserInputService.MouseIconEnabled = true
-end
-
-local function toggleCustomCamera()
-    State.isCustomCamera = not State.isCustomCamera
-    cameraToggleButton.Text = State.isCustomCamera and "📷 Camera: BẬT" or "📷 Camera: TẮT"
-    cameraToggleButton.BackgroundColor3 = State.isCustomCamera and Color3.fromRGB(200, 120, 50) or Color3.fromRGB(100, 100, 100)
-    if State.isCustomCamera then startCustomCamera() else stopCustomCamera() end
-end
-
--- ==================== MÔI TRƯỜNG ====================
-local function tweenLight(props)
-    TweenService:Create(Lighting, TweenInfo.new(1.5, Enum.EasingStyle.Quad), props):Play()
-end
-
-local DEFAULT_LIGHT = {
-    ClockTime = 14,
-    Brightness = 1.2,
-    OutdoorAmbient = Color3.fromRGB(180, 180, 180),
-    FogStart = 0,
-    FogEnd = 100000,
-    FogColor = Color3.new(1, 1, 1)
-}
-
-local DARK_LIGHT = {
-    ClockTime = 0,
-    Brightness = 0.3,
-    OutdoorAmbient = Color3.fromRGB(20, 20, 40)
-}
-
-local FOG_LIGHT = {
-    FogStart = 0,
-    FogEnd = 80,
-    FogColor = Color3.fromRGB(180, 180, 180)
-}
-
--- ==================== EXECUTE CODE ====================
-local function executeOnce(code, name)
-    if #name > 0 then print("👤", name) end
-    local ok, res = pcall(function()
-        local fn = loadstring(code)
-        if not fn then error("Không thể compile code") end
-        fn()
-    end)
-    return ok, res
-end
-
-local function getExecutionParams()
-    local loopCount = math.clamp(safeNumber(loopBox.Text, 1, 1, CONFIG.MAX_LOOP), 1, CONFIG.MAX_LOOP)
-    local delay = math.max(safeNumber(delayBox.Text, 0, 0) or 0, 0)
-    if unitButton.Text == "Phút" then delay = delay * 60 end
-    return loopCount, delay
-end
-
-local function stopExecution()
-    State.isExecuting = false
-    if References.currentThread then
-        task.cancel(References.currentThread)
-        References.currentThread = nil
-    end
-    if References.currentIndicator then
-        References.currentIndicator.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-        References.currentIndicator = nil
-    end
-    statusLabel.Text = "⏹️ Đã dừng"
-end
-
-local function runCodeAsync(code, name, indicator)
-    stopExecution()
-    if #code == 0 then
-        statusLabel.Text = "⚠️ Vui lòng nhập code!"
-        return
-    end
-    
-    local loopCount, delaySeconds = getExecutionParams()
-    statusLabel.Text = "⏳ Đang thực thi..."
-    State.isExecuting = true
-    
-    if indicator then
-        References.currentIndicator = indicator
-        indicator.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    end
-    
-    References.currentThread = task.spawn(function()
-        local successCount, failCount = 0, 0
-        
-        for i = 1, loopCount do
-            if not State.isExecuting then break end
-            
-            if i > 1 and delaySeconds > 0 then
-                local waited = 0
-                while waited < delaySeconds and State.isExecuting do
-                    task.wait(0.1)
-                    waited += 0.1
-                end
-                if not State.isExecuting then break end
-            end
-            
-            local ok, err = executeOnce(code, name)
-            if ok then
-                successCount += 1
-            else
-                failCount += 1
-                warn("Lần", i, err)
-            end
-            statusLabel.Text = string.format("⏳ %d/%d...", i, loopCount)
-        end
-        
-        State.totalExecutions += (successCount + failCount)
-        countLabel.Text = "🔄 Tổng số lần đã chạy: " .. State.totalExecutions
-        
-        if not State.isExecuting then
-            statusLabel.Text = "⏹️ Đã dừng"
-        elseif failCount == 0 then
-            statusLabel.Text = string.format("✅ %d lần thành công!", loopCount)
-        else
-            statusLabel.Text = string.format("⚠️ %d ok, %d fail", successCount, failCount)
-        end
-        
-        if indicator then
-            indicator.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
-            if References.currentIndicator == indicator then
-                References.currentIndicator = nil
-            end
-        end
-        References.currentThread = nil
-    end)
-end
-
--- ==================== SCRIPT LIST ====================
-local function updateCanvas()
-    local count = #References.savedScripts
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(yPos + 30 + count * 30, 500))
-end
-
-local function rebuildList()
-    for _, v in ipairs(scriptListFrame:GetChildren()) do
-        if v:IsA("Frame") then v:Destroy() end
-    end
-    
-    for i, data in ipairs(References.savedScripts) do
-        local row = createInstance("Frame", {
-            Size = UDim2.new(1, 0, 0, 26),
-            BackgroundColor3 = Color3.fromRGB(245, 245, 245),
-            BackgroundTransparency = 0.3,
-            BorderSizePixel = 0,
-            Parent = scriptListFrame
-        })
-        addCorner(row, 5)
-        addStroke(row, Color3.fromRGB(140, 140, 140), 1)
-        
-        local btn = createInstance("TextButton", {
-            Size = UDim2.new(1, -46, 1, 0),
-            Text = data.name,
-            BackgroundTransparency = 1,
-            TextColor3 = Color3.fromRGB(50, 50, 50),
-            Font = Enum.Font.GothamMedium,
-            TextSize = 11,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = row
-        })
-        
-        local indicator = createInstance("TextButton", {
-            Size = UDim2.new(0, 14, 0, 14),
-            Position = UDim2.new(1, -40, 0.5, -7),
-            Text = "",
-            BackgroundColor3 = Color3.fromRGB(0, 150, 255),
-            BorderSizePixel = 0,
-            Parent = row
-        })
-        addCorner(indicator, 7)
-        indicator.MouseButton1Click:Connect(function()
-            if References.currentIndicator == indicator then stopExecution() end
-        end)
-        
-        local del = createInstance("TextButton", {
-            Size = UDim2.new(0, 20, 0, 20),
-            Position = UDim2.new(1, -22, 0.5, -10),
-            Text = "✕",
-            BackgroundColor3 = Color3.fromRGB(200, 60, 60),
-            BackgroundTransparency = 0.2,
-            TextColor3 = Color3.fromRGB(255, 255, 255),
-            Font = Enum.Font.GothamBold,
-            TextSize = 12,
-            BorderSizePixel = 0,
-            Parent = row
-        })
-        addCorner(del, 10)
-        
-        btn.MouseButton1Click:Connect(function()
-            nameBox.Text = data.name
-            codeBox.Text = data.code
-            runCodeAsync(data.code, data.name, indicator)
-        end)
-        
-        del.MouseButton1Click:Connect(function()
-            if References.currentIndicator == indicator then stopExecution() end
-            table.remove(References.savedScripts, i)
-            rebuildList()
-            updateCanvas()
-        end)
-    end
-    updateCanvas()
-end
-
--- ==================== EVENT HANDLERS ====================
 player.CharacterAdded:Connect(function(char)
-    References.character = char
-    if char:WaitForChild("Humanoid", 5) then applyCharacterSpeed() end
-    
-    if State.isFlying then stopFly(); State.isFlying = false end
-    if State.isStandingOnAir then stopStandOnAir(); State.isStandingOnAir = false end
-    if State.isNoClip then enableNoClip() end
-    if State.isFlyWalkMode then stopFlyWalkMode() end
-    
-    if State.isCustomCamera then
-        stopCustomCamera()
-        startCustomCamera()
-    end
-    
-    flyButton.Text = "🕊️ Bay: TẮT"
-    flyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    standAirButton.Text = "🪩 Thảm kính: TẮT"
-    standAirButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    flyWalkButton.Text = "🕹️ Bay chạy bộ: TẮT"
-    flyWalkButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    flyWalkOverlay.Visible = false
-    mobileControlsFrame.Visible = false
+character = char
+if char:FindFirstChild("Humanoid") then applyCharacterSpeed() end
+if isFlying then stopFly() isFlying = false end
+if isStandingOnAir then stopStandOnAir() isStandingOnAir = false end
+if isNoClipOn then enableNoClip() end
+if isFlyWalkMode then stopFlyWalkMode() end
+if isCustomCamera then
+stopCustomCamera()
+startCustomCamera()
+end
+flyButton.Text = "🕊️ Bay: TẮT"
+flyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+standAirButton.Text = "🪩 Thảm kính: TẮT"
+standAirButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+flyWalkButton.Text = "🕹️ Bay chạy bộ: TẮT"
+flyWalkButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+flyWalkOverlay.Visible = false
+mobileControlsFrame.Visible = false
 end)
 
-References.character = player.Character or player.CharacterAdded:Wait()
+walkSpeedBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(walkSpeedBox.Text) if n and n>0 then walkSpeed = n; applyCharacterSpeed() else walkSpeedBox.Text = tostring(walkSpeed) end end end)
+jumpPowerBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(jumpPowerBox.Text) if n and n>0 then jumpPower = n; applyCharacterSpeed() else jumpPowerBox.Text = tostring(jumpPower) end end end)
+speedSlider.FocusLost:Connect(function(ep) if ep then local n = tonumber(speedSlider.Text) if n and n>=0 then flySpeed = n; speedLabel.Text = "⚡ Tốc độ bay: "..n else speedSlider.Text = tostring(flySpeed) end end end)
+carpetSizeBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(carpetSizeBox.Text) if n and n>=10 then carpetSize = n else carpetSizeBox.Text = tostring(carpetSize) end end end)
+fovBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(fovBox.Text) if n and n>=30 and n<=120 then customFov = n; if isCustomCamera and workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = n end else fovBox.Text = tostring(customFov) end end end)
+camOffsetXBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(camOffsetXBox.Text) if n then customOffsetX = n else camOffsetXBox.Text = tostring(customOffsetX) end end end)
+camOffsetYBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(camOffsetYBox.Text) if n then customOffsetY = n else camOffsetYBox.Text = tostring(customOffsetY) end end end)
 
--- Touch handlers
-local function handleTouchInput(input, started)
-    if started then
-        for _, btnData in ipairs({{btnFlyUp, "FlyUp"}, {btnFlyDown, "FlyDown"}}) do
-            local btn, key = btnData[1], btnData[2]
-            local absPos = btn.AbsolutePosition
-            local absSize = btn.AbsoluteSize
-            local pos = input.Position
-            if pos.X >= absPos.X and pos.X <= absPos.X + absSize.X
-                and pos.Y >= absPos.Y and pos.Y <= absPos.Y + absSize.Y then
-                References.mobileKeys[key] = true
-                References.activeTouches[input] = key
-                break
-            end
-        end
-    else
-        if References.activeTouches[input] then
-            References.mobileKeys[References.activeTouches[input]] = false
-            References.activeTouches[input] = nil
-        end
-    end
-end
-
-UserInputService.TouchStarted:Connect(function(input, processed)
-    if not processed then handleTouchInput(input, true) end
-end)
-UserInputService.TouchEnded:Connect(function(input) handleTouchInput(input, false) end)
-
--- TextBox handlers
-local function createNumberHandler(box, callback, min, max)
-    box.FocusLost:Connect(function(enterPressed)
-        if not enterPressed then return end
-        local n = tonumber(box.Text)
-        if n then
-            if min and n < min then n = min end
-            if max and n > max then n = max end
-            callback(n)
-        end
-        box.Text = tostring(n or "")
-    end)
-end
-
-createNumberHandler(walkSpeedBox, function(n) CONFIG.WALK_SPEED = n; applyCharacterSpeed() end, 0)
-createNumberHandler(jumpPowerBox, function(n) CONFIG.JUMP_POWER = n; applyCharacterSpeed() end, 0)
-createNumberHandler(speedSlider, function(n) CONFIG.FLY_SPEED = n; speedLabel.Text = "⚡ Tốc độ bay: "..n end, 0)
-createNumberHandler(carpetSizeBox, function(n) CONFIG.CARPET_SIZE = n end, CONFIG.MIN_CARPET)
-createNumberHandler(fovBox, function(n) CONFIG.FOV = n; if State.isCustomCamera and workspace.CurrentCamera then workspace.CurrentCamera.FieldOfView = n end end, CONFIG.MIN_FOV, CONFIG.MAX_FOV)
-createNumberHandler(camOffsetXBox, function(n) CONFIG.OFFSET_X = n end)
-createNumberHandler(camOffsetYBox, function(n) CONFIG.OFFSET_Y = n end)
-
--- Resize handle
 local resizing = false
 local resizeStartSize, resizeStartMousePos
-
 resizeHandle.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        resizing = true
-        resizeStartSize = mainFrame.Size
-        resizeStartMousePos = input.Position
-    end
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+resizing = true; resizeStartSize = mainFrame.Size; resizeStartMousePos = input.Position
+end
 end)
-
 UserInputService.InputChanged:Connect(function(input)
-    if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - resizeStartMousePos
-        mainFrame.Size = UDim2.new(
-            0, math.max(CONFIG.MIN_SIZE[1], resizeStartSize.X.Offset + delta.X),
-            0, math.max(CONFIG.MIN_SIZE[2], resizeStartSize.Y.Offset + delta.Y)
-        )
-    end
+if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+local delta = input.Position - resizeStartMousePos
+mainFrame.Size = UDim2.new(0, math.max(260, resizeStartSize.X.Offset + delta.X), 0, math.max(200, resizeStartSize.Y.Offset + delta.Y))
+end
 end)
-
 UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        resizing = false
-    end
+if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then resizing = false end
 end)
 
--- Camera input
-UserInputService.InputChanged:Connect(function(input)
-    if not State.isCustomCamera then return end
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        local delta = input.Delta
-        State.camAngleX = (State.camAngleX - delta.X * 0.1) % 360
-        State.camAngleY = math.clamp(State.camAngleY - delta.Y * 0.1, -80, 80)
-    end
-end)
+-- ==================== FLY ====================
+local mobileControlsFrame = Instance.new("Frame")
+mobileControlsFrame.Size = UDim2.new(0, 180, 0, 70)
+mobileControlsFrame.Position = UDim2.new(0, 10, 1, -80)
+mobileControlsFrame.BackgroundTransparency = 1
+mobileControlsFrame.Visible = false
+mobileControlsFrame.Parent = screenGui
 
--- Button connections
-noClipButton.MouseButton1Click:Connect(toggleNoClip)
-flyButton.MouseButton1Click:Connect(toggleFly)
-standAirButton.MouseButton1Click:Connect(toggleStandOnAir)
+local btnFlyUp = Instance.new("TextButton") btnFlyUp.Size = UDim2.new(0,38,0,38) btnFlyUp.Position = UDim2.new(0,8,0,8) btnFlyUp.Text = "⏫" btnFlyUp.BackgroundColor3 = Color3.fromRGB(255,255,255) btnFlyUp.BackgroundTransparency = 0.3 btnFlyUp.TextColor3 = Color3.fromRGB(50,50,50) btnFlyUp.Font = Enum.Font.GothamBold btnFlyUp.TextSize = 18 btnFlyUp.BorderSizePixel = 0 btnFlyUp.Parent = mobileControlsFrame Instance.new("UICorner",btnFlyUp).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",btnFlyUp).Color = Color3.fromRGB(140,140,140) Instance.new("UIStroke",btnFlyUp).Thickness = 1.5
+local btnFlyDown = Instance.new("TextButton") btnFlyDown.Size = UDim2.new(0,38,0,38) btnFlyDown.Position = UDim2.new(0,134,0,8) btnFlyDown.Text = "⏬" btnFlyDown.BackgroundColor3 = Color3.fromRGB(255,255,255) btnFlyDown.BackgroundTransparency = 0.3 btnFlyDown.TextColor3 = Color3.fromRGB(50,50,50) btnFlyDown.Font = Enum.Font.GothamBold btnFlyDown.TextSize = 18 btnFlyDown.BorderSizePixel = 0 btnFlyDown.Parent = mobileControlsFrame Instance.new("UICorner",btnFlyDown).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",btnFlyDown).Color = Color3.fromRGB(140,140,140) Instance.new("UIStroke",btnFlyDown).Thickness = 1.5
+
+local mobileKeys = {FlyUp = false, FlyDown = false}
+local activeTouches = {}
+local function onTouchStarted(input, processed)
+if processed then return end
+for _, btnData in ipairs({{btnFlyUp, "FlyUp"}, {btnFlyDown, "FlyDown"}}) do
+local btn, key = btnData[1], btnData[2]
+local pos = input.Position
+local absPos = btn.AbsolutePosition
+local absSize = btn.AbsoluteSize
+if pos.X >= absPos.X and pos.X <= absPos.X + absSize.X and pos.Y >= absPos.Y and pos.Y <= absPos.Y + absSize.Y then
+mobileKeys[key] = true; activeTouches[input] = key; break
+end
+end
+end
+local function onTouchEnded(input)
+if activeTouches[input] then mobileKeys[activeTouches[input]] = false; activeTouches[input] = nil end
+end
+UserInputService.TouchStarted:Connect(onTouchStarted) UserInputService.TouchEnded:Connect(onTouchEnded)
+
+local function getVerticalInput()
+local up = UserInputService:IsKeyDown(Enum.KeyCode.Space) or mobileKeys.FlyUp
+local down = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or mobileKeys.FlyDown
+return up, down
+end
+
+function showMobileControls() mobileControlsFrame.Visible = isFlying and UserInputService.TouchEnabled end
+
+function stopFly()
+if flyBodyVelocity then flyBodyVelocity:Destroy() flyBodyVelocity = nil end
+if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro = nil end
+if flyPlatform then flyPlatform:Destroy() flyPlatform = nil end
+if character and character:FindFirstChild("Humanoid") then
+character.Humanoid.AutoRotate = true
+character.Humanoid.PlatformStand = false
+end
+RunService:UnbindFromRenderStep("FlyUpdate")
+showMobileControls()
+end
+
+function stopStandOnAir()
+if standPlatform then standPlatform:Destroy() standPlatform = nil end
+if standBodyPosition then standBodyPosition:Destroy() standBodyPosition = nil end
+RunService:UnbindFromRenderStep("CarpetUpdate")
+carpetTargetY = nil
+end
+
+function toggleFly()
+isFlying = not isFlying
+flyButton.Text = isFlying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
+flyButton.BackgroundColor3 = isFlying and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(100, 100, 100)
+if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+local root = character.HumanoidRootPart
+local hum = character.Humanoid
+if isFlying then
+if isStandingOnAir then toggleStandOnAir() end
+if isFlyWalkMode then toggleFlyWalkMode() end
+flyBodyVelocity = Instance.new("BodyVelocity") flyBodyVelocity.MaxForce = Vector3.new(4000,4000,4000) flyBodyVelocity.Parent = root
+flyBodyGyro = Instance.new("BodyGyro") flyBodyGyro.MaxTorque = Vector3.new(4000,4000,4000) flyBodyGyro.Parent = root
+hum.AutoRotate = false; hum.PlatformStand = true
+if not flyPlatform then
+flyPlatform = Instance.new("Part") flyPlatform.Name = "FlyPlatform" flyPlatform.Size = Vector3.new(6,0.2,6) flyPlatform.Transparency = 0.7 flyPlatform.Color = Color3.fromRGB(255,255,255) flyPlatform.Material = Enum.Material.Glass flyPlatform.Anchored = true flyPlatform.CanCollide = false flyPlatform.Parent = workspace
+end
+RunService:BindToRenderStep("FlyUpdate", 1, function()
+if not isFlying or not root or not flyBodyVelocity then return end
+local moveDir = hum.MoveDirection
+local worldMove = root.CFrame:VectorToWorldSpace(moveDir)
+if worldMove.Magnitude > 0 then worldMove = worldMove.Unit end
+local up, down = getVerticalInput()
+local vertical = (up and 1 or 0) - (down and 1 or 0)
+flyBodyVelocity.Velocity = (worldMove + Vector3.new(0, vertical, 0)) * flySpeed
+flyBodyGyro.CFrame = CFrame.new(root.Position, root.Position + workspace.CurrentCamera.CFrame.LookVector)
+if flyPlatform then flyPlatform.Position = Vector3.new(root.Position.X, root.Position.Y - 3.5, root.Position.Z) end
+end)
+else
+stopFly()
+end
+showMobileControls()
+end
+
+function createCarpet(yOffset)
+if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+local root = character.HumanoidRootPart
+standPlatform = Instance.new("Part") standPlatform.Name = "MagicCarpet" standPlatform.Size = Vector3.new(carpetSize, 0.5, carpetSize) standPlatform.Transparency = 0.7 standPlatform.Color = Color3.fromRGB(255,255,255) standPlatform.Material = Enum.Material.Glass standPlatform.Anchored = true standPlatform.CanCollide = true standPlatform.Position = Vector3.new(root.Position.X, yOffset, root.Position.Z) standPlatform.Parent = workspace
+standBodyPosition = Instance.new("BodyPosition") standBodyPosition.MaxForce = Vector3.new(0,50000,0) standBodyPosition.P = 5000 standBodyPosition.D = 500 standBodyPosition.Position = Vector3.new(root.Position.X, yOffset + 3, root.Position.Z) standBodyPosition.Parent = root
+carpetTargetY = yOffset
+RunService:BindToRenderStep("CarpetUpdate", 1, function()
+if not isStandingOnAir or not standPlatform or not root or not standBodyPosition then return end
+local nx, nz = root.Position.X, root.Position.Z
+standPlatform.Position = Vector3.new(nx, carpetTargetY, nz)
+standBodyPosition.Position = Vector3.new(nx, carpetTargetY + 3, nz)
+end)
+end
+
+function toggleStandOnAir()
+isStandingOnAir = not isStandingOnAir
+standAirButton.Text = isStandingOnAir and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
+standAirButton.BackgroundColor3 = isStandingOnAir and Color3.fromRGB(160, 100, 200) or Color3.fromRGB(100, 100, 100)
+if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+local root = character.HumanoidRootPart
+if isStandingOnAir then
+if isFlying then toggleFly() end
+if isFlyWalkMode then createCarpet(root.Position.Y - 3.5) else createCarpet(root.Position.Y - 3.5) end
+else
+stopStandOnAir()
+end
+end
+
+local flyWalkOverlay = Instance.new("Frame")
+flyWalkOverlay.Size = UDim2.new(0,180,0,160) flyWalkOverlay.Position = UDim2.new(1,-190,0.5,-80) flyWalkOverlay.BackgroundTransparency = 1 flyWalkOverlay.Visible = false flyWalkOverlay.Parent = screenGui
+
+local function createOverlayButton(text, y, size, color)
+local btn = Instance.new("TextButton") btn.Size = UDim2.new(0,size,0,size) btn.Position = UDim2.new(0.5,-size/2,0,y) btn.Text = text btn.BackgroundColor3 = color or Color3.fromRGB(0,120,200) btn.BackgroundTransparency = 0.3 btn.TextColor3 = Color3.fromRGB(255,255,255) btn.Font = Enum.Font.GothamBold btn.TextSize = 20 btn.BorderSizePixel = 0 btn.Parent = flyWalkOverlay
+Instance.new("UICorner",btn).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",btn).Color = Color3.fromRGB(255,255,255) Instance.new("UIStroke",btn).Thickness = 2
+return btn
+end
+local carpetToggleBtn = createOverlayButton("🪩", 0, 50, Color3.fromRGB(100,100,100))
+local upBtn = createOverlayButton("⬆", 60, 50, Color3.fromRGB(0,150,0))
+local downBtn = createOverlayButton("⬇", 120, 50, Color3.fromRGB(150,0,0))
+local closeFlyWalkBtn = Instance.new("TextButton") closeFlyWalkBtn.Size = UDim2.new(0,34,0,34) closeFlyWalkBtn.Position = UDim2.new(1,-44,0,10) closeFlyWalkBtn.Text = "✕" closeFlyWalkBtn.BackgroundColor3 = Color3.fromRGB(200,60,60) closeFlyWalkBtn.BackgroundTransparency = 0.3 closeFlyWalkBtn.TextColor3 = Color3.fromRGB(255,255,255) closeFlyWalkBtn.Font = Enum.Font.GothamBold closeFlyWalkBtn.TextSize = 18 closeFlyWalkBtn.BorderSizePixel = 0 closeFlyWalkBtn.Parent = flyWalkOverlay
+Instance.new("UICorner",closeFlyWalkBtn).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",closeFlyWalkBtn).Color = Color3.fromRGB(255,255,255) Instance.new("UIStroke",closeFlyWalkBtn).Thickness = 2
+closeFlyWalkBtn.MouseButton1Click:Connect(function() toggleFlyWalkMode() end)
+
+function startFlyWalkMode()
+if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+local root = character.HumanoidRootPart
+if isFlying then toggleFly() end
+if not isStandingOnAir then
+isStandingOnAir = true
+standAirButton.Text = "🪩 Thảm kính: BẬT"
+standAirButton.BackgroundColor3 = Color3.fromRGB(160, 100, 200)
+createCarpet(root.Position.Y - 3.5)
+else
+carpetTargetY = root.Position.Y - 3.5
+end
+mainFrame.Visible = false
+toggleButton.Text = "⚙"
+menuVisible = false
+flyWalkOverlay.Visible = true
+end
+
+function stopFlyWalkMode()
+if isStandingOnAir then
+stopStandOnAir()
+isStandingOnAir = false
+standAirButton.Text = "🪩 Thảm kính: TẮT"
+standAirButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+end
+flyWalkOverlay.Visible = false
+end
+
+function toggleFlyWalkMode()
+isFlyWalkMode = not isFlyWalkMode
+flyWalkButton.Text = isFlyWalkMode and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
+flyWalkButton.BackgroundColor3 = isFlyWalkMode and Color3.fromRGB(200, 150, 50) or Color3.fromRGB(100, 100, 100)
+if isFlyWalkMode then startFlyWalkMode() else stopFlyWalkMode() end
+end
 flyWalkButton.MouseButton1Click:Connect(toggleFlyWalkMode)
-cameraToggleButton.MouseButton1Click:Connect(toggleCustomCamera)
-closeFlyWalkBtn.MouseButton1Click:Connect(toggleFlyWalkMode)
+standAirButton.MouseButton1Click:Connect(toggleStandOnAir)
+flyButton.MouseButton1Click:Connect(toggleFly)
 
 carpetToggleBtn.MouseButton1Click:Connect(function()
-    if not State.isFlyWalkMode then return end
-    toggleStandOnAir()
+if not isFlyWalkMode then return end
+if isStandingOnAir then toggleStandOnAir() else toggleStandOnAir() end
 end)
-
 upBtn.MouseButton1Click:Connect(function()
-    if not State.isFlyWalkMode then return end
-    if not State.isStandingOnAir then toggleStandOnAir() end
-    State.carpetTargetY = (State.carpetTargetY or 0) + 5
+if not isFlyWalkMode then return end
+if not isStandingOnAir then toggleStandOnAir() end
+carpetTargetY = (carpetTargetY or 0) + 5
 end)
-
 downBtn.MouseButton1Click:Connect(function()
-    if not State.isFlyWalkMode then return end
-    if not State.isStandingOnAir then toggleStandOnAir() end
-    State.carpetTargetY = (State.carpetTargetY or 0) - 5
+if not isFlyWalkMode then return end
+if not isStandingOnAir then toggleStandOnAir() end
+carpetTargetY = (carpetTargetY or 0) - 5
 end)
 
--- Environment buttons
-darkButton.MouseButton1Click:Connect(function() tweenLight(DARK_LIGHT) end)
-lightButton.MouseButton1Click:Connect(function() tweenLight(DEFAULT_LIGHT) end)
-
+-- Môi trường
+local function tweenLight(prop) TweenService:Create(lighting, TweenInfo.new(1.5, Enum.EasingStyle.Quad), prop):Play() end
+darkButton.MouseButton1Click:Connect(function() tweenLight{ClockTime=0, Brightness=0.3, OutdoorAmbient=Color3.fromRGB(20,20,40)} end)
+lightButton.MouseButton1Click:Connect(function() tweenLight{ClockTime=14, Brightness=1.2, OutdoorAmbient=Color3.fromRGB(180,180,180)} end)
 fogButton.MouseButton1Click:Connect(function()
-    State.isFogOn = not State.isFogOn
-    fogButton.Text = State.isFogOn and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
-    fogButton.BackgroundColor3 = State.isFogOn and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(100, 100, 100)
-    tweenLight(State.isFogOn and FOG_LIGHT or {FogStart = 0, FogEnd = 100000, FogColor = Color3.new(1,1,1)})
+isFogOn = not isFogOn
+fogButton.Text = isFogOn and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
+fogButton.BackgroundColor3 = isFogOn and Color3.fromRGB(70,70,70) or Color3.fromRGB(100,100,100)
+tweenLight(isFogOn and {FogStart=0, FogEnd=80, FogColor=Color3.fromRGB(180,180,180)} or {FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)})
 end)
-
 resetEnvButton.MouseButton1Click:Connect(function()
-    tweenLight(DEFAULT_LIGHT)
-    if State.isFogOn then
-        State.isFogOn = false
-        fogButton.Text = "🌫️ Sương mù: TẮT"
-        fogButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-    end
+tweenLight{ClockTime=14, Brightness=1.2, OutdoorAmbient=Color3.fromRGB(180,180,180)}
+if isFogOn then isFogOn = false; fogButton.Text = "🌫️ Sương mù: TẮT"; fogButton.BackgroundColor3 = Color3.fromRGB(100,100,100); tweenLight{FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)} end
 end)
 
--- Run button
+-- ==================== CAMERA ====================
+local camRenderName = "CustomCam"
+function startCustomCamera()
+local camera = workspace.CurrentCamera
+if not camera then return end
+camera.CameraType = Enum.CameraType.Scriptable
+camera.FieldOfView = customFov
+camAngleX, camAngleY = 0, 0
+UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+UserInputService.MouseIconEnabled = false
+RunService:BindToRenderStep(camRenderName, Enum.RenderPriority.Camera.Value, function()
+if not isCustomCamera or not character or not character:FindFirstChild("HumanoidRootPart") then return end
+local root = character.HumanoidRootPart
+local head = character:FindFirstChild("Head")
+local basePos = (head and head.Position or root.Position) + Vector3.new(0,2,0)
+local lookVector = (CFrame.Angles(0, math.rad(camAngleX), 0) * CFrame.Angles(math.rad(camAngleY), 0, 0)).LookVector
+local offset = root.CFrame.RightVector * customOffsetX + Vector3.new(0, customOffsetY, 0)
+local camPos = basePos + offset - lookVector * 5
+camera.CFrame = CFrame.new(camPos, basePos + lookVector * 10)
+end)
+end
+function stopCustomCamera()
+RunService:UnbindFromRenderStep(camRenderName)
+if workspace.CurrentCamera then
+workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
+workspace.CurrentCamera.FieldOfView = 70
+end
+UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+UserInputService.MouseIconEnabled = true
+end
+local function toggleCustomCamera()
+isCustomCamera = not isCustomCamera
+cameraToggleButton.Text = isCustomCamera and "📷 Camera: BẬT" or "📷 Camera: TẮT"
+cameraToggleButton.BackgroundColor3 = isCustomCamera and Color3.fromRGB(200,120,50) or Color3.fromRGB(100,100,100)
+if isCustomCamera then startCustomCamera() else stopCustomCamera() end
+end
+cameraToggleButton.MouseButton1Click:Connect(toggleCustomCamera)
+UserInputService.InputChanged:Connect(function(input)
+if not isCustomCamera then return end
+if input.UserInputType == Enum.UserInputType.MouseMovement then
+local delta = input.Delta
+camAngleX = (camAngleX - delta.X * 0.1) % 360
+camAngleY = math.clamp(camAngleY - delta.Y * 0.1, -80, 80)
+end
+end)
+
+-- ==================== THỰC THI CODE ====================
+local function executeOnce(code, name)
+if #name>0 then print("👤", name) end
+local ok, res = pcall(function()
+local fn, err = (loadstring or function(c) return loadstring(c) end)(code)
+if not fn then error(err) end
+fn()
+end)
+return ok, res
+end
+local function getExecutionParams()
+local loopCount = tonumber(loopBox.Text) or 1
+if loopCount <= 0 or loopCount > 1000 then loopCount = 1 end
+local delay = tonumber(delayBox.Text) or 0
+if delay < 0 then delay = 0 end
+if unitButton.Text == "Phút" then delay = delay * 60 end
+return loopCount, delay
+end
+local function stopExecution()
+executionCancelled = true
+if currentThread then task.cancel(currentThread); currentThread = nil end
+if currentIndicator then currentIndicator.BackgroundColor3 = Color3.fromRGB(0,150,255); currentIndicator = nil end
+statusLabel.Text = "⏹️ Đã dừng"
+end
+local function runCodeAsync(code, name, indicator)
+stopExecution()
+if #code == 0 then statusLabel.Text = "⚠️ Vui lòng nhập code!"; return end
+local loopCount, delaySeconds = getExecutionParams()
+statusLabel.Text = "⏳ Đang thực thi..."
+executionCancelled = false
+if indicator then currentIndicator = indicator; indicator.BackgroundColor3 = Color3.fromRGB(255,0,0) end
+currentThread = task.spawn(function()
+local okC, failC = 0, 0
+for i = 1, loopCount do
+if executionCancelled then break end
+if i > 1 and delaySeconds > 0 then
+local waited = 0
+while waited < delaySeconds do if executionCancelled then break end; task.wait(0.1); waited += 0.1 end
+if executionCancelled then break end
+end
+if executionCancelled then break end
+local ok, err = executeOnce(code, name)
+if ok then okC += 1 else failC += 1; warn("Lần", i, err) end
+statusLabel.Text = string.format("⏳ %d/%d...", i, loopCount)
+end
+totalExecutions += (okC + failC)
+countLabel.Text = "🔄 Tổng số lần đã chạy: " .. totalExecutions
+statusLabel.Text = executionCancelled and "⏹️ Đã dừng" or (failC == 0 and string.format("✅ %d lần thành công!", loopCount) or string.format("⚠️ %d ok, %d fail", okC, failC))
+if indicator then indicator.BackgroundColor3 = Color3.fromRGB(0,150,255); if currentIndicator == indicator then currentIndicator = nil end end
+currentThread = nil
+end)
+end
 runButton.MouseButton1Click:Connect(function() runCodeAsync(codeBox.Text, nameBox.Text, nil) end)
 
--- Save button
+-- Quản lý script
+local function updateCanvas()
+local count = #savedScripts
+scrollFrame.CanvasSize = UDim2.new(0,0,0, math.max(yPos + 30 + count*30, 500))
+end
+local function clearList()
+for _, v in ipairs(scriptListFrame:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
+end
+local function rebuildList()
+clearList()
+for i, data in ipairs(savedScripts) do
+local row = Instance.new("Frame") row.Size = UDim2.new(1,0,0,26) row.BackgroundColor3 = Color3.fromRGB(245,245,245) row.BackgroundTransparency = 0.3 row.BorderSizePixel = 0 row.Parent = scriptListFrame
+Instance.new("UICorner", row).CornerRadius = UDim.new(0,5)
+local rowStroke = Instance.new("UIStroke", row) rowStroke.Color = Color3.fromRGB(140,140,140) rowStroke.Thickness = 1
+local btn = Instance.new("TextButton") btn.Size = UDim2.new(1,-46,1,0) btn.Text = data.name btn.BackgroundTransparency = 1 btn.TextColor3 = Color3.fromRGB(50,50,50) btn.Font = Enum.Font.GothamMedium btn.TextSize = 11 btn.TextXAlignment = Enum.TextXAlignment.Left btn.Parent = row
+local indicator = Instance.new("TextButton") indicator.Size = UDim2.new(0,14,0,14) indicator.Position = UDim2.new(1,-40,0.5,-7) indicator.Text = "" indicator.BackgroundColor3 = Color3.fromRGB(0,150,255) indicator.BorderSizePixel = 0 indicator.Parent = row
+Instance.new("UICorner", indicator).CornerRadius = UDim.new(1,0)
+indicator.MouseButton1Click:Connect(function() if currentIndicator == indicator then stopExecution() end end)
+local del = Instance.new("TextButton") del.Size = UDim2.new(0,20,0,20) del.Position = UDim2.new(1,-22,0.5,-10) del.Text = "✕" del.BackgroundColor3 = Color3.fromRGB(200,60,60) del.BackgroundTransparency = 0.2 del.TextColor3 = Color3.fromRGB(255,255,255) del.Font = Enum.Font.GothamBold del.TextSize = 12 del.BorderSizePixel = 0 del.Parent = row
+Instance.new("UICorner", del).CornerRadius = UDim.new(1,0)
+btn.MouseButton1Click:Connect(function() nameBox.Text = data.name; codeBox.Text = data.code; runCodeAsync(data.code, data.name, indicator) end)
+del.MouseButton1Click:Connect(function()
+if currentIndicator == indicator then stopExecution() end
+table.remove(savedScripts, i)
+rebuildList()
+updateCanvas()
+end)
+end
+updateCanvas()
+end
 saveButton.MouseButton1Click:Connect(function()
-    local n, c = nameBox.Text, codeBox.Text
-    if #c == 0 then statusLabel.Text = "⚠️ Vui lòng nhập code!"; return end
-    if #n == 0 then n = "Script " .. (#References.savedScripts + 1) end
-    
-    local base, counter = n, 1
-    while true do
-        local duplicate = false
-        for _, s in ipairs(References.savedScripts) do
-            if s.name == n then duplicate = true; break end
-        end
-        if not duplicate then break end
-        counter += 1
-        n = base .. " (" .. counter .. ")"
-    end
-    
-    table.insert(References.savedScripts, {name = n, code = c})
-    rebuildList()
-    statusLabel.Text = "✅ Đã lưu: " .. n
-    scrollFrame.CanvasPosition = Vector2.new(0, scrollFrame.CanvasSize.Y.Offset)
+local n, c = nameBox.Text, codeBox.Text
+if #c == 0 then statusLabel.Text = "⚠️ Vui lòng nhập code!"; return end
+if #n == 0 then n = "Script " .. (#savedScripts + 1) end
+local base, counter = n, 1
+while true do
+local dup = false
+for _, s in ipairs(savedScripts) do if s.name == n then dup = true break end end
+if not dup then break end
+counter += 1
+n = base .. " (" .. counter .. ")"
+end
+table.insert(savedScripts, {name = n, code = c})
+rebuildList()
+statusLabel.Text = "✅ Đã lưu: " .. n
+scrollFrame.CanvasPosition = Vector2.new(0, scrollFrame.CanvasSize.Y.Offset)
 end)
 
--- Menu toggle
+-- Ẩn/hiện menu
 closeButton.MouseButton1Click:Connect(function()
-    mainFrame.Visible = false
-    toggleButton.Text = "⚙"
-    State.menuVisible = false
+mainFrame.Visible = false
+toggleButton.Text = "⚙"
+menuVisible = false
 end)
-
 toggleButton.MouseButton1Click:Connect(function()
-    if State.isFlyWalkMode then return end
-    State.menuVisible = not State.menuVisible
-    mainFrame.Visible = State.menuVisible
-    toggleButton.Text = State.menuVisible and "✕" or "⚙"
+if isFlyWalkMode then return end
+menuVisible = not menuVisible
+mainFrame.Visible = menuVisible
+toggleButton.Text = menuVisible and "✕" or "⚙"
 end)
 
--- ==================== KHỞI TẠO ====================
 updateCanvas()
 applyCharacterSpeed()
-if State.isNoClip then enableNoClip() end
+if isNoClipOn then enableNoClip() end
