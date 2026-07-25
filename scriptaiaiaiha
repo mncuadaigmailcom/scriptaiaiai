@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Menu cao hơn + NoClip rõ ràng)
+-- EXECUTOR MENU (Đứng trên không có bục trong suốt dưới chân)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -31,9 +31,9 @@ Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(120, 120, 120)
 Instance.new("UIStroke", toggleButton).Thickness = 2
 
--- ==================== KHUNG CHÍNH (TĂNG CHIỀU CAO) ====================
+-- ==================== KHUNG CHÍNH ====================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 360, 0, 420)  -- tăng lên 420px
+mainFrame.Size = UDim2.new(0, 360, 0, 420)
 mainFrame.Position = UDim2.new(0.5, -180, 0.5, -210)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.5
@@ -336,7 +336,7 @@ local jumpPowerLabel = createLabel("Hiện tại: 50", yPos+17)
 jumpPowerLabel.Position = UDim2.new(0, 80, 0, yPos+17)
 jumpPowerLabel.Size = UDim2.new(0, 100, 0, 16)
 
--- ===== NOCLIP (ĐI XUYÊN TƯỜNG) - ĐẶT RIÊNG MỘT DÒNG CHO DỄ THẤY =====
+-- ===== NOCLIP (ĐI XUYÊN TƯỜNG) =====
 yPos = yPos + 40
 createLabel("🚪 Đi xuyên tường (NoClip)", yPos)
 local noClipButton = createButton("🚶‍♂️ NoClip: TẮT", yPos+17, 160, 26, Color3.fromRGB(100, 100, 100))
@@ -369,7 +369,7 @@ local standSpeed = 16
 local walkSpeed = 16
 local jumpPower = 50
 local isNoClipOn = false
-local flyBodyVelocity, flyBodyGyro, standBodyPosition
+local flyBodyVelocity, flyBodyGyro, standBodyPosition, standPlatform
 local isFlying, isStandingOnAir, isFogOn = false, false, false
 local character = player.Character or player.CharacterAdded:Wait()
 local savedScripts = {}
@@ -439,7 +439,6 @@ player.CharacterAdded:Connect(function(char)
 	if isFlying then stopFly() isFlying = false end
 	if isStandingOnAir then stopStandOnAir() isStandingOnAir = false end
 	if isNoClipOn then
-		-- Khi respawn, NoClip vẫn được bật nhưng cần kích hoạt lại vì character mới
 		enableNoClip()
 	end
 	flyButton.Text = "🕊️ Bay: TẮT"
@@ -617,6 +616,7 @@ end
 
 function stopStandOnAir()
 	if standBodyPosition then standBodyPosition:Destroy() standBodyPosition = nil end
+	if standPlatform then standPlatform:Destroy() standPlatform = nil end
 	if character and character:FindFirstChild("Humanoid") then
 		character.Humanoid.PlatformStand = false
 	end
@@ -659,7 +659,7 @@ local function toggleFly()
 	showMobileControls()
 end
 
--- Đứng trên không (tốc độ tùy chỉnh)
+-- Đứng trên không (tốc độ tùy chỉnh + platform dưới chân)
 local function toggleStandOnAir()
 	isStandingOnAir = not isStandingOnAir
 	standAirButton.Text = isStandingOnAir and "🧍 Đứng trên không: BẬT" or "🧍 Đứng trên không: TẮT"
@@ -677,6 +677,19 @@ local function toggleStandOnAir()
 		local targetY = root.Position.Y
 		local speed = standSpeed
 
+		-- Tạo bục trong suốt dưới chân
+		if not standPlatform then
+			standPlatform = Instance.new("Part")
+			standPlatform.Name = "AirPlatform"
+			standPlatform.Size = Vector3.new(6, 0.2, 6)
+			standPlatform.Transparency = 0.7
+			standPlatform.Color = Color3.fromRGB(255, 255, 255)
+			standPlatform.Material = Enum.Material.Glass
+			standPlatform.Anchored = true
+			standPlatform.CanCollide = false
+			standPlatform.Parent = workspace
+		end
+
 		RunService:BindToRenderStep("StandUpdate", 1, function()
 			if not isStandingOnAir or not root or not standBodyPosition then return end
 			local moveDir = hum.MoveDirection
@@ -685,6 +698,11 @@ local function toggleStandOnAir()
 			local newPos = root.Position + worldMove * speed * 0.016
 			newPos = Vector3.new(newPos.X, targetY, newPos.Z)
 			standBodyPosition.Position = newPos
+
+			-- Cập nhật vị trí bục dưới chân
+			if standPlatform then
+				standPlatform.Position = Vector3.new(newPos.X, targetY - 3.5, newPos.Z)
+			end
 		end)
 	else
 		stopStandOnAir()
@@ -934,9 +952,7 @@ toggleButton.MouseButton1Click:Connect(function()
 end)
 
 updateCanvas()
--- Áp dụng tốc độ cho nhân vật hiện tại
 applyCharacterSpeed()
--- Nếu NoClip đang bật thì kích hoạt lại (phòng trường hợp character đã tồn tại)
 if isNoClipOn then
 	enableNoClip()
 end
