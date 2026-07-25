@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Menu nhỏ gọn chiều dọc + Viền rõ + Nền trong suốt)
+-- EXECUTOR MENU (Thêm tốc độ đi trên không + Menu gọn)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -31,9 +31,9 @@ Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(120, 120, 120)
 Instance.new("UIStroke", toggleButton).Thickness = 2
 
--- ==================== KHUNG CHÍNH (THU NHỎ CHIỀU DỌC) ====================
+-- ==================== KHUNG CHÍNH ====================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 360, 0, 380)   -- Giảm từ 450 xuống 380
+mainFrame.Size = UDim2.new(0, 360, 0, 380)
 mainFrame.Position = UDim2.new(0.5, -180, 0.5, -190)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.5
@@ -107,7 +107,7 @@ scrollFrame.ClipsDescendants = true
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.Parent = mainFrame
 
--- ===== HÀM TẠO STYLE (KHOẢNG CÁCH THU NHỎ) =====
+-- ===== HÀM TẠO STYLE =====
 local function createLabel(text, y)
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, -20, 0, 16)
@@ -174,14 +174,14 @@ local function createButton(text, y, w, h, accentColor)
 	return btn
 end
 
--- ===== NỘI DUNG CUỘN (GIẢM KHOẢNG CÁCH) =====
+-- ===== NỘI DUNG CUỘN =====
 local yPos = 3
 createLabel("👤 Tên", yPos)
 local nameBox = createTextBox("Nhập tên...", yPos+17, 26, false)
 
 yPos = yPos + 46
 createLabel("💻 Code (Lua)", yPos)
-local codeBox = createTextBox([[loadstring(game:HttpGet("..."))()]], yPos+17, 80, true)  -- Giảm chiều cao code
+local codeBox = createTextBox([[loadstring(game:HttpGet("..."))()]], yPos+17, 80, true)
 
 yPos = yPos + 100
 createLabel("🔁 Số lần lặp", yPos)
@@ -313,8 +313,14 @@ yPos = yPos + 50
 local standAirButton = createButton("🧍 Đứng trên không: TẮT", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
 standAirButton.Position = UDim2.new(0, 12, 0, yPos)
 
+-- Thêm ô tốc độ đứng trên không
+yPos = yPos + 32
+createLabel("🚶 Tốc độ đi trên không", yPos)
+local standSpeedBox = createTextBox("16", yPos+17, 26, false)  -- Mặc định WalkSpeed 16
+standSpeedBox.Size = UDim2.new(0, 60, 0, 26)
+
 -- ===== LƯU SCRIPT =====
-yPos = yPos + 38
+yPos = yPos + 48
 createLabel("💾 Script đã lưu (nhấn để chạy)", yPos)
 
 yPos = yPos + 20
@@ -336,6 +342,7 @@ scriptListLayout.Padding = UDim.new(0, 5)
 
 -- ==================== CÀI ĐẶT CHUNG ====================
 local flySpeed = 50
+local standSpeed = 16  -- Tốc độ mặc định cho đứng trên không
 local flyBodyVelocity, flyBodyGyro, standBodyPosition
 local isFlying, isStandingOnAir, isFogOn = false, false, false
 local character = player.Character or player.CharacterAdded:Wait()
@@ -352,6 +359,18 @@ speedSlider.FocusLost:Connect(function(enterPressed)
 			speedLabel.Text = "⚡ Tốc độ bay: "..num
 		else
 			speedSlider.Text = tostring(flySpeed)
+		end
+	end
+end)
+
+-- Cập nhật tốc độ đứng trên không
+standSpeedBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local num = tonumber(standSpeedBox.Text)
+		if num and num > 0 then
+			standSpeed = num
+		else
+			standSpeedBox.Text = tostring(standSpeed)
 		end
 	end
 end)
@@ -527,7 +546,7 @@ local function toggleFly()
 	showMobileControls()
 end
 
--- Đứng trên không (tốc độ game)
+-- Đứng trên không (tốc độ tùy chỉnh)
 local function toggleStandOnAir()
 	isStandingOnAir = not isStandingOnAir
 	standAirButton.Text = isStandingOnAir and "🧍 Đứng trên không: BẬT" or "🧍 Đứng trên không: TẮT"
@@ -543,7 +562,8 @@ local function toggleStandOnAir()
 		standBodyPosition.Parent = root
 		hum.PlatformStand = true
 		local targetY = root.Position.Y
-		local speed = hum.WalkSpeed  -- tốc độ mặc định của game
+		-- Sử dụng tốc độ tùy chỉnh (standSpeed) thay vì WalkSpeed
+		local speed = standSpeed
 
 		RunService:BindToRenderStep("StandUpdate", 1, function()
 			if not isStandingOnAir or not root or not standBodyPosition then return end
@@ -628,7 +648,7 @@ runButton.MouseButton1Click:Connect(executeCurrentCode)
 local function updateCanvas()
 	local count = #savedScripts
 	local height = yPos + 30 + count*32
-	scrollFrame.CanvasSize = UDim2.new(0,0,0,math.max(height, 450))
+	scrollFrame.CanvasSize = UDim2.new(0,0,0,math.max(height, 480))
 end
 
 local function clearList()
