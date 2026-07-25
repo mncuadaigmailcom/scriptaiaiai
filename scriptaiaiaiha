@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Sửa tốc độ chính xác bằng deltaTime)
+-- EXECUTOR MENU (Bay + Đứng trên không đều có platform dưới chân)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -625,7 +625,7 @@ function stopStandOnAir()
 	RunService:UnbindFromRenderStep("StandUpdate")
 end
 
--- Bay (dùng deltaTime chính xác)
+-- Bay (có platform dưới chân)
 local function toggleFly()
 	isFlying = not isFlying
 	flyButton.Text = isFlying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
@@ -645,6 +645,7 @@ local function toggleFly()
 		hum.AutoRotate = false
 		hum.PlatformStand = true
 
+		-- Tạo platform cho Bay
 		if not flyPlatform then
 			flyPlatform = Instance.new("Part")
 			flyPlatform.Name = "FlyPlatform"
@@ -667,6 +668,7 @@ local function toggleFly()
 			flyBodyVelocity.Velocity = (worldMove + Vector3.new(0, vertical, 0)) * flySpeed
 			flyBodyGyro.CFrame = CFrame.new(root.Position, root.Position + workspace.CurrentCamera.CFrame.LookVector)
 
+			-- Cập nhật vị trí platform
 			if flyPlatform then
 				flyPlatform.Position = Vector3.new(root.Position.X, root.Position.Y - 3.5, root.Position.Z)
 			end
@@ -677,7 +679,7 @@ local function toggleFly()
 	showMobileControls()
 end
 
--- Đứng trên không (dùng deltaTime chính xác)
+-- Đứng trên không (có platform dưới chân)
 local function toggleStandOnAir()
 	isStandingOnAir = not isStandingOnAir
 	standAirButton.Text = isStandingOnAir and "🧍 Đứng trên không: BẬT" or "🧍 Đứng trên không: TẮT"
@@ -696,6 +698,7 @@ local function toggleStandOnAir()
 		standBodyPosition.Parent = root
 		local targetY = root.Position.Y
 
+		-- Tạo platform cho Đứng trên không
 		if not standPlatform then
 			standPlatform = Instance.new("Part")
 			standPlatform.Name = "AirPlatform"
@@ -713,11 +716,11 @@ local function toggleStandOnAir()
 			local moveDir = hum.MoveDirection
 			local worldMove = root.CFrame:VectorToWorldSpace(moveDir)
 			if worldMove.Magnitude > 0 then worldMove = worldMove.Unit end
-			-- Sử dụng dt thực tế thay vì hằng số 0.016
 			local newPos = root.Position + worldMove * standSpeed * dt
 			newPos = Vector3.new(newPos.X, targetY, newPos.Z)
 			standBodyPosition.Position = newPos
 
+			-- Cập nhật vị trí platform
 			if standPlatform then
 				standPlatform.Position = Vector3.new(newPos.X, targetY - 3.5, newPos.Z)
 			end
