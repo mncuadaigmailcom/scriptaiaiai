@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Thêm NoClip - Đi xuyên tường)
+-- EXECUTOR MENU (Menu cao hơn + NoClip rõ ràng)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -31,10 +31,10 @@ Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(120, 120, 120)
 Instance.new("UIStroke", toggleButton).Thickness = 2
 
--- ==================== KHUNG CHÍNH ====================
+-- ==================== KHUNG CHÍNH (TĂNG CHIỀU CAO) ====================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 360, 0, 380)
-mainFrame.Position = UDim2.new(0.5, -180, 0.5, -190)
+mainFrame.Size = UDim2.new(0, 360, 0, 420)  -- tăng lên 420px
+mainFrame.Position = UDim2.new(0.5, -180, 0.5, -210)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.5
 mainFrame.BorderSizePixel = 0
@@ -336,13 +336,14 @@ local jumpPowerLabel = createLabel("Hiện tại: 50", yPos+17)
 jumpPowerLabel.Position = UDim2.new(0, 80, 0, yPos+17)
 jumpPowerLabel.Size = UDim2.new(0, 100, 0, 16)
 
--- ===== NOCLIP (ĐI XUYÊN TƯỜNG) =====
-yPos = yPos + 50
-local noClipButton = createButton("🚶‍♂️ NoClip: TẮT", yPos, 160, 26, Color3.fromRGB(100, 100, 100))
-noClipButton.Position = UDim2.new(0, 12, 0, yPos)
+-- ===== NOCLIP (ĐI XUYÊN TƯỜNG) - ĐẶT RIÊNG MỘT DÒNG CHO DỄ THẤY =====
+yPos = yPos + 40
+createLabel("🚪 Đi xuyên tường (NoClip)", yPos)
+local noClipButton = createButton("🚶‍♂️ NoClip: TẮT", yPos+17, 160, 26, Color3.fromRGB(100, 100, 100))
+noClipButton.Position = UDim2.new(0, 12, 0, yPos+17)
 
 -- ===== LƯU SCRIPT =====
-yPos = yPos + 35
+yPos = yPos + 50
 createLabel("💾 Script đã lưu (nhấn để chạy)", yPos)
 
 yPos = yPos + 20
