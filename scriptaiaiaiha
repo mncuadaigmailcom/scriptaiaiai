@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Nền trong suốt + Kéo resize góc)
+-- EXECUTOR MENU (Viền rõ + Thanh cuộn dễ thấy + Nền trong suốt)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -28,7 +28,8 @@ toggleButton.TextSize = 24
 toggleButton.BorderSizePixel = 0
 toggleButton.Parent = screenGui
 Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(180, 180, 180)
+Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(120, 120, 120)
+Instance.new("UIStroke", toggleButton).Thickness = 2
 
 -- ==================== KHUNG CHÍNH ====================
 local mainFrame = Instance.new("Frame")
@@ -44,9 +45,10 @@ mainFrame.Parent = screenGui
 local mainCorner = Instance.new("UICorner", mainFrame)
 mainCorner.CornerRadius = UDim.new(0, 12)
 
+-- Viền khung chính (dày hơn, màu đậm hơn)
 local mainStroke = Instance.new("UIStroke", mainFrame)
-mainStroke.Color = Color3.fromRGB(200, 200, 200)
-mainStroke.Thickness = 1.5
+mainStroke.Color = Color3.fromRGB(100, 100, 100)
+mainStroke.Thickness = 3
 
 -- ==================== THANH TIÊU ĐỀ ====================
 local titleBar = Instance.new("Frame")
@@ -83,7 +85,7 @@ closeButton.Parent = titleBar
 -- ==================== TAY CẦM KÉO RESIZE ====================
 local resizeHandle = Instance.new("TextButton")
 resizeHandle.Size = UDim2.new(0, 20, 0, 20)
-resizeHandle.Position = UDim2.new(1, -22, 1, -22)  -- góc dưới phải
+resizeHandle.Position = UDim2.new(1, -22, 1, -22)
 resizeHandle.Text = "↘"
 resizeHandle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
 resizeHandle.BackgroundTransparency = 0.5
@@ -96,17 +98,18 @@ Instance.new("UICorner", resizeHandle).CornerRadius = UDim.new(0, 4)
 
 -- ==================== SCROLLING FRAME ====================
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, 0, 1, -35)  -- tự co giãn theo mainFrame
+scrollFrame.Size = UDim2.new(1, 0, 1, -35)
 scrollFrame.Position = UDim2.new(0, 0, 0, 35)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
-scrollFrame.ScrollBarThickness = 6
-scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(180, 180, 180)
+-- Tăng độ dày và màu thanh cuộn cho dễ thấy
+scrollFrame.ScrollBarThickness = 10
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
 scrollFrame.ClipsDescendants = true
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.Parent = mainFrame
 
--- ===== HÀM TẠO STYLE (NỀN SÁNG TRONG SUỐT) =====
+-- ===== HÀM TẠO STYLE =====
 local function createLabel(text, y)
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, -20, 0, 18)
@@ -129,7 +132,7 @@ local function createTextBox(placeholder, y, height, multiline)
 	box.PlaceholderColor3 = Color3.fromRGB(160, 160, 160)
 	box.Text = ""
 	box.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-	box.BackgroundTransparency = 0.3  -- trong suốt hơn
+	box.BackgroundTransparency = 0.3
 	box.TextColor3 = Color3.fromRGB(30, 30, 30)
 	box.Font = Enum.Font.GothamMedium
 	box.TextSize = 14
@@ -143,7 +146,8 @@ local function createTextBox(placeholder, y, height, multiline)
 	end
 	box.Parent = scrollFrame
 	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-	Instance.new("UIStroke", box).Color = Color3.fromRGB(200, 200, 200)
+	Instance.new("UIStroke", box).Color = Color3.fromRGB(140, 140, 140)
+	Instance.new("UIStroke", box).Thickness = 1.5
 	return box
 end
 
@@ -153,14 +157,17 @@ local function createButton(text, y, w, h, accentColor)
 	btn.Position = UDim2.new(0.5, -w/2, 0, y)
 	btn.Text = text
 	btn.BackgroundColor3 = accentColor or Color3.fromRGB(0, 160, 100)
-	btn.BackgroundTransparency = 0.2  -- trong suốt một chút
+	btn.BackgroundTransparency = 0.2
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 14
 	btn.BorderSizePixel = 0
 	btn.Parent = scrollFrame
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-	Instance.new("UIStroke", btn).Color = accentColor and accentColor:Lerp(Color3.new(0,0,0), 0.3) or Color3.fromRGB(0, 100, 70)
+	-- Viền nút để nổi bật
+	local btnStroke = Instance.new("UIStroke", btn)
+	btnStroke.Color = accentColor and accentColor:Lerp(Color3.new(0,0,0), 0.4) or Color3.fromRGB(0, 100, 70)
+	btnStroke.Thickness = 1.5
 	btn.MouseEnter:Connect(function()
 		TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor and accentColor:Lerp(Color3.new(1,1,1), 0.3) or Color3.fromRGB(0, 200, 130)}):Play()
 	end)
@@ -202,7 +209,8 @@ unitButton.TextSize = 14
 unitButton.BorderSizePixel = 0
 unitButton.Parent = scrollFrame
 Instance.new("UICorner", unitButton).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", unitButton).Color = Color3.fromRGB(200, 200, 200)
+Instance.new("UIStroke", unitButton).Color = Color3.fromRGB(140, 140, 140)
+Instance.new("UIStroke", unitButton).Thickness = 1.5
 
 local dropdownFrame = Instance.new("Frame")
 dropdownFrame.Size = UDim2.new(0, 70, 0, 56)
@@ -213,6 +221,8 @@ dropdownFrame.BorderSizePixel = 0
 dropdownFrame.Visible = false
 dropdownFrame.Parent = scrollFrame
 Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 6)
+Instance.new("UIStroke", dropdownFrame).Color = Color3.fromRGB(140, 140, 140)
+Instance.new("UIStroke", dropdownFrame).Thickness = 1.5
 
 local secOption = Instance.new("TextButton")
 secOption.Size = UDim2.new(1, 0, 0, 28)
@@ -293,7 +303,7 @@ resetEnvButton.Position = UDim2.new(0, 165, 0, yPos)
 -- ===== BAY & ĐỨNG TRÊN KHÔNG =====
 yPos = yPos + 45
 createLabel("⚡ Tốc độ bay: 50", yPos)
-local speedLabel = scrollFrame:FindFirstChild("⚡ Tốc độ bay: 50") or createLabel("⚡ Tốc độ bay: 50", yPos)
+local speedLabel = createLabel("⚡ Tốc độ bay: 50", yPos)
 local speedSlider = createTextBox("50", yPos+20, 28, false)
 speedSlider.Size = UDim2.new(0, 60, 0, 28)
 
@@ -357,7 +367,6 @@ resizeHandle.InputBegan:Connect(function(input)
 		resizing = true
 		resizeStartSize = mainFrame.Size
 		resizeStartMousePos = input.Position
-		input.Draggable = false  -- ngăn kéo thả vô tình
 	end
 end)
 
@@ -396,6 +405,8 @@ btnFlyUp.TextSize = 20
 btnFlyUp.BorderSizePixel = 0
 btnFlyUp.Parent = mobileControlsFrame
 Instance.new("UICorner", btnFlyUp).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", btnFlyUp).Color = Color3.fromRGB(140, 140, 140)
+Instance.new("UIStroke", btnFlyUp).Thickness = 2
 
 local btnFlyDown = Instance.new("TextButton")
 btnFlyDown.Size = UDim2.new(0, 44, 0, 44)
@@ -409,6 +420,8 @@ btnFlyDown.TextSize = 20
 btnFlyDown.BorderSizePixel = 0
 btnFlyDown.Parent = mobileControlsFrame
 Instance.new("UICorner", btnFlyDown).CornerRadius = UDim.new(1, 0)
+Instance.new("UIStroke", btnFlyDown).Color = Color3.fromRGB(140, 140, 140)
+Instance.new("UIStroke", btnFlyDown).Thickness = 2
 
 local mobileKeys = {FlyUp = false, FlyDown = false}
 local activeTouches = {}
@@ -633,6 +646,8 @@ local function rebuildList()
 		row.BorderSizePixel = 0
 		row.Parent = scriptListFrame
 		Instance.new("UICorner", row).CornerRadius = UDim.new(0,6)
+		Instance.new("UIStroke", row).Color = Color3.fromRGB(140, 140, 140)
+		Instance.new("UIStroke", row).Thickness = 1
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1,-30,1,0)
 		btn.Text = data.name
