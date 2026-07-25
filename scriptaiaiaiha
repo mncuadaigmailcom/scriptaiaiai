@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Thu nhỏ + Đầy đủ tính năng)
+-- EXECUTOR MENU (Menu nhỏ + Thời tiết: Mưa, Bão, Tuyết)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -9,6 +9,7 @@ local TweenService = game:GetService("TweenService")
 local lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ExecutorMenu"
@@ -31,9 +32,9 @@ Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(120, 120, 120)
 Instance.new("UIStroke", toggleButton).Thickness = 2
 
--- ==================== KHUNG CHÍNH (THU NHỎ) ====================
+-- ==================== KHUNG CHÍNH ====================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 320, 0, 400)   -- giảm từ 360x480 xuống 320x400
+mainFrame.Size = UDim2.new(0, 320, 0, 400)
 mainFrame.Position = UDim2.new(0.5, -160, 0.5, -200)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.5
@@ -107,7 +108,7 @@ scrollFrame.ClipsDescendants = true
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.Parent = mainFrame
 
--- ===== HÀM TẠO STYLE (THU NHỎ) =====
+-- ===== HÀM TẠO STYLE (NHỎ) =====
 local function createLabel(text, y)
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, -16, 0, 14)
@@ -174,7 +175,7 @@ local function createButton(text, y, w, h, accentColor)
 	return btn
 end
 
--- ===== NỘI DUNG CUỘN (GIẢM KHOẢNG CÁCH) =====
+-- ===== NỘI DUNG CUỘN =====
 local yPos = 2
 createLabel("👤 Tên", yPos)
 local nameBox = createTextBox("Nhập tên...", yPos+14, 22, false)
@@ -283,26 +284,39 @@ local countLabel = createLabel("🔄 Tổng số lần đã chạy: 0", yPos)
 countLabel.TextColor3 = Color3.fromRGB(0, 140, 70)
 countLabel.TextSize = 10
 
--- ===== ĐIỀU KHIỂN MÔI TRƯỜNG =====
-yPos = yPos + 25
-createLabel("⚙️ Điều khiển môi trường", yPos)
+-- ===== ĐIỀU KHIỂN MÔI TRƯỜNG (THU GỌN) =====
+yPos = yPos + 22
+createLabel("⚙️ Môi trường", yPos)
 
-yPos = yPos + 18
-local darkButton = createButton("🌙 Trời tối", yPos, 130, 22, Color3.fromRGB(60, 60, 100))
+yPos = yPos + 16
+local darkButton = createButton("🌙 Tối", yPos, 95, 20, Color3.fromRGB(60, 60, 100))
 darkButton.Position = UDim2.new(0, 10, 0, yPos)
-local lightButton = createButton("☀️ Trời sáng", yPos, 130, 22, Color3.fromRGB(255, 200, 50))
-lightButton.Position = UDim2.new(0, 148, 0, yPos)
+local lightButton = createButton("☀️ Sáng", yPos, 95, 20, Color3.fromRGB(255, 200, 50))
+lightButton.Position = UDim2.new(0, 115, 0, yPos)
+local fogButton = createButton("🌫️ Sương", yPos, 95, 20, Color3.fromRGB(100, 100, 100))
+fogButton.Position = UDim2.new(0, 220, 0, yPos)
 
-yPos = yPos + 28
-local fogButton = createButton("🌫️ Sương mù: TẮT", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
-fogButton.Position = UDim2.new(0, 10, 0, yPos)
-local resetEnvButton = createButton("🔄 Reset mặc định", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
-resetEnvButton.Position = UDim2.new(0, 148, 0, yPos)
+yPos = yPos + 26
+local resetEnvButton = createButton("🔄 Reset", yPos, 95, 20, Color3.fromRGB(100, 100, 100))
+resetEnvButton.Position = UDim2.new(0, 10, 0, yPos)
+
+-- ===== THỜI TIẾT =====
+yPos = yPos + 32
+createLabel("🌦️ Thời tiết", yPos)
+
+yPos = yPos + 16
+local rainButton = createButton("🌧️ Mưa: TẮT", yPos, 95, 20, Color3.fromRGB(100, 100, 100))
+rainButton.Position = UDim2.new(0, 10, 0, yPos)
+local stormButton = createButton("🌪️ Bão: TẮT", yPos, 95, 20, Color3.fromRGB(100, 100, 100))
+stormButton.Position = UDim2.new(0, 115, 0, yPos)
+local winterButton = createButton("❄️ Tuyết: TẮT", yPos, 95, 20, Color3.fromRGB(100, 100, 100))
+winterButton.Position = UDim2.new(0, 220, 0, yPos)
 
 -- ===== BAY =====
-yPos = yPos + 35
+yPos = yPos + 32
 createLabel("⚡ Tốc độ bay: 50", yPos)
-local speedLabel = createLabel("⚡ Tốc độ bay: 50", yPos)
+local speedLabel = createLabel("⚡ Tốc độ bay: 50", yPos)  -- sẽ cập nhật text thủ công
+speedLabel.Text = "⚡ Tốc độ bay: 50"
 local speedSlider = createTextBox("50", yPos+14, 22, false)
 speedSlider.Size = UDim2.new(0, 50, 0, 22)
 
@@ -400,7 +414,8 @@ local customOffsetY = 0
 local flyBodyVelocity, flyBodyGyro, flyPlatform
 local standPlatform, standBodyPosition
 local carpetTargetY = nil
-local isFlying, isStandingOnAir, isFogOn, isFlyWalkMode = false, false, false, false
+local isFlying, isStandingOnAir, isFogOn = false, false, false
+local isFlyWalkMode = false
 local character = player.Character or player.CharacterAdded:Wait()
 local savedScripts = {}
 local totalExecutions = 0
@@ -413,7 +428,171 @@ local currentIndicator = nil
 local camAngleX = 0
 local camAngleY = 0
 
--- ==================== HÀM XỬ LÝ CHUNG ====================
+-- ==================== THỜI TIẾT ====================
+local isRaining = false
+local isStorming = false
+local isWinter = false
+
+local rainEmitter, stormEmitter, snowEmitter
+local rainSound, stormWindSound, stormThunderSound
+local originalWindSpeed = workspace.Gravity -- lưu gió gốc (thực ra Wind chưa có sẵn, ta sẽ dùng BodyVelocity giả hoặc GlobalWind)
+-- GlobalWind có thể không tồn tại, ta sẽ tạo hiệu ứng gió bằng cách thay đổi thuộc tính Wind của Workspace nếu có, hoặc dùng BodyVelocity cho các part nhỏ. Để đơn giản, ta sẽ mô phỏng gió qua âm thanh và rung nhẹ camera.
+
+-- Hàm xử lý thời tiết
+local function stopRain()
+	if rainEmitter then rainEmitter:Destroy() end
+	if rainSound then rainSound:Destroy() end
+	isRaining = false
+	rainButton.Text = "🌧️ Mưa: TẮT"
+	rainButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+end
+local function startRain()
+	stopStorm() -- không chồng lấn
+	stopWinter()
+	if not workspace:FindFirstChild("RainSystem") then
+		local rainPart = Instance.new("Part")
+		rainPart.Name = "RainSystem"
+		rainPart.Size = Vector3.new(100, 50, 100)
+		rainPart.Position = Vector3.new(0, 100, 0)
+		rainPart.Transparency = 1
+		rainPart.Anchored = true
+		rainPart.CanCollide = false
+		rainPart.Parent = workspace
+
+		rainEmitter = Instance.new("ParticleEmitter")
+		rainEmitter.Texture = "rbxassetid://166777938" -- hạt nước
+		rainEmitter.Rate = 500
+		rainEmitter.Speed = NumberRange.new(15, 25)
+		rainEmitter.Lifetime = NumberRange.new(0.5, 1)
+		rainEmitter.SpreadAngle = Vector2.new(10, 10)
+		rainEmitter.VelocityInheritance = 0
+		rainEmitter.Acceleration = Vector3.new(0, -50, 0)
+		rainEmitter.Parent = rainPart
+	end
+	rainSound = Instance.new("Sound")
+	rainSound.SoundId = "rbxassetid://272205135" -- âm thanh mưa
+	rainSound.Looped = true
+	rainSound.Volume = 0.5
+	rainSound.Parent = workspace
+	rainSound:Play()
+	isRaining = true
+	rainButton.Text = "🌧️ Mưa: BẬT"
+	rainButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+end
+
+local function stopStorm()
+	if stormEmitter then stormEmitter:Destroy() end
+	if stormWindSound then stormWindSound:Destroy() end
+	if stormThunderSound then stormThunderSound:Destroy() end
+	isStorming = false
+	stormButton.Text = "🌪️ Bão: TẮT"
+	stormButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+end
+local function startStorm()
+	stopRain()
+	stopWinter()
+	if not workspace:FindFirstChild("StormSystem") then
+		local stormPart = Instance.new("Part")
+		stormPart.Name = "StormSystem"
+		stormPart.Size = Vector3.new(200, 80, 200)
+		stormPart.Position = Vector3.new(0, 80, 0)
+		stormPart.Transparency = 1
+		stormPart.Anchored = true
+		stormPart.CanCollide = false
+		stormPart.Parent = workspace
+
+		stormEmitter = Instance.new("ParticleEmitter")
+		stormEmitter.Texture = "rbxassetid://166777938"
+		stormEmitter.Rate = 800
+		stormEmitter.Speed = NumberRange.new(25, 40)
+		stormEmitter.Lifetime = NumberRange.new(0.3, 0.7)
+		stormEmitter.SpreadAngle = Vector2.new(30, 30)
+		stormEmitter.Acceleration = Vector3.new(20, -60, 0) -- gió ngang
+		stormEmitter.VelocityInheritance = 0
+		stormEmitter.Parent = stormPart
+	end
+	stormWindSound = Instance.new("Sound")
+	stormWindSound.SoundId = "rbxassetid://9120386435" -- gió mạnh
+	stormWindSound.Looped = true
+	stormWindSound.Volume = 0.8
+	stormWindSound.Parent = workspace
+	stormWindSound:Play()
+
+	-- Sấm sét ngẫu nhiên
+	stormThunderSound = Instance.new("Sound")
+	stormThunderSound.SoundId = "rbxassetid://138057402" -- sấm
+	stormThunderSound.Volume = 1
+	stormThunderSound.Parent = workspace
+	local function thunderLoop()
+		while isStorming do
+			task.wait(math.random(3, 8))
+			if not isStorming then break end
+			lighting.OutdoorAmbient = Color3.fromRGB(255, 255, 255) -- chớp sáng
+			stormThunderSound:Play()
+			task.wait(0.1)
+			lighting.OutdoorAmbient = Color3.fromRGB(80, 80, 100) -- tối lại
+		end
+	end
+	task.spawn(thunderLoop)
+
+	isStorming = true
+	stormButton.Text = "🌪️ Bão: BẬT"
+	stormButton.BackgroundColor3 = Color3.fromRGB(180, 100, 50)
+end
+
+local function stopWinter()
+	if snowEmitter then snowEmitter:Destroy() end
+	isWinter = false
+	winterButton.Text = "❄️ Tuyết: TẮT"
+	winterButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+end
+local function startWinter()
+	stopRain()
+	stopStorm()
+	if not workspace:FindFirstChild("SnowSystem") then
+		local snowPart = Instance.new("Part")
+		snowPart.Name = "SnowSystem"
+		snowPart.Size = Vector3.new(200, 60, 200)
+		snowPart.Position = Vector3.new(0, 60, 0)
+		snowPart.Transparency = 1
+		snowPart.Anchored = true
+		snowPart.CanCollide = false
+		snowPart.Parent = workspace
+
+		snowEmitter = Instance.new("ParticleEmitter")
+		snowEmitter.Texture = "rbxassetid://168270318" -- bông tuyết
+		snowEmitter.Rate = 200
+		snowEmitter.Speed = NumberRange.new(1, 3)
+		snowEmitter.Lifetime = NumberRange.new(3, 6)
+		snowEmitter.SpreadAngle = Vector2.new(50, 50)
+		snowEmitter.Acceleration = Vector3.new(0, -2, 0)
+		snowEmitter.VelocityInheritance = 0
+		snowEmitter.Parent = snowPart
+	end
+	lighting.OutdoorAmbient = Color3.fromRGB(180, 200, 220) -- ánh xanh nhạt
+	isWinter = true
+	winterButton.Text = "❄️ Tuyết: BẬT"
+	winterButton.BackgroundColor3 = Color3.fromRGB(180, 220, 255)
+end
+
+rainButton.MouseButton1Click:Connect(function()
+	if isRaining then stopRain() else startRain() end
+end)
+stormButton.MouseButton1Click:Connect(function()
+	if isStorming then stopStorm() else startStorm() end
+end)
+winterButton.MouseButton1Click:Connect(function()
+	if isWinter then stopWinter() else startWinter() end
+end)
+
+-- Dọn dẹp khi thoát
+game:BindToClose(function()
+	stopRain()
+	stopStorm()
+	stopWinter()
+end)
+
+-- ==================== CÁC HÀM CHUNG KHÁC ====================
 function applyCharacterSpeed()
 	if not character or not character:FindFirstChild("Humanoid") then return end
 	local hum = character.Humanoid
@@ -497,7 +676,7 @@ UserInputService.InputEnded:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then resizing = false end
 end)
 
--- ==================== FLY ====================
+-- ==================== FLY (giữ nguyên) ====================
 local mobileControlsFrame = Instance.new("Frame")
 mobileControlsFrame.Size = UDim2.new(0, 180, 0, 70)
 mobileControlsFrame.Position = UDim2.new(0, 10, 1, -80)
@@ -689,13 +868,13 @@ darkButton.MouseButton1Click:Connect(function() tweenLight{ClockTime=0, Brightne
 lightButton.MouseButton1Click:Connect(function() tweenLight{ClockTime=14, Brightness=1.2, OutdoorAmbient=Color3.fromRGB(180,180,180)} end)
 fogButton.MouseButton1Click:Connect(function()
 	isFogOn = not isFogOn
-	fogButton.Text = isFogOn and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
+	fogButton.Text = isFogOn and "🌫️ Sương: BẬT" or "🌫️ Sương: TẮT"
 	fogButton.BackgroundColor3 = isFogOn and Color3.fromRGB(70,70,70) or Color3.fromRGB(100,100,100)
 	tweenLight(isFogOn and {FogStart=0, FogEnd=80, FogColor=Color3.fromRGB(180,180,180)} or {FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)})
 end)
 resetEnvButton.MouseButton1Click:Connect(function()
 	tweenLight{ClockTime=14, Brightness=1.2, OutdoorAmbient=Color3.fromRGB(180,180,180)}
-	if isFogOn then isFogOn = false; fogButton.Text = "🌫️ Sương mù: TẮT"; fogButton.BackgroundColor3 = Color3.fromRGB(100,100,100); tweenLight{FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)} end
+	if isFogOn then isFogOn = false; fogButton.Text = "🌫️ Sương: TẮT"; fogButton.BackgroundColor3 = Color3.fromRGB(100,100,100); tweenLight{FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)} end
 end)
 
 -- ==================== CAMERA ====================
