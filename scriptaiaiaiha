@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Đứng trên không có bục trong suốt dưới chân)
+-- EXECUTOR MENU (Sửa lỗi đứng trên không không di chuyển)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -619,6 +619,7 @@ function stopStandOnAir()
 	if standPlatform then standPlatform:Destroy() standPlatform = nil end
 	if character and character:FindFirstChild("Humanoid") then
 		character.Humanoid.PlatformStand = false
+		character.Humanoid.AutoRotate = true
 	end
 	RunService:UnbindFromRenderStep("StandUpdate")
 end
@@ -659,7 +660,7 @@ local function toggleFly()
 	showMobileControls()
 end
 
--- Đứng trên không (tốc độ tùy chỉnh + platform dưới chân)
+-- Đứng trên không (sửa lỗi không di chuyển)
 local function toggleStandOnAir()
 	isStandingOnAir = not isStandingOnAir
 	standAirButton.Text = isStandingOnAir and "🧍 Đứng trên không: BẬT" or "🧍 Đứng trên không: TẮT"
@@ -670,12 +671,15 @@ local function toggleStandOnAir()
 
 	if isStandingOnAir then
 		if isFlying then toggleFly() end
+		-- Tắt PlatformStand để có thể di chuyển
+		hum.PlatformStand = false
+		-- Cho phép xoay
+		hum.AutoRotate = true
+
 		standBodyPosition = Instance.new("BodyPosition")
 		standBodyPosition.MaxForce = Vector3.new(100000, 100000, 100000)
 		standBodyPosition.Parent = root
-		hum.PlatformStand = true
 		local targetY = root.Position.Y
-		local speed = standSpeed
 
 		-- Tạo bục trong suốt dưới chân
 		if not standPlatform then
@@ -692,10 +696,13 @@ local function toggleStandOnAir()
 
 		RunService:BindToRenderStep("StandUpdate", 1, function()
 			if not isStandingOnAir or not root or not standBodyPosition then return end
+			-- Cho phép di chuyển ngang bằng MoveDirection của humanoid
 			local moveDir = hum.MoveDirection
 			local worldMove = root.CFrame:VectorToWorldSpace(moveDir)
 			if worldMove.Magnitude > 0 then worldMove = worldMove.Unit end
-			local newPos = root.Position + worldMove * speed * 0.016
+
+			-- Tính vị trí mới
+			local newPos = root.Position + worldMove * standSpeed * 0.016
 			newPos = Vector3.new(newPos.X, targetY, newPos.Z)
 			standBodyPosition.Position = newPos
 
