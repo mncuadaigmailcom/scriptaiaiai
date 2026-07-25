@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Thêm chế độ Bay chạy bộ với nút ảo)
+-- EXECUTOR MENU (Sửa lỗi nút Bay chạy bộ + Giao diện rõ ràng)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -31,10 +31,10 @@ Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(120, 120, 120)
 Instance.new("UIStroke", toggleButton).Thickness = 2
 
--- ==================== KHUNG CHÍNH ====================
+-- ==================== KHUNG CHÍNH (TĂNG CHIỀU CAO) ====================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 360, 0, 420)
-mainFrame.Position = UDim2.new(0.5, -180, 0.5, -210)
+mainFrame.Size = UDim2.new(0, 360, 0, 460)   -- tăng từ 420 lên 460
+mainFrame.Position = UDim2.new(0.5, -180, 0.5, -230)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.5
 mainFrame.BorderSizePixel = 0
@@ -309,15 +309,12 @@ speedSlider.Size = UDim2.new(0, 55, 0, 26)
 local flyButton = createButton("🕊️ Bay: TẮT", yPos+17, 140, 26, Color3.fromRGB(100, 100, 100))
 flyButton.Position = UDim2.new(0, 85, 0, yPos+17)
 
--- ===== THẢM KÍNH DI ĐỘNG =====
+-- ===== THẢM KÍNH & BAY CHẠY BỘ (ĐẶT CÙNG HÀNG) =====
 yPos = yPos + 50
-local standAirButton = createButton("🪩 Thảm kính: TẮT", yPos, 150, 26, Color3.fromRGB(100, 100, 100))
+local standAirButton = createButton("🪩 Thảm kính: TẮT", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
 standAirButton.Position = UDim2.new(0, 12, 0, yPos)
-
--- ===== CHẾ ĐỘ BAY CHẠY BỘ =====
-yPos = yPos + 32
-local flyWalkButton = createButton("🕹️ Bay chạy bộ: TẮT", yPos, 150, 26, Color3.fromRGB(100, 100, 100))
-flyWalkButton.Position = UDim2.new(0, 12, 0, yPos)
+local flyWalkButton = createButton("🕹️ Bay chạy bộ: TẮT", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
+flyWalkButton.Position = UDim2.new(0, 162, 0, yPos)  -- nằm cạnh nút Thảm kính
 
 -- Ô kích thước thảm (dùng chung cho cả hai chế độ)
 yPos = yPos + 32
@@ -377,7 +374,7 @@ local jumpPower = 50
 local isNoClipOn = false
 local flyBodyVelocity, flyBodyGyro, flyPlatform
 local standPlatform, standBodyPosition
-local carpetTargetY = nil -- lưu độ cao mục tiêu của thảm kính
+local carpetTargetY = nil
 local isFlying, isStandingOnAir, isFogOn, isFlyWalkMode = false, false, false, false
 local character = player.Character or player.CharacterAdded:Wait()
 local savedScripts = {}
@@ -392,7 +389,7 @@ local currentIndicator = nil
 -- ==================== OVERLAY BAY CHẠY BỘ ====================
 local flyWalkOverlay = Instance.new("Frame")
 flyWalkOverlay.Size = UDim2.new(0, 200, 0, 180)
-flyWalkOverlay.Position = UDim2.new(1, -210, 0.5, -90) -- bên phải màn hình
+flyWalkOverlay.Position = UDim2.new(1, -210, 0.5, -90)
 flyWalkOverlay.BackgroundTransparency = 1
 flyWalkOverlay.Visible = false
 flyWalkOverlay.Parent = screenGui
@@ -419,7 +416,6 @@ local carpetToggleBtn = createOverlayButton("🪩", 0, 60, Color3.fromRGB(100, 1
 local upBtn = createOverlayButton("⬆", 70, 60, Color3.fromRGB(0, 150, 0))
 local downBtn = createOverlayButton("⬇", 140, 60, Color3.fromRGB(150, 0, 0))
 
--- Nút đóng chế độ Bay chạy bộ (trả về menu chính)
 local closeFlyWalkBtn = Instance.new("TextButton")
 closeFlyWalkBtn.Size = UDim2.new(0, 40, 0, 40)
 closeFlyWalkBtn.Position = UDim2.new(1, -50, 0, 10)
@@ -489,7 +485,7 @@ player.CharacterAdded:Connect(function(char)
 	if isFlying then stopFly() isFlying = false end
 	if isStandingOnAir then stopStandOnAir() isStandingOnAir = false end
 	if isNoClipOn then enableNoClip() end
-	if isFlyWalkMode then stopFlyWalkMode() end -- tắt chế độ bay chạy bộ khi chết
+	if isFlyWalkMode then stopFlyWalkMode() end
 	flyButton.Text = "🕊️ Bay: TẮT"
 	flyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 	standAirButton.Text = "🪩 Thảm kính: TẮT"
@@ -704,7 +700,7 @@ local function toggleFly()
 	showMobileControls()
 end
 
--- Thảm kính (dùng chung cho cả nút Thảm kính và Bay chạy bộ)
+-- Thảm kính (dùng chung)
 local function createCarpet(yOffset)
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local root = character.HumanoidRootPart
@@ -746,7 +742,6 @@ local function toggleStandOnAir()
 	if isStandingOnAir then
 		if isFlying then toggleFly() end
 		if isFlyWalkMode then
-			-- Nếu đang trong chế độ Bay chạy bộ, chỉ cần tạo thảm với độ cao hiện tại
 			createCarpet(root.Position.Y - 3.5)
 		else
 			createCarpet(root.Position.Y - 3.5)
@@ -760,19 +755,15 @@ end
 local function startFlyWalkMode()
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local root = character.HumanoidRootPart
-	-- Tắt bay nếu đang bật
 	if isFlying then toggleFly() end
-	-- Bật thảm kính nếu chưa
 	if not isStandingOnAir then
 		isStandingOnAir = true
 		standAirButton.Text = "🪩 Thảm kính: BẬT"
 		standAirButton.BackgroundColor3 = Color3.fromRGB(160, 100, 200)
 		createCarpet(root.Position.Y - 3.5)
 	else
-		-- Nếu đã có thảm, cập nhật lại targetY theo vị trí hiện tại
 		carpetTargetY = root.Position.Y - 3.5
 	end
-	-- Ẩn menu chính, hiện overlay
 	mainFrame.Visible = false
 	toggleButton.Text = "⚙"
 	menuVisible = false
@@ -787,7 +778,6 @@ local function stopFlyWalkMode()
 		standAirButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 	end
 	flyWalkOverlay.Visible = false
-	-- Không tự động hiện menu, để người dùng tự bật nếu muốn
 end
 
 function toggleFlyWalkMode()
@@ -803,10 +793,9 @@ end
 
 flyWalkButton.MouseButton1Click:Connect(toggleFlyWalkMode)
 
--- Sự kiện cho các nút trong overlay
+-- Sự kiện cho nút overlay
 carpetToggleBtn.MouseButton1Click:Connect(function()
 	if not isFlyWalkMode then return end
-	-- Toggle thảm kính (giống như bấm nút Thảm kính ngoài menu)
 	if isStandingOnAir then
 		stopStandOnAir()
 		isStandingOnAir = false
@@ -826,16 +815,12 @@ end)
 upBtn.MouseButton1Click:Connect(function()
 	if not isFlyWalkMode then return end
 	if not isStandingOnAir then
-		-- Nếu thảm chưa bật thì bật lên
 		isStandingOnAir = true
 		standAirButton.Text = "🪩 Thảm kính: BẬT"
 		standAirButton.BackgroundColor3 = Color3.fromRGB(160, 100, 200)
 		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if root then
-			createCarpet(root.Position.Y - 3.5)
-		end
+		if root then createCarpet(root.Position.Y - 3.5) end
 	else
-		-- Tăng độ cao thảm
 		carpetTargetY = (carpetTargetY or (character and character:FindFirstChild("HumanoidRootPart") and character.HumanoidRootPart.Position.Y - 3.5)) + 5
 	end
 end)
@@ -843,21 +828,16 @@ end)
 downBtn.MouseButton1Click:Connect(function()
 	if not isFlyWalkMode then return end
 	if not isStandingOnAir then
-		-- Nếu thảm chưa bật thì bật lên
 		isStandingOnAir = true
 		standAirButton.Text = "🪩 Thảm kính: BẬT"
 		standAirButton.BackgroundColor3 = Color3.fromRGB(160, 100, 200)
 		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if root then
-			createCarpet(root.Position.Y - 3.5)
-		end
+		if root then createCarpet(root.Position.Y - 3.5) end
 	else
-		-- Giảm độ cao thảm
 		carpetTargetY = (carpetTargetY or (character and character:FindFirstChild("HumanoidRootPart") and character.HumanoidRootPart.Position.Y - 3.5)) - 5
 	end
 end)
 
--- Kết nối nút Thảm kính gốc
 standAirButton.MouseButton1Click:Connect(toggleStandOnAir)
 flyButton.MouseButton1Click:Connect(toggleFly)
 
@@ -1076,7 +1056,7 @@ closeButton.MouseButton1Click:Connect(function()
 	menuVisible = false
 end)
 toggleButton.MouseButton1Click:Connect(function()
-	if isFlyWalkMode then return end -- không mở menu khi đang bay chạy bộ
+	if isFlyWalkMode then return end
 	menuVisible = not menuVisible
 	mainFrame.Visible = menuVisible
 	toggleButton.Text = menuVisible and "✕" or "⚙"
