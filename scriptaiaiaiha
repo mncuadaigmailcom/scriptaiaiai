@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Thêm tốc độ đi trên không + Menu gọn)
+-- EXECUTOR MENU (Viền 7 màu khi chạy script lưu + Menu gọn)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -316,7 +316,7 @@ standAirButton.Position = UDim2.new(0, 12, 0, yPos)
 -- Thêm ô tốc độ đứng trên không
 yPos = yPos + 32
 createLabel("🚶 Tốc độ đi trên không", yPos)
-local standSpeedBox = createTextBox("16", yPos+17, 26, false)  -- Mặc định WalkSpeed 16
+local standSpeedBox = createTextBox("16", yPos+17, 26, false)
 standSpeedBox.Size = UDim2.new(0, 60, 0, 26)
 
 -- ===== LƯU SCRIPT =====
@@ -342,13 +342,15 @@ scriptListLayout.Padding = UDim.new(0, 5)
 
 -- ==================== CÀI ĐẶT CHUNG ====================
 local flySpeed = 50
-local standSpeed = 16  -- Tốc độ mặc định cho đứng trên không
+local standSpeed = 16
 local flyBodyVelocity, flyBodyGyro, standBodyPosition
 local isFlying, isStandingOnAir, isFogOn = false, false, false
 local character = player.Character or player.CharacterAdded:Wait()
 local savedScripts = {}
 local totalExecutions = 0
 local menuVisible = false
+local activeRainbowRow = nil
+local rainbowThread = nil
 
 -- Cập nhật tốc độ bay
 speedSlider.FocusLost:Connect(function(enterPressed)
@@ -562,7 +564,6 @@ local function toggleStandOnAir()
 		standBodyPosition.Parent = root
 		hum.PlatformStand = true
 		local targetY = root.Position.Y
-		-- Sử dụng tốc độ tùy chỉnh (standSpeed) thay vì WalkSpeed
 		local speed = standSpeed
 
 		RunService:BindToRenderStep("StandUpdate", 1, function()
@@ -608,7 +609,47 @@ resetEnvButton.MouseButton1Click:Connect(function()
 	end
 end)
 
--- Lưu script
+-- ==================== HÀM HIỆU ỨNG 7 MÀU ====================
+local function startRainbow(row)
+	stopRainbow() -- dừng hiệu ứng cũ
+	if not row then return end
+	local stroke = row:FindFirstChild("UIStroke")
+	if not stroke then return end
+	activeRainbowRow = row
+	local colors = {
+		Color3.fromRGB(255, 0, 0),
+		Color3.fromRGB(255, 165, 0),
+		Color3.fromRGB(255, 255, 0),
+		Color3.fromRGB(0, 255, 0),
+		Color3.fromRGB(0, 0, 255),
+		Color3.fromRGB(75, 0, 130),
+		Color3.fromRGB(238, 130, 238)
+	}
+	local i = 1
+	rainbowThread = task.spawn(function()
+		while activeRainbowRow == row do
+			stroke.Color = colors[i]
+			i = i % 7 + 1
+			task.wait(0.3)
+		end
+	end)
+end
+
+local function stopRainbow()
+	if rainbowThread then
+		task.cancel(rainbowThread)
+		rainbowThread = nil
+	end
+	if activeRainbowRow then
+		local stroke = activeRainbowRow:FindFirstChild("UIStroke")
+		if stroke then
+			stroke.Color = Color3.fromRGB(140, 140, 140) -- màu viền mặc định
+		end
+		activeRainbowRow = nil
+	end
+end
+
+-- ==================== HÀM THỰC THI CODE ====================
 local function executeOnce(code, name)
 	if #name>0 then print("👤", name) end
 	local ok, res = pcall(function()
@@ -665,8 +706,9 @@ local function rebuildList()
 		row.BorderSizePixel = 0
 		row.Parent = scriptListFrame
 		Instance.new("UICorner", row).CornerRadius = UDim.new(0,5)
-		Instance.new("UIStroke", row).Color = Color3.fromRGB(140, 140, 140)
-		Instance.new("UIStroke", row).Thickness = 1
+		local rowStroke = Instance.new("UIStroke", row)
+		rowStroke.Color = Color3.fromRGB(140, 140, 140)
+		rowStroke.Thickness = 1
 		local btn = Instance.new("TextButton")
 		btn.Size = UDim2.new(1,-28,1,0)
 		btn.Text = data.name
@@ -691,7 +733,12 @@ local function rebuildList()
 		btn.MouseButton1Click:Connect(function()
 			nameBox.Text = data.name
 			codeBox.Text = data.code
+			-- Bắt đầu hiệu ứng 7 màu trên viền row
+			startRainbow(row)
+			-- Thực thi code
 			executeCurrentCode()
+			-- Kết thúc hiệu ứng
+			stopRainbow()
 		end)
 		del.MouseButton1Click:Connect(function()
 			table.remove(savedScripts, i)
