@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Thêm WalkSpeed & JumpPower)
+-- EXECUTOR MENU (Thêm NoClip - Đi xuyên tường)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -336,8 +336,13 @@ local jumpPowerLabel = createLabel("Hiện tại: 50", yPos+17)
 jumpPowerLabel.Position = UDim2.new(0, 80, 0, yPos+17)
 jumpPowerLabel.Size = UDim2.new(0, 100, 0, 16)
 
--- ===== LƯU SCRIPT =====
+-- ===== NOCLIP (ĐI XUYÊN TƯỜNG) =====
 yPos = yPos + 50
+local noClipButton = createButton("🚶‍♂️ NoClip: TẮT", yPos, 160, 26, Color3.fromRGB(100, 100, 100))
+noClipButton.Position = UDim2.new(0, 12, 0, yPos)
+
+-- ===== LƯU SCRIPT =====
+yPos = yPos + 35
 createLabel("💾 Script đã lưu (nhấn để chạy)", yPos)
 
 yPos = yPos + 20
@@ -362,6 +367,7 @@ local flySpeed = 50
 local standSpeed = 16
 local walkSpeed = 16
 local jumpPower = 50
+local isNoClipOn = false
 local flyBodyVelocity, flyBodyGyro, standBodyPosition
 local isFlying, isStandingOnAir, isFogOn = false, false, false
 local character = player.Character or player.CharacterAdded:Wait()
@@ -384,6 +390,43 @@ local function applyCharacterSpeed()
 	jumpPowerLabel.Text = "Hiện tại: " .. jumpPower
 end
 
+-- NoClip functions
+local function enableNoClip()
+	if not character then return end
+	RunService:BindToRenderStep("NoClip", 1, function()
+		if not isNoClipOn or not character then return end
+		for _, part in ipairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end)
+end
+
+local function disableNoClip()
+	RunService:UnbindFromRenderStep("NoClip")
+	if character then
+		for _, part in ipairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = true
+			end
+		end
+	end
+end
+
+local function toggleNoClip()
+	isNoClipOn = not isNoClipOn
+	noClipButton.Text = isNoClipOn and "🚶‍♂️ NoClip: BẬT" or "🚶‍♂️ NoClip: TẮT"
+	noClipButton.BackgroundColor3 = isNoClipOn and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(100, 100, 100)
+	if isNoClipOn then
+		enableNoClip()
+	else
+		disableNoClip()
+	end
+end
+
+noClipButton.MouseButton1Click:Connect(toggleNoClip)
+
 -- Character handling
 player.CharacterAdded:Connect(function(char)
 	character = char
@@ -394,6 +437,10 @@ player.CharacterAdded:Connect(function(char)
 	-- Tắt các chế độ nếu đang bật
 	if isFlying then stopFly() isFlying = false end
 	if isStandingOnAir then stopStandOnAir() isStandingOnAir = false end
+	if isNoClipOn then
+		-- Khi respawn, NoClip vẫn được bật nhưng cần kích hoạt lại vì character mới
+		enableNoClip()
+	end
 	flyButton.Text = "🕊️ Bay: TẮT"
 	flyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 	standAirButton.Text = "🧍 Đứng trên không: TẮT"
@@ -766,7 +813,7 @@ end)
 local function updateCanvas()
 	local count = #savedScripts
 	local height = yPos + 30 + count * 32
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(height, 530))
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(height, 550))
 end
 
 local function clearList()
@@ -888,3 +935,7 @@ end)
 updateCanvas()
 -- Áp dụng tốc độ cho nhân vật hiện tại
 applyCharacterSpeed()
+-- Nếu NoClip đang bật thì kích hoạt lại (phòng trường hợp character đã tồn tại)
+if isNoClipOn then
+	enableNoClip()
+end
