@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Giao diện đẹp + Đứng trên không tốc độ game)
+-- EXECUTOR MENU (Nền trắng trong suốt + Đứng trên không tốc độ game)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -21,27 +21,29 @@ local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 50, 0, 50)
 toggleButton.Position = UDim2.new(1, -60, 1, -60)
 toggleButton.Text = "⚙"
-toggleButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.BackgroundTransparency = 0.2
+toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
 toggleButton.Font = Enum.Font.GothamBold
 toggleButton.TextSize = 24
 toggleButton.BorderSizePixel = 0
 toggleButton.Parent = screenGui
 Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
-Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(100, 100, 100)
+Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(180, 180, 180)
 
 toggleButton.MouseEnter:Connect(function()
-	TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 60)}):Play()
+	TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(240, 240, 240)}):Play()
 end)
 toggleButton.MouseLeave:Connect(function()
-	TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30, 30, 30)}):Play()
+	TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
 end)
 
 -- ==================== KHUNG CHÍNH ====================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 350, 0, 440)
-mainFrame.Position = UDim2.new(0.5, -175, 0.5, -220)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+mainFrame.Size = UDim2.new(0, 360, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -180, 0.5, -225)
+mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+mainFrame.BackgroundTransparency = 0.15  -- nền trắng trong suốt 15%
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.ClipsDescendants = true
@@ -51,22 +53,14 @@ local mainCorner = Instance.new("UICorner", mainFrame)
 mainCorner.CornerRadius = UDim.new(0, 12)
 
 local mainStroke = Instance.new("UIStroke", mainFrame)
-mainStroke.Color = Color3.fromRGB(100, 100, 100)
+mainStroke.Color = Color3.fromRGB(200, 200, 200)
 mainStroke.Thickness = 1.5
-
--- Gradient nền (đơn giản bằng 2 frame chồng lên nhau)
-local gradientTop = Instance.new("Frame")
-gradientTop.Size = UDim2.new(1, 0, 0, 5)
-gradientTop.Position = UDim2.new(0, 0, 0, 0)
-gradientTop.BackgroundColor3 = Color3.fromRGB(80, 80, 200)
-gradientTop.BorderSizePixel = 0
-gradientTop.Parent = mainFrame
-Instance.new("UICorner", gradientTop).CornerRadius = UDim.new(0, 12)
 
 -- ==================== THANH TIÊU ĐỀ ====================
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 35)
-titleBar.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+titleBar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
+titleBar.BackgroundTransparency = 0.3
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
 titleBar.Draggable = true
@@ -77,7 +71,7 @@ titleLabel.Size = UDim2.new(1, -40, 1, 0)
 titleLabel.Position = UDim2.new(0, 15, 0, 0)
 titleLabel.Text = "⚡ Executor Pro"
 titleLabel.BackgroundTransparency = 1
-titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextColor3 = Color3.fromRGB(50, 50, 50)
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextSize = 16
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -88,7 +82,7 @@ closeButton.Size = UDim2.new(0, 30, 0, 30)
 closeButton.Position = UDim2.new(1, -35, 0, 2)
 closeButton.Text = "✕"
 closeButton.BackgroundTransparency = 1
-closeButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+closeButton.TextColor3 = Color3.fromRGB(120, 120, 120)
 closeButton.Font = Enum.Font.GothamBold
 closeButton.TextSize = 18
 closeButton.BorderSizePixel = 0
@@ -98,7 +92,7 @@ closeButton.MouseEnter:Connect(function()
 	TweenService:Create(closeButton, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 80, 80)}):Play()
 end)
 closeButton.MouseLeave:Connect(function()
-	TweenService:Create(closeButton, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(200, 200, 200)}):Play()
+	TweenService:Create(closeButton, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(120, 120, 120)}):Play()
 end)
 
 -- ==================== SCROLLING FRAME ====================
@@ -108,19 +102,19 @@ scrollFrame.Position = UDim2.new(0, 0, 0, 35)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
 scrollFrame.ScrollBarThickness = 6
-scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(150, 150, 150)
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(180, 180, 180)
 scrollFrame.ClipsDescendants = true
-scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- sẽ cập nhật sau
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.Parent = mainFrame
 
--- ===== HÀM TẠO STYLE ĐẸP =====
+-- ===== HÀM TẠO STYLE (NỀN SÁNG) =====
 local function createLabel(text, y)
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, -20, 0, 18)
 	lbl.Position = UDim2.new(0, 10, 0, y)
 	lbl.Text = text
 	lbl.BackgroundTransparency = 1
-	lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+	lbl.TextColor3 = Color3.fromRGB(60, 60, 60)
 	lbl.Font = Enum.Font.GothamMedium
 	lbl.TextSize = 13
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
@@ -133,9 +127,11 @@ local function createTextBox(placeholder, y, height, multiline)
 	box.Size = UDim2.new(1, -20, 0, height)
 	box.Position = UDim2.new(0, 10, 0, y)
 	box.PlaceholderText = placeholder
+	box.PlaceholderColor3 = Color3.fromRGB(160, 160, 160)
 	box.Text = ""
-	box.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-	box.TextColor3 = Color3.fromRGB(255, 255, 255)
+	box.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+	box.BackgroundTransparency = 0.2
+	box.TextColor3 = Color3.fromRGB(30, 30, 30)
 	box.Font = Enum.Font.GothamMedium
 	box.TextSize = 14
 	box.BorderSizePixel = 0
@@ -148,7 +144,7 @@ local function createTextBox(placeholder, y, height, multiline)
 	end
 	box.Parent = scrollFrame
 	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-	Instance.new("UIStroke", box).Color = Color3.fromRGB(80, 80, 80)
+	Instance.new("UIStroke", box).Color = Color3.fromRGB(200, 200, 200)
 	return box
 end
 
@@ -157,19 +153,19 @@ local function createButton(text, y, w, h, accentColor)
 	btn.Size = UDim2.new(0, w, 0, h)
 	btn.Position = UDim2.new(0.5, -w/2, 0, y)
 	btn.Text = text
-	btn.BackgroundColor3 = accentColor or Color3.fromRGB(0, 140, 100)
+	btn.BackgroundColor3 = accentColor or Color3.fromRGB(0, 160, 100)
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 14
 	btn.BorderSizePixel = 0
 	btn.Parent = scrollFrame
 	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
-	Instance.new("UIStroke", btn).Color = Color3.fromRGB(255, 255, 255):Lerp(Color3.new(0,0,0), 0.2)
+	Instance.new("UIStroke", btn).Color = accentColor and accentColor:Lerp(Color3.new(0,0,0), 0.3) or Color3.fromRGB(0, 100, 70)
 	btn.MouseEnter:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor and accentColor:Lerp(Color3.new(1,1,1), 0.3) or Color3.fromRGB(0, 180, 130)}):Play()
+		TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor and accentColor:Lerp(Color3.new(1,1,1), 0.3) or Color3.fromRGB(0, 200, 130)}):Play()
 	end)
 	btn.MouseLeave:Connect(function()
-		TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor or Color3.fromRGB(0, 140, 100)}):Play()
+		TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor or Color3.fromRGB(0, 160, 100)}):Play()
 	end)
 	return btn
 end
@@ -198,19 +194,19 @@ local unitButton = Instance.new("TextButton")
 unitButton.Size = UDim2.new(0, 70, 0, 28)
 unitButton.Position = UDim2.new(0, 85, 0, yPos+20)
 unitButton.Text = "Giây"
-unitButton.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-unitButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+unitButton.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+unitButton.TextColor3 = Color3.fromRGB(50, 50, 50)
 unitButton.Font = Enum.Font.GothamBold
 unitButton.TextSize = 14
 unitButton.BorderSizePixel = 0
 unitButton.Parent = scrollFrame
 Instance.new("UICorner", unitButton).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", unitButton).Color = Color3.fromRGB(80, 80, 80)
+Instance.new("UIStroke", unitButton).Color = Color3.fromRGB(200, 200, 200)
 
 local dropdownFrame = Instance.new("Frame")
 dropdownFrame.Size = UDim2.new(0, 70, 0, 56)
 dropdownFrame.Position = UDim2.new(0, 85, 0, yPos+20+28)
-dropdownFrame.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+dropdownFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 dropdownFrame.BorderSizePixel = 0
 dropdownFrame.Visible = false
 dropdownFrame.Parent = scrollFrame
@@ -219,8 +215,8 @@ Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 6)
 local secOption = Instance.new("TextButton")
 secOption.Size = UDim2.new(1, 0, 0, 28)
 secOption.Text = "Giây"
-secOption.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-secOption.TextColor3 = Color3.fromRGB(255, 255, 255)
+secOption.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+secOption.TextColor3 = Color3.fromRGB(50, 50, 50)
 secOption.Font = Enum.Font.GothamBold
 secOption.TextSize = 14
 secOption.BorderSizePixel = 0
@@ -230,8 +226,8 @@ local minOption = Instance.new("TextButton")
 minOption.Size = UDim2.new(1, 0, 0, 28)
 minOption.Position = UDim2.new(0, 0, 0, 28)
 minOption.Text = "Phút"
-minOption.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-minOption.TextColor3 = Color3.fromRGB(255, 255, 255)
+minOption.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+minOption.TextColor3 = Color3.fromRGB(50, 50, 50)
 minOption.Font = Enum.Font.GothamBold
 minOption.TextSize = 14
 minOption.BorderSizePixel = 0
@@ -264,16 +260,15 @@ end)
 
 yPos = yPos + 80
 local runButton = createButton("▶ Chạy Code", yPos, 130, 32, Color3.fromRGB(0, 160, 90))
-runButton.Position = UDim2.new(0.5, -65, 0, yPos) -- canh giữa
+runButton.Position = UDim2.new(0.5, -65, 0, yPos)
 
 yPos = yPos + 45
 local statusLabel = createLabel("", yPos)
-statusLabel.TextColor3 = Color3.fromRGB(255, 255, 120)
-statusLabel.Size = UDim2.new(1, -20, 0, 18)
+statusLabel.TextColor3 = Color3.fromRGB(220, 170, 0)  -- status màu vàng đậm
 
 yPos = yPos + 25
 local countLabel = createLabel("🔄 Tổng số lần đã chạy: 0", yPos)
-countLabel.TextColor3 = Color3.fromRGB(130, 230, 130)
+countLabel.TextColor3 = Color3.fromRGB(0, 140, 70)
 
 -- ===== ĐIỀU KHIỂN MÔI TRƯỜNG =====
 yPos = yPos + 35
@@ -286,22 +281,23 @@ local lightButton = createButton("☀️ Trời sáng", yPos, 140, 28, Color3.fr
 lightButton.Position = UDim2.new(0, 165, 0, yPos)
 
 yPos = yPos + 35
-local fogButton = createButton("🌫️ Sương mù: TẮT", yPos, 140, 28, Color3.fromRGB(45, 45, 45))
+local fogButton = createButton("🌫️ Sương mù: TẮT", yPos, 140, 28, Color3.fromRGB(100, 100, 100))
 fogButton.Position = UDim2.new(0, 15, 0, yPos)
-local resetEnvButton = createButton("🔄 Reset mặc định", yPos, 140, 28, Color3.fromRGB(45, 45, 45))
+local resetEnvButton = createButton("🔄 Reset mặc định", yPos, 140, 28, Color3.fromRGB(100, 100, 100))
 resetEnvButton.Position = UDim2.new(0, 165, 0, yPos)
 
 -- ===== BAY & ĐỨNG TRÊN KHÔNG =====
 yPos = yPos + 45
 createLabel("⚡ Tốc độ bay: 50", yPos)
+local speedLabel = scrollFrame:FindFirstChild("⚡ Tốc độ bay: 50") or createLabel("⚡ Tốc độ bay: 50", yPos)  -- tạo lại nhãn
 local speedSlider = createTextBox("50", yPos+20, 28, false)
 speedSlider.Size = UDim2.new(0, 60, 0, 28)
 
-local flyButton = createButton("🕊️ Bay: TẮT", yPos+20, 140, 28, Color3.fromRGB(45, 45, 45))
+local flyButton = createButton("🕊️ Bay: TẮT", yPos+20, 140, 28, Color3.fromRGB(100, 100, 100))
 flyButton.Position = UDim2.new(0, 90, 0, yPos+20)
 
 yPos = yPos + 55
-local standAirButton = createButton("🧍 Đứng trên không: TẮT", yPos, 140, 28, Color3.fromRGB(45, 45, 45))
+local standAirButton = createButton("🧍 Đứng trên không: TẮT", yPos, 140, 28, Color3.fromRGB(100, 100, 100))
 standAirButton.Position = UDim2.new(0, 15, 0, yPos)
 
 -- Nút ảo cho bay (chỉ hiện khi bật Bay trên mobile)
@@ -316,8 +312,9 @@ local btnFlyUp = Instance.new("TextButton")
 btnFlyUp.Size = UDim2.new(0, 44, 0, 44)
 btnFlyUp.Position = UDim2.new(0, 10, 0, 10)
 btnFlyUp.Text = "⏫"
-btnFlyUp.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-btnFlyUp.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnFlyUp.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+btnFlyUp.BackgroundTransparency = 0.2
+btnFlyUp.TextColor3 = Color3.fromRGB(50, 50, 50)
 btnFlyUp.Font = Enum.Font.GothamBold
 btnFlyUp.TextSize = 20
 btnFlyUp.BorderSizePixel = 0
@@ -328,8 +325,9 @@ local btnFlyDown = Instance.new("TextButton")
 btnFlyDown.Size = UDim2.new(0, 44, 0, 44)
 btnFlyDown.Position = UDim2.new(0, 146, 0, 10)
 btnFlyDown.Text = "⏬"
-btnFlyDown.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-btnFlyDown.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnFlyDown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+btnFlyDown.BackgroundTransparency = 0.2
+btnFlyDown.TextColor3 = Color3.fromRGB(50, 50, 50)
 btnFlyDown.Font = Enum.Font.GothamBold
 btnFlyDown.TextSize = 20
 btnFlyDown.BorderSizePixel = 0
@@ -341,7 +339,7 @@ yPos = yPos + 45
 createLabel("💾 Script đã lưu (nhấn để chạy)", yPos)
 
 yPos = yPos + 25
-local saveButton = createButton("➕ Lưu script hiện tại", yPos, 150, 28, Color3.fromRGB(45, 45, 45))
+local saveButton = createButton("➕ Lưu script hiện tại", yPos, 150, 28, Color3.fromRGB(100, 100, 100))
 saveButton.Position = UDim2.new(0, 15, 0, yPos)
 
 yPos = yPos + 40
@@ -372,7 +370,7 @@ speedSlider.FocusLost:Connect(function(enterPressed)
 		local num = tonumber(speedSlider.Text)
 		if num and num >= 0 then
 			flySpeed = num
-			createLabel("⚡ Tốc độ bay: "..num, speedSlider.Position.Y.Offset-20).Text = "⚡ Tốc độ bay: "..num
+			speedLabel.Text = "⚡ Tốc độ bay: "..num
 		else
 			speedSlider.Text = tostring(flySpeed)
 		end
@@ -417,9 +415,9 @@ player.CharacterAdded:Connect(function(char)
 	if isFlying then stopFly() isFlying = false end
 	if isStandingOnAir then stopStandOnAir() isStandingOnAir = false end
 	flyButton.Text = "🕊️ Bay: TẮT"
-	flyButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	flyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 	standAirButton.Text = "🧍 Đứng trên không: TẮT"
-	standAirButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+	standAirButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 	mobileControlsFrame.Visible = false
 end)
 
@@ -450,7 +448,7 @@ end
 local function toggleFly()
 	isFlying = not isFlying
 	flyButton.Text = isFlying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
-	flyButton.BackgroundColor3 = isFlying and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(45, 45, 45)
+	flyButton.BackgroundColor3 = isFlying and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(100, 100, 100)
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local root = character.HumanoidRootPart
 	local hum = character.Humanoid
@@ -486,7 +484,7 @@ end
 local function toggleStandOnAir()
 	isStandingOnAir = not isStandingOnAir
 	standAirButton.Text = isStandingOnAir and "🧍 Đứng trên không: BẬT" or "🧍 Đứng trên không: TẮT"
-	standAirButton.BackgroundColor3 = isStandingOnAir and Color3.fromRGB(160, 100, 200) or Color3.fromRGB(45, 45, 45)
+	standAirButton.BackgroundColor3 = isStandingOnAir and Color3.fromRGB(160, 100, 200) or Color3.fromRGB(100, 100, 100)
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local root = character.HumanoidRootPart
 	local hum = character.Humanoid
@@ -530,7 +528,7 @@ end)
 fogButton.MouseButton1Click:Connect(function()
 	isFogOn = not isFogOn
 	fogButton.Text = isFogOn and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
-	fogButton.BackgroundColor3 = isFogOn and Color3.fromRGB(70,70,70) or Color3.fromRGB(45,45,45)
+	fogButton.BackgroundColor3 = isFogOn and Color3.fromRGB(70,70,70) or Color3.fromRGB(100,100,100)
 	tweenLight(isFogOn and {FogStart=0, FogEnd=80, FogColor=Color3.fromRGB(180,180,180)} or {FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)})
 end)
 resetEnvButton.MouseButton1Click:Connect(function()
@@ -538,7 +536,7 @@ resetEnvButton.MouseButton1Click:Connect(function()
 	if isFogOn then
 		isFogOn = false
 		fogButton.Text = "🌫️ Sương mù: TẮT"
-		fogButton.BackgroundColor3 = Color3.fromRGB(45,45,45)
+		fogButton.BackgroundColor3 = Color3.fromRGB(100,100,100)
 		tweenLight{FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)}
 	end
 end)
@@ -595,7 +593,7 @@ local function rebuildList()
 	for i, data in ipairs(savedScripts) do
 		local row = Instance.new("Frame")
 		row.Size = UDim2.new(1,0,0,30)
-		row.BackgroundColor3 = Color3.fromRGB(40,40,40)
+		row.BackgroundColor3 = Color3.fromRGB(245,245,245)
 		row.BorderSizePixel = 0
 		row.Parent = scriptListFrame
 		Instance.new("UICorner", row).CornerRadius = UDim.new(0,6)
@@ -603,7 +601,7 @@ local function rebuildList()
 		btn.Size = UDim2.new(1,-30,1,0)
 		btn.Text = data.name
 		btn.BackgroundTransparency = 1
-		btn.TextColor3 = Color3.fromRGB(255,255,255)
+		btn.TextColor3 = Color3.fromRGB(50,50,50)
 		btn.Font = Enum.Font.GothamMedium
 		btn.TextSize = 13
 		btn.TextXAlignment = Enum.TextXAlignment.Left
