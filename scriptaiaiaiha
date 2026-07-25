@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Thảm kính di động sửa lỗi)
+-- EXECUTOR MENU (Thảm kính di động không rơi)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -309,7 +309,7 @@ speedSlider.Size = UDim2.new(0, 55, 0, 26)
 local flyButton = createButton("🕊️ Bay: TẮT", yPos+17, 140, 26, Color3.fromRGB(100, 100, 100))
 flyButton.Position = UDim2.new(0, 85, 0, yPos+17)
 
--- ===== THẢM KÍNH DI ĐỘNG (ĐÃ SỬA) =====
+-- ===== THẢM KÍNH DI ĐỘNG (ĐÃ SỬA LỖI RƠI) =====
 yPos = yPos + 50
 local standAirButton = createButton("🪩 Thảm kính: TẮT", yPos, 150, 26, Color3.fromRGB(100, 100, 100))
 standAirButton.Position = UDim2.new(0, 12, 0, yPos)
@@ -370,7 +370,8 @@ local carpetSize = 30
 local walkSpeed = 16
 local jumpPower = 50
 local isNoClipOn = false
-local flyBodyVelocity, flyBodyGyro, flyPlatform, standPlatform
+local flyBodyVelocity, flyBodyGyro, flyPlatform
+local standPlatform, standBodyPosition
 local isFlying, isStandingOnAir, isFogOn = false, false, false
 local character = player.Character or player.CharacterAdded:Wait()
 local savedScripts = {}
@@ -382,7 +383,7 @@ local executionCancelled = false
 local currentThread = nil
 local currentIndicator = nil
 
--- Cập nhật UI và áp dụng WalkSpeed/JumpPower
+-- Cập nhật UI và áp dụng tốc độ
 local function applyCharacterSpeed()
 	if not character or not character:FindFirstChild("Humanoid") then return end
 	local hum = character.Humanoid
@@ -420,11 +421,7 @@ local function toggleNoClip()
 	isNoClipOn = not isNoClipOn
 	noClipButton.Text = isNoClipOn and "🚶‍♂️ NoClip: BẬT" or "🚶‍♂️ NoClip: TẮT"
 	noClipButton.BackgroundColor3 = isNoClipOn and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(100, 100, 100)
-	if isNoClipOn then
-		enableNoClip()
-	else
-		disableNoClip()
-	end
+	if isNoClipOn then enableNoClip() else disableNoClip() end
 end
 
 noClipButton.MouseButton1Click:Connect(toggleNoClip)
@@ -432,9 +429,7 @@ noClipButton.MouseButton1Click:Connect(toggleNoClip)
 -- Character handling
 player.CharacterAdded:Connect(function(char)
 	character = char
-	if char:FindFirstChild("Humanoid") then
-		applyCharacterSpeed()
-	end
+	if char:FindFirstChild("Humanoid") then applyCharacterSpeed() end
 	if isFlying then stopFly() isFlying = false end
 	if isStandingOnAir then stopStandOnAir() isStandingOnAir = false end
 	if isNoClipOn then enableNoClip() end
@@ -474,7 +469,7 @@ carpetSizeBox.FocusLost:Connect(function(enterPressed)
 	end
 end)
 
--- Resize handle
+-- Resize
 local resizing = false
 local resizeStartSize, resizeStartMousePos
 
@@ -591,10 +586,11 @@ end
 
 function stopStandOnAir()
 	if standPlatform then standPlatform:Destroy() standPlatform = nil end
+	if standBodyPosition then standBodyPosition:Destroy() standBodyPosition = nil end
 	RunService:UnbindFromRenderStep("CarpetUpdate")
 end
 
--- Bay (có platform nhỏ)
+-- Bay
 local function toggleFly()
 	isFlying = not isFlying
 	flyButton.Text = isFlying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
@@ -646,17 +642,19 @@ local function toggleFly()
 	showMobileControls()
 end
 
--- THẢM KÍNH DI ĐỘNG (SỬA LỖI KHÔNG DI CHUYỂN)
+-- THẢM KÍNH DI ĐỘNG KHÔNG RƠI
 local function toggleStandOnAir()
 	isStandingOnAir = not isStandingOnAir
 	standAirButton.Text = isStandingOnAir and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
 	standAirButton.BackgroundColor3 = isStandingOnAir and Color3.fromRGB(160, 100, 200) or Color3.fromRGB(100, 100, 100)
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local root = character.HumanoidRootPart
+	local hum = character.Humanoid
 
 	if isStandingOnAir then
 		if isFlying then toggleFly() end
-		-- Tạo thảm kính lớn, sẽ cập nhật vị trí liên tục
+
+		-- Tạo thảm kính
 		standPlatform = Instance.new("Part")
 		standPlatform.Name = "MagicCarpet"
 		standPlatform.Size = Vector3.new(carpetSize, 0.5, carpetSize)
@@ -665,17 +663,29 @@ local function toggleStandOnAir()
 		standPlatform.Material = Enum.Material.Glass
 		standPlatform.Anchored = true
 		standPlatform.CanCollide = true
-		local offsetY = -3.5 -- khoảng cách cố định dưới chân
-		standPlatform.Position = Vector3.new(root.Position.X, root.Position.Y + offsetY, root.Position.Z)
+		local targetY = root.Position.Y - 3.5
+		standPlatform.Position = Vector3.new(root.Position.X, targetY, root.Position.Z)
 		standPlatform.Parent = workspace
 
-		-- Cập nhật mỗi frame để thảm theo sát nhân vật
+		-- BodyPosition nhẹ nhàng giữ nhân vật trên thảm (chỉ can thiệp trục Y)
+		standBodyPosition = Instance.new("BodyPosition")
+		standBodyPosition.MaxForce = Vector3.new(0, 50000, 0)  -- chỉ tác động lực lên Y
+		standBodyPosition.P = 5000
+		standBodyPosition.D = 500
+		standBodyPosition.Position = Vector3.new(root.Position.X, targetY + 3, root.Position.Z)
+		standBodyPosition.Parent = root
+
+		-- Cập nhật vị trí thảm và body position theo chuyển động ngang của nhân vật
 		RunService:BindToRenderStep("CarpetUpdate", 1, function()
-			if not isStandingOnAir or not standPlatform or not root then return end
-			standPlatform.Position = Vector3.new(root.Position.X, root.Position.Y + offsetY, root.Position.Z)
+			if not isStandingOnAir or not standPlatform or not root or not standBodyPosition then return end
+			local newX = root.Position.X
+			local newZ = root.Position.Z
+			standPlatform.Position = Vector3.new(newX, targetY, newZ)
+			standBodyPosition.Position = Vector3.new(newX, targetY + 3, newZ)
 		end)
 	else
 		if standPlatform then standPlatform:Destroy() standPlatform = nil end
+		if standBodyPosition then standBodyPosition:Destroy() standBodyPosition = nil end
 		RunService:UnbindFromRenderStep("CarpetUpdate")
 	end
 end
