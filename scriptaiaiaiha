@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Thảm kính di động dưới chân)
+-- EXECUTOR MENU (Thảm kính di động sửa lỗi)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -309,7 +309,7 @@ speedSlider.Size = UDim2.new(0, 55, 0, 26)
 local flyButton = createButton("🕊️ Bay: TẮT", yPos+17, 140, 26, Color3.fromRGB(100, 100, 100))
 flyButton.Position = UDim2.new(0, 85, 0, yPos+17)
 
--- ===== THẢM KÍNH DI ĐỘNG (ĐỨNG TRÊN KHÔNG) =====
+-- ===== THẢM KÍNH DI ĐỘNG (ĐÃ SỬA) =====
 yPos = yPos + 50
 local standAirButton = createButton("🪩 Thảm kính: TẮT", yPos, 150, 26, Color3.fromRGB(100, 100, 100))
 standAirButton.Position = UDim2.new(0, 12, 0, yPos)
@@ -317,7 +317,7 @@ standAirButton.Position = UDim2.new(0, 12, 0, yPos)
 -- Ô kích thước thảm
 yPos = yPos + 32
 createLabel("📏 Kích thước thảm (studs)", yPos)
-local carpetSizeBox = createTextBox("30", yPos+17, 26, false)  -- mặc định 30x30
+local carpetSizeBox = createTextBox("30", yPos+17, 26, false)
 carpetSizeBox.Size = UDim2.new(0, 60, 0, 26)
 
 -- ===== TỐC ĐỘ CHẠY & NHẢY =====
@@ -474,7 +474,7 @@ carpetSizeBox.FocusLost:Connect(function(enterPressed)
 	end
 end)
 
--- Resize handle (giữ nguyên)
+-- Resize handle
 local resizing = false
 local resizeStartSize, resizeStartMousePos
 
@@ -646,7 +646,7 @@ local function toggleFly()
 	showMobileControls()
 end
 
--- THẢM KÍNH DI ĐỘNG (đi theo nhân vật, giữ độ cao cố định)
+-- THẢM KÍNH DI ĐỘNG (SỬA LỖI KHÔNG DI CHUYỂN)
 local function toggleStandOnAir()
 	isStandingOnAir = not isStandingOnAir
 	standAirButton.Text = isStandingOnAir and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
@@ -656,7 +656,7 @@ local function toggleStandOnAir()
 
 	if isStandingOnAir then
 		if isFlying then toggleFly() end
-		-- Tạo thảm kính lớn, di chuyển theo
+		-- Tạo thảm kính lớn, sẽ cập nhật vị trí liên tục
 		standPlatform = Instance.new("Part")
 		standPlatform.Name = "MagicCarpet"
 		standPlatform.Size = Vector3.new(carpetSize, 0.5, carpetSize)
@@ -664,15 +664,15 @@ local function toggleStandOnAir()
 		standPlatform.Color = Color3.fromRGB(255, 255, 255)
 		standPlatform.Material = Enum.Material.Glass
 		standPlatform.Anchored = true
-		standPlatform.CanCollide = true   -- có thể đứng lên
-		local targetY = root.Position.Y - 3.5  -- độ cao cố định dưới chân
-		standPlatform.Position = Vector3.new(root.Position.X, targetY, root.Position.Z)
+		standPlatform.CanCollide = true
+		local offsetY = -3.5 -- khoảng cách cố định dưới chân
+		standPlatform.Position = Vector3.new(root.Position.X, root.Position.Y + offsetY, root.Position.Z)
 		standPlatform.Parent = workspace
 
-		-- Cập nhật vị trí X, Z theo nhân vật, giữ nguyên Y
+		-- Cập nhật mỗi frame để thảm theo sát nhân vật
 		RunService:BindToRenderStep("CarpetUpdate", 1, function()
 			if not isStandingOnAir or not standPlatform or not root then return end
-			standPlatform.Position = Vector3.new(root.Position.X, targetY, root.Position.Z)
+			standPlatform.Position = Vector3.new(root.Position.X, root.Position.Y + offsetY, root.Position.Z)
 		end)
 	else
 		if standPlatform then standPlatform:Destroy() standPlatform = nil end
@@ -683,7 +683,7 @@ end
 flyButton.MouseButton1Click:Connect(toggleFly)
 standAirButton.MouseButton1Click:Connect(toggleStandOnAir)
 
--- Môi trường (giữ nguyên)
+-- Môi trường
 local function tweenLight(prop)
 	TweenService:Create(lighting, TweenInfo.new(1.5, Enum.EasingStyle.Quad), prop):Play()
 end
@@ -796,7 +796,7 @@ runButton.MouseButton1Click:Connect(function()
 	runCodeAsync(codeBox.Text, nameBox.Text, nil)
 end)
 
--- Quản lý danh sách script (giữ nguyên)
+-- Quản lý danh sách script
 local function updateCanvas()
 	local count = #savedScripts
 	local height = yPos + 30 + count * 32
