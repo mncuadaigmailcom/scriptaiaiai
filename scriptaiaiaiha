@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Đứng trên không = sàn kính lớn)
+-- EXECUTOR MENU (Thảm kính di động dưới chân)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -309,16 +309,16 @@ speedSlider.Size = UDim2.new(0, 55, 0, 26)
 local flyButton = createButton("🕊️ Bay: TẮT", yPos+17, 140, 26, Color3.fromRGB(100, 100, 100))
 flyButton.Position = UDim2.new(0, 85, 0, yPos+17)
 
--- ===== ĐỨNG TRÊN KHÔNG (SÀN KÍNH) =====
+-- ===== THẢM KÍNH DI ĐỘNG (ĐỨNG TRÊN KHÔNG) =====
 yPos = yPos + 50
-local standAirButton = createButton("🧍 Sàn kính: TẮT", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
+local standAirButton = createButton("🪩 Thảm kính: TẮT", yPos, 150, 26, Color3.fromRGB(100, 100, 100))
 standAirButton.Position = UDim2.new(0, 12, 0, yPos)
 
--- Thêm ô kích thước sàn
+-- Ô kích thước thảm
 yPos = yPos + 32
-createLabel("📏 Kích thước sàn (studs)", yPos)
-local floorSizeBox = createTextBox("100", yPos+17, 26, false)
-floorSizeBox.Size = UDim2.new(0, 60, 0, 26)
+createLabel("📏 Kích thước thảm (studs)", yPos)
+local carpetSizeBox = createTextBox("30", yPos+17, 26, false)  -- mặc định 30x30
+carpetSizeBox.Size = UDim2.new(0, 60, 0, 26)
 
 -- ===== TỐC ĐỘ CHẠY & NHẢY =====
 yPos = yPos + 50
@@ -366,7 +366,7 @@ scriptListLayout.Padding = UDim.new(0, 5)
 
 -- ==================== CÀI ĐẶT CHUNG ====================
 local flySpeed = 50
-local floorSize = 100
+local carpetSize = 30
 local walkSpeed = 16
 local jumpPower = 50
 local isNoClipOn = false
@@ -440,7 +440,7 @@ player.CharacterAdded:Connect(function(char)
 	if isNoClipOn then enableNoClip() end
 	flyButton.Text = "🕊️ Bay: TẮT"
 	flyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	standAirButton.Text = "🧍 Sàn kính: TẮT"
+	standAirButton.Text = "🪩 Thảm kính: TẮT"
 	standAirButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 	mobileControlsFrame.Visible = false
 end)
@@ -467,10 +467,10 @@ speedSlider.FocusLost:Connect(function(enterPressed)
 	end
 end)
 
-floorSizeBox.FocusLost:Connect(function(enterPressed)
+carpetSizeBox.FocusLost:Connect(function(enterPressed)
 	if enterPressed then
-		local num = tonumber(floorSizeBox.Text)
-		if num and num >= 10 then floorSize = num else floorSizeBox.Text = tostring(floorSize) end
+		local num = tonumber(carpetSizeBox.Text)
+		if num and num >= 10 then carpetSize = num else carpetSizeBox.Text = tostring(carpetSize) end
 	end
 end)
 
@@ -591,11 +591,7 @@ end
 
 function stopStandOnAir()
 	if standPlatform then standPlatform:Destroy() standPlatform = nil end
-	if character and character:FindFirstChild("Humanoid") then
-		-- đảm bảo trạng thái bình thường
-		character.Humanoid.PlatformStand = false
-	end
-	RunService:UnbindFromRenderStep("StandUpdate")
+	RunService:UnbindFromRenderStep("CarpetUpdate")
 end
 
 -- Bay (có platform nhỏ)
@@ -650,29 +646,37 @@ local function toggleFly()
 	showMobileControls()
 end
 
--- ĐỨNG TRÊN KHÔNG (SÀN KÍNH LỚN CỐ ĐỊNH)
+-- THẢM KÍNH DI ĐỘNG (đi theo nhân vật, giữ độ cao cố định)
 local function toggleStandOnAir()
 	isStandingOnAir = not isStandingOnAir
-	standAirButton.Text = isStandingOnAir and "🧍 Sàn kính: BẬT" or "🧍 Sàn kính: TẮT"
+	standAirButton.Text = isStandingOnAir and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
 	standAirButton.BackgroundColor3 = isStandingOnAir and Color3.fromRGB(160, 100, 200) or Color3.fromRGB(100, 100, 100)
 	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
 	local root = character.HumanoidRootPart
 
 	if isStandingOnAir then
 		if isFlying then toggleFly() end
-		-- Tạo sàn lớn
+		-- Tạo thảm kính lớn, di chuyển theo
 		standPlatform = Instance.new("Part")
-		standPlatform.Name = "AirFloor"
-		standPlatform.Size = Vector3.new(floorSize, 0.5, floorSize)
+		standPlatform.Name = "MagicCarpet"
+		standPlatform.Size = Vector3.new(carpetSize, 0.5, carpetSize)
 		standPlatform.Transparency = 0.7
 		standPlatform.Color = Color3.fromRGB(255, 255, 255)
 		standPlatform.Material = Enum.Material.Glass
 		standPlatform.Anchored = true
-		standPlatform.CanCollide = true   -- Cho phép đứng lên
-		standPlatform.Position = Vector3.new(root.Position.X, root.Position.Y - 3.5, root.Position.Z)
+		standPlatform.CanCollide = true   -- có thể đứng lên
+		local targetY = root.Position.Y - 3.5  -- độ cao cố định dưới chân
+		standPlatform.Position = Vector3.new(root.Position.X, targetY, root.Position.Z)
 		standPlatform.Parent = workspace
+
+		-- Cập nhật vị trí X, Z theo nhân vật, giữ nguyên Y
+		RunService:BindToRenderStep("CarpetUpdate", 1, function()
+			if not isStandingOnAir or not standPlatform or not root then return end
+			standPlatform.Position = Vector3.new(root.Position.X, targetY, root.Position.Z)
+		end)
 	else
 		if standPlatform then standPlatform:Destroy() standPlatform = nil end
+		RunService:UnbindFromRenderStep("CarpetUpdate")
 	end
 end
 
