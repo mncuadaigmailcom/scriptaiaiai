@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Đầy đủ + Búa Knockback)
+-- EXECUTOR MENU (Đầy đủ + Búa Knockback chạm)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -456,11 +456,11 @@ standAirButton.BorderSizePixel = 0
 standAirButton.Parent = scrollFrame
 Instance.new("UICorner", standAirButton).CornerRadius = UDim.new(0, 5)
 
--- ======================== BÚA KNOCKBACK ========================
+-- ======================== BÚA KNOCKBACK (CHẠM) ========================
 
 local hammerButton = Instance.new("TextButton")
 hammerButton.Size = UDim2.new(0, 150, 0, 28)
-hammerButton.Position = UDim2.new(0, 10, 0, 568)  -- dưới standAirButton
+hammerButton.Position = UDim2.new(0, 10, 0, 568)
 hammerButton.Text = "🔨 Búa Knockback: TẮT"
 hammerButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 hammerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -469,6 +469,31 @@ hammerButton.TextSize = 13
 hammerButton.BorderSizePixel = 0
 hammerButton.Parent = scrollFrame
 Instance.new("UICorner", hammerButton).CornerRadius = UDim.new(0, 5)
+
+-- Ô nhập tốc độ búa
+local hammerSpeedLabel = Instance.new("TextLabel")
+hammerSpeedLabel.Size = UDim2.new(1, -20, 0, 18)
+hammerSpeedLabel.Position = UDim2.new(0, 10, 0, 598)
+hammerSpeedLabel.Text = "💨 Tốc độ búa (Y):"
+hammerSpeedLabel.BackgroundTransparency = 1
+hammerSpeedLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
+hammerSpeedLabel.Font = Enum.Font.SourceSans
+hammerSpeedLabel.TextSize = 13
+hammerSpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
+hammerSpeedLabel.Parent = scrollFrame
+
+local hammerSpeedBox = Instance.new("TextBox")
+hammerSpeedBox.Size = UDim2.new(0, 70, 0, 28)
+hammerSpeedBox.Position = UDim2.new(0, 10, 0, 615)
+hammerSpeedBox.PlaceholderText = "500"
+hammerSpeedBox.Text = ""
+hammerSpeedBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+hammerSpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+hammerSpeedBox.Font = Enum.Font.SourceSans
+hammerSpeedBox.TextSize = 14
+hammerSpeedBox.BorderSizePixel = 0
+hammerSpeedBox.Parent = scrollFrame
+Instance.new("UICorner", hammerSpeedBox).CornerRadius = UDim.new(0, 5)
 
 -- ==================== MOBILE VIRTUAL CONTROLS (bay lên/xuống) ====================
 local mobileControlsFrame = Instance.new("Frame")
@@ -562,6 +587,10 @@ player.CharacterAdded:Connect(function(char)
 	standAirButton.Text = "🧍 Đứng trên không: TẮT"
 	standAirButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 	mobileControlsFrame.Visible = false
+	-- Cập nhật sự kiện búa nếu đang bật
+	if isHammerOn then
+		connectHammerTouched()
+	end
 end)
 
 local function updateMobileControls()
@@ -679,66 +708,94 @@ end
 flyButton.MouseButton1Click:Connect(toggleFly)
 standAirButton.MouseButton1Click:Connect(toggleStandOnAir)
 
--- ======================== BÚA KNOCKBACK LOGIC ========================
+-- ======================== BÚA KNOCKBACK (CHẠM + TỐC ĐỘ TÙY CHỈNH) ========================
 local isHammerOn = false
+local hammerSpeed = 500 -- mặc định
+local hammerTouchedConnection = nil
 
--- Khi bấm vào nút
+-- Cập nhật tốc độ từ hộp nhập
+hammerSpeedBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		local num = tonumber(hammerSpeedBox.Text)
+		if num and num > 0 then
+			hammerSpeed = num
+		else
+			hammerSpeedBox.Text = tostring(hammerSpeed)
+		end
+	end
+end)
+
+-- Hàm áp dụng knockback lên mục tiêu
+local function applyKnockback(targetRootPart, speed)
+	local vel = Instance.new("BodyVelocity")
+	vel.Velocity = Vector3.new(0, speed, 0)
+	vel.MaxForce = Vector3.new(100000, 100000, 100000)
+	vel.Parent = targetRootPart
+	task.delay(0.8, function()
+		if vel then vel:Destroy() end
+	end)
+end
+
+-- Hàm kết nối sự kiện Touched cho character hiện tại
+local function connectHammerTouched()
+	disconnectHammerTouched() -- hủy kết nối cũ nếu có
+	if not character or not character.Parent then return end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then return end
+
+	hammerTouchedConnection = rootPart.Touched:Connect(function(hitPart)
+		if not isHammerOn then return end
+		-- Tìm model chứa humanoid
+		local targetModel = hitPart:FindFirstAncestorOfClass("Model")
+		if not targetModel then return end
+		local targetHumanoid = targetModel:FindFirstChild("Humanoid")
+		if not targetHumanoid or targetHumanoid.Health <= 0 then return end
+		-- Không tự knockback chính mình
+		if targetModel == character then return end
+
+		local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
+		if not targetRoot then return end
+
+		-- Debounce nhẹ để tránh gọi liên tục
+		local lastHit = targetRoot:GetAttribute("HammerLastHit") or 0
+		local now = tick()
+		if now - lastHit < 0.5 then return end
+		targetRoot:SetAttribute("HammerLastHit", now)
+
+		applyKnockback(targetRoot, hammerSpeed)
+		local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
+		local targetName = targetPlayer and targetPlayer.Name or "Unknown"
+		statusLabel.Text = "🔨 Đã hất văng: " .. targetName
+		print("🔨 Knockback:", targetName)
+	end)
+end
+
+local function disconnectHammerTouched()
+	if hammerTouchedConnection then
+		hammerTouchedConnection:Disconnect()
+		hammerTouchedConnection = nil
+	end
+end
+
+-- Bật/tắt búa
 hammerButton.MouseButton1Click:Connect(function()
 	isHammerOn = not isHammerOn
 	hammerButton.Text = isHammerOn and "🔨 Búa Knockback: BẬT" or "🔨 Búa Knockback: TẮT"
 	hammerButton.BackgroundColor3 = isHammerOn and Color3.fromRGB(200, 60, 60) or Color3.fromRGB(45, 45, 45)
 	animateButton(hammerButton)
+
+	if isHammerOn then
+		connectHammerTouched()
+	else
+		disconnectHammerTouched()
+	end
 end)
 
--- Hàm knockback: tạo BodyVelocity cực mạnh hướng lên cho mục tiêu
-local function applyKnockback(targetRootPart)
-	local velocity = Instance.new("BodyVelocity")
-	velocity.Velocity = Vector3.new(0, 99999, 0)  -- tốc độ vô hạn
-	velocity.MaxForce = Vector3.new(100000, 100000, 100000)
-	velocity.Parent = targetRootPart
-	-- Hủy sau 0.8 giây để tránh bay mãi mãi (nhưng tốc độ quá lớn sẽ bay rất xa)
-	task.delay(0.8, function()
-		if velocity then velocity:Destroy() end
-	end)
-end
-
--- Sự kiện click để kích hoạt búa
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if not isHammerOn then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		-- Lấy vị trí chuột/chạm trên màn hình và raycast từ camera
-		local camera = workspace.CurrentCamera
-		if not camera then return end
-
-		local mousePos = input.Position
-		local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-		local rayParams = RaycastParams.new()
-		rayParams.FilterType = Enum.RaycastFilterType.Blacklist
-		rayParams.FilterDescendantsInstances = {character} -- không bắn chính mình
-		local rayResult = workspace:Raycast(ray.Origin, ray.Direction * 500, rayParams)
-
-		if rayResult then
-			local hitPart = rayResult.Instance
-			-- Tìm humanoid gần nhất từ hitPart (có thể là con của model)
-			local targetModel = hitPart:FindFirstAncestorOfClass("Model")
-			if targetModel then
-				local targetHumanoid = targetModel:FindFirstChild("Humanoid")
-				if targetHumanoid and targetHumanoid.Health > 0 then
-					local targetRoot = targetModel:FindFirstChild("HumanoidRootPart")
-					if targetRoot then
-						-- Áp dụng knockback
-						applyKnockback(targetRoot)
-						-- In thông báo
-						local targetPlayer = Players:GetPlayerFromCharacter(targetModel)
-						if targetPlayer then
-							print("🔨 Đã búa bay:", targetPlayer.Name)
-							statusLabel.Text = "🔨 Đã búa bay: " .. targetPlayer.Name
-						end
-					end
-				end
-			end
-		end
+-- Nếu character thay đổi (respawn) thì kết nối lại nếu đang bật
+player.CharacterAdded:Connect(function(newChar)
+	character = newChar
+	if isHammerOn then
+		connectHammerTouched()
 	end
 end)
 
@@ -746,10 +803,9 @@ end)
 
 local savedScripts = {}
 
--- Dịch vị trí các phần lưu script xuống thêm 35px do thêm nút búa
 local scriptListLabel = Instance.new("TextLabel")
 scriptListLabel.Size = UDim2.new(1, -20, 0, 18)
-scriptListLabel.Position = UDim2.new(0, 10, 0, 605)  -- từ 570 -> 605
+scriptListLabel.Position = UDim2.new(0, 10, 0, 650) -- đẩy xuống do thêm ô tốc độ búa
 scriptListLabel.Text = "💾 Script đã lưu (nhấn để chạy ngay)"
 scriptListLabel.BackgroundTransparency = 1
 scriptListLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
@@ -760,7 +816,7 @@ scriptListLabel.Parent = scrollFrame
 
 local saveButton = Instance.new("TextButton")
 saveButton.Size = UDim2.new(0, 150, 0, 28)
-saveButton.Position = UDim2.new(0, 10, 0, 625)
+saveButton.Position = UDim2.new(0, 10, 0, 670)
 saveButton.Text = "➕ Lưu script hiện tại"
 saveButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 saveButton.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -772,7 +828,7 @@ Instance.new("UICorner", saveButton).CornerRadius = UDim.new(0, 5)
 
 local scriptListFrame = Instance.new("Frame")
 scriptListFrame.Size = UDim2.new(1, -20, 0, 0)
-scriptListFrame.Position = UDim2.new(0, 10, 0, 658)
+scriptListFrame.Position = UDim2.new(0, 10, 0, 703)
 scriptListFrame.BackgroundTransparency = 1
 scriptListFrame.BorderSizePixel = 0
 scriptListFrame.Parent = scrollFrame
@@ -852,8 +908,8 @@ runButton.MouseButton1Click:Connect(executeCurrentCode)
 -- Quản lý danh sách script
 local function updateCanvasSize()
 	local count = #savedScripts
-	local height = 658 + count * 32 + 20
-	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(height, 720))
+	local height = 703 + count * 32 + 20
+	scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(height, 760))
 end
 
 local function clearScriptListUI()
