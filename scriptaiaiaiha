@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Nền trắng trong suốt + Đứng trên không tốc độ game)
+-- EXECUTOR MENU (Nền trong suốt + Kéo resize góc)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -9,7 +9,6 @@ local TweenService = game:GetService("TweenService")
 local lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local Players = game:GetService("Players")
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ExecutorMenu"
@@ -22,7 +21,7 @@ toggleButton.Size = UDim2.new(0, 50, 0, 50)
 toggleButton.Position = UDim2.new(1, -60, 1, -60)
 toggleButton.Text = "⚙"
 toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.BackgroundTransparency = 0.2
+toggleButton.BackgroundTransparency = 0.3
 toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
 toggleButton.Font = Enum.Font.GothamBold
 toggleButton.TextSize = 24
@@ -31,19 +30,12 @@ toggleButton.Parent = screenGui
 Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(180, 180, 180)
 
-toggleButton.MouseEnter:Connect(function()
-	TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(240, 240, 240)}):Play()
-end)
-toggleButton.MouseLeave:Connect(function()
-	TweenService:Create(toggleButton, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(255, 255, 255)}):Play()
-end)
-
 -- ==================== KHUNG CHÍNH ====================
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 360, 0, 450)
 mainFrame.Position = UDim2.new(0.5, -180, 0.5, -225)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-mainFrame.BackgroundTransparency = 0.15  -- nền trắng trong suốt 15%
+mainFrame.BackgroundTransparency = 0.5   -- nền trong suốt 50%
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.ClipsDescendants = true
@@ -60,7 +52,7 @@ mainStroke.Thickness = 1.5
 local titleBar = Instance.new("Frame")
 titleBar.Size = UDim2.new(1, 0, 0, 35)
 titleBar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
-titleBar.BackgroundTransparency = 0.3
+titleBar.BackgroundTransparency = 0.4
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
 titleBar.Draggable = true
@@ -88,16 +80,23 @@ closeButton.TextSize = 18
 closeButton.BorderSizePixel = 0
 closeButton.Parent = titleBar
 
-closeButton.MouseEnter:Connect(function()
-	TweenService:Create(closeButton, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(255, 80, 80)}):Play()
-end)
-closeButton.MouseLeave:Connect(function()
-	TweenService:Create(closeButton, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(120, 120, 120)}):Play()
-end)
+-- ==================== TAY CẦM KÉO RESIZE ====================
+local resizeHandle = Instance.new("TextButton")
+resizeHandle.Size = UDim2.new(0, 20, 0, 20)
+resizeHandle.Position = UDim2.new(1, -22, 1, -22)  -- góc dưới phải
+resizeHandle.Text = "↘"
+resizeHandle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
+resizeHandle.BackgroundTransparency = 0.5
+resizeHandle.TextColor3 = Color3.fromRGB(50, 50, 50)
+resizeHandle.Font = Enum.Font.GothamBold
+resizeHandle.TextSize = 14
+resizeHandle.BorderSizePixel = 0
+resizeHandle.Parent = mainFrame
+Instance.new("UICorner", resizeHandle).CornerRadius = UDim.new(0, 4)
 
 -- ==================== SCROLLING FRAME ====================
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, 0, 1, -35)
+scrollFrame.Size = UDim2.new(1, 0, 1, -35)  -- tự co giãn theo mainFrame
 scrollFrame.Position = UDim2.new(0, 0, 0, 35)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
@@ -107,7 +106,7 @@ scrollFrame.ClipsDescendants = true
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.Parent = mainFrame
 
--- ===== HÀM TẠO STYLE (NỀN SÁNG) =====
+-- ===== HÀM TẠO STYLE (NỀN SÁNG TRONG SUỐT) =====
 local function createLabel(text, y)
 	local lbl = Instance.new("TextLabel")
 	lbl.Size = UDim2.new(1, -20, 0, 18)
@@ -130,7 +129,7 @@ local function createTextBox(placeholder, y, height, multiline)
 	box.PlaceholderColor3 = Color3.fromRGB(160, 160, 160)
 	box.Text = ""
 	box.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
-	box.BackgroundTransparency = 0.2
+	box.BackgroundTransparency = 0.3  -- trong suốt hơn
 	box.TextColor3 = Color3.fromRGB(30, 30, 30)
 	box.Font = Enum.Font.GothamMedium
 	box.TextSize = 14
@@ -154,6 +153,7 @@ local function createButton(text, y, w, h, accentColor)
 	btn.Position = UDim2.new(0.5, -w/2, 0, y)
 	btn.Text = text
 	btn.BackgroundColor3 = accentColor or Color3.fromRGB(0, 160, 100)
+	btn.BackgroundTransparency = 0.2  -- trong suốt một chút
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.Font = Enum.Font.GothamBold
 	btn.TextSize = 14
@@ -195,6 +195,7 @@ unitButton.Size = UDim2.new(0, 70, 0, 28)
 unitButton.Position = UDim2.new(0, 85, 0, yPos+20)
 unitButton.Text = "Giây"
 unitButton.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+unitButton.BackgroundTransparency = 0.3
 unitButton.TextColor3 = Color3.fromRGB(50, 50, 50)
 unitButton.Font = Enum.Font.GothamBold
 unitButton.TextSize = 14
@@ -207,6 +208,7 @@ local dropdownFrame = Instance.new("Frame")
 dropdownFrame.Size = UDim2.new(0, 70, 0, 56)
 dropdownFrame.Position = UDim2.new(0, 85, 0, yPos+20+28)
 dropdownFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+dropdownFrame.BackgroundTransparency = 0.2
 dropdownFrame.BorderSizePixel = 0
 dropdownFrame.Visible = false
 dropdownFrame.Parent = scrollFrame
@@ -216,6 +218,7 @@ local secOption = Instance.new("TextButton")
 secOption.Size = UDim2.new(1, 0, 0, 28)
 secOption.Text = "Giây"
 secOption.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+secOption.BackgroundTransparency = 0.3
 secOption.TextColor3 = Color3.fromRGB(50, 50, 50)
 secOption.Font = Enum.Font.GothamBold
 secOption.TextSize = 14
@@ -227,6 +230,7 @@ minOption.Size = UDim2.new(1, 0, 0, 28)
 minOption.Position = UDim2.new(0, 0, 0, 28)
 minOption.Text = "Phút"
 minOption.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
+minOption.BackgroundTransparency = 0.3
 minOption.TextColor3 = Color3.fromRGB(50, 50, 50)
 minOption.Font = Enum.Font.GothamBold
 minOption.TextSize = 14
@@ -264,7 +268,7 @@ runButton.Position = UDim2.new(0.5, -65, 0, yPos)
 
 yPos = yPos + 45
 local statusLabel = createLabel("", yPos)
-statusLabel.TextColor3 = Color3.fromRGB(220, 170, 0)  -- status màu vàng đậm
+statusLabel.TextColor3 = Color3.fromRGB(220, 170, 0)
 
 yPos = yPos + 25
 local countLabel = createLabel("🔄 Tổng số lần đã chạy: 0", yPos)
@@ -289,7 +293,7 @@ resetEnvButton.Position = UDim2.new(0, 165, 0, yPos)
 -- ===== BAY & ĐỨNG TRÊN KHÔNG =====
 yPos = yPos + 45
 createLabel("⚡ Tốc độ bay: 50", yPos)
-local speedLabel = scrollFrame:FindFirstChild("⚡ Tốc độ bay: 50") or createLabel("⚡ Tốc độ bay: 50", yPos)  -- tạo lại nhãn
+local speedLabel = scrollFrame:FindFirstChild("⚡ Tốc độ bay: 50") or createLabel("⚡ Tốc độ bay: 50", yPos)
 local speedSlider = createTextBox("50", yPos+20, 28, false)
 speedSlider.Size = UDim2.new(0, 60, 0, 28)
 
@@ -299,40 +303,6 @@ flyButton.Position = UDim2.new(0, 90, 0, yPos+20)
 yPos = yPos + 55
 local standAirButton = createButton("🧍 Đứng trên không: TẮT", yPos, 140, 28, Color3.fromRGB(100, 100, 100))
 standAirButton.Position = UDim2.new(0, 15, 0, yPos)
-
--- Nút ảo cho bay (chỉ hiện khi bật Bay trên mobile)
-local mobileControlsFrame = Instance.new("Frame")
-mobileControlsFrame.Size = UDim2.new(0, 200, 0, 80)
-mobileControlsFrame.Position = UDim2.new(0, 10, 1, -90)
-mobileControlsFrame.BackgroundTransparency = 1
-mobileControlsFrame.Visible = false
-mobileControlsFrame.Parent = screenGui
-
-local btnFlyUp = Instance.new("TextButton")
-btnFlyUp.Size = UDim2.new(0, 44, 0, 44)
-btnFlyUp.Position = UDim2.new(0, 10, 0, 10)
-btnFlyUp.Text = "⏫"
-btnFlyUp.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-btnFlyUp.BackgroundTransparency = 0.2
-btnFlyUp.TextColor3 = Color3.fromRGB(50, 50, 50)
-btnFlyUp.Font = Enum.Font.GothamBold
-btnFlyUp.TextSize = 20
-btnFlyUp.BorderSizePixel = 0
-btnFlyUp.Parent = mobileControlsFrame
-Instance.new("UICorner", btnFlyUp).CornerRadius = UDim.new(1, 0)
-
-local btnFlyDown = Instance.new("TextButton")
-btnFlyDown.Size = UDim2.new(0, 44, 0, 44)
-btnFlyDown.Position = UDim2.new(0, 146, 0, 10)
-btnFlyDown.Text = "⏬"
-btnFlyDown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-btnFlyDown.BackgroundTransparency = 0.2
-btnFlyDown.TextColor3 = Color3.fromRGB(50, 50, 50)
-btnFlyDown.Font = Enum.Font.GothamBold
-btnFlyDown.TextSize = 20
-btnFlyDown.BorderSizePixel = 0
-btnFlyDown.Parent = mobileControlsFrame
-Instance.new("UICorner", btnFlyDown).CornerRadius = UDim.new(1, 0)
 
 -- ===== LƯU SCRIPT =====
 yPos = yPos + 45
@@ -377,29 +347,94 @@ speedSlider.FocusLost:Connect(function(enterPressed)
 	end
 end)
 
--- Mobile touch
+-- ==================== LOGIC KÉO RESIZE ====================
+local resizing = false
+local resizeStartSize = nil
+local resizeStartMousePos = nil
+
+resizeHandle.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		resizing = true
+		resizeStartSize = mainFrame.Size
+		resizeStartMousePos = input.Position
+		input.Draggable = false  -- ngăn kéo thả vô tình
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - resizeStartMousePos
+		local newWidth = math.max(300, resizeStartSize.X.Offset + delta.X)
+		local newHeight = math.max(300, resizeStartSize.Y.Offset + delta.Y)
+		mainFrame.Size = UDim2.new(0, newWidth, 0, newHeight)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		resizing = false
+	end
+end)
+
+-- ==================== FLY & STAND AIR LOGIC ====================
+local mobileControlsFrame = Instance.new("Frame")
+mobileControlsFrame.Size = UDim2.new(0, 200, 0, 80)
+mobileControlsFrame.Position = UDim2.new(0, 10, 1, -90)
+mobileControlsFrame.BackgroundTransparency = 1
+mobileControlsFrame.Visible = false
+mobileControlsFrame.Parent = screenGui
+
+local btnFlyUp = Instance.new("TextButton")
+btnFlyUp.Size = UDim2.new(0, 44, 0, 44)
+btnFlyUp.Position = UDim2.new(0, 10, 0, 10)
+btnFlyUp.Text = "⏫"
+btnFlyUp.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+btnFlyUp.BackgroundTransparency = 0.3
+btnFlyUp.TextColor3 = Color3.fromRGB(50, 50, 50)
+btnFlyUp.Font = Enum.Font.GothamBold
+btnFlyUp.TextSize = 20
+btnFlyUp.BorderSizePixel = 0
+btnFlyUp.Parent = mobileControlsFrame
+Instance.new("UICorner", btnFlyUp).CornerRadius = UDim.new(1, 0)
+
+local btnFlyDown = Instance.new("TextButton")
+btnFlyDown.Size = UDim2.new(0, 44, 0, 44)
+btnFlyDown.Position = UDim2.new(0, 146, 0, 10)
+btnFlyDown.Text = "⏬"
+btnFlyDown.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+btnFlyDown.BackgroundTransparency = 0.3
+btnFlyDown.TextColor3 = Color3.fromRGB(50, 50, 50)
+btnFlyDown.Font = Enum.Font.GothamBold
+btnFlyDown.TextSize = 20
+btnFlyDown.BorderSizePixel = 0
+btnFlyDown.Parent = mobileControlsFrame
+Instance.new("UICorner", btnFlyDown).CornerRadius = UDim.new(1, 0)
+
 local mobileKeys = {FlyUp = false, FlyDown = false}
 local activeTouches = {}
+
 local function onTouchStarted(input, processed)
 	if processed then return end
 	for _, btnData in ipairs({{btnFlyUp, "FlyUp"}, {btnFlyDown, "FlyDown"}}) do
 		local btn, key = btnData[1], btnData[2]
-		local pos = input.Position
+		local mousePos = input.Position
 		local absPos = btn.AbsolutePosition
 		local absSize = btn.AbsoluteSize
-		if pos.X >= absPos.X and pos.X <= absPos.X + absSize.X and pos.Y >= absPos.Y and pos.Y <= absPos.Y + absSize.Y then
+		if mousePos.X >= absPos.X and mousePos.X <= absPos.X + absSize.X and mousePos.Y >= absPos.Y and mousePos.Y <= absPos.Y + absSize.Y then
 			mobileKeys[key] = true
 			activeTouches[input] = key
 			break
 		end
 	end
 end
+
 local function onTouchEnded(input)
 	if activeTouches[input] then
 		mobileKeys[activeTouches[input]] = false
 		activeTouches[input] = nil
 	end
 end
+
 UserInputService.TouchStarted:Connect(onTouchStarted)
 UserInputService.TouchEnded:Connect(onTouchEnded)
 
@@ -594,6 +629,7 @@ local function rebuildList()
 		local row = Instance.new("Frame")
 		row.Size = UDim2.new(1,0,0,30)
 		row.BackgroundColor3 = Color3.fromRGB(245,245,245)
+		row.BackgroundTransparency = 0.3
 		row.BorderSizePixel = 0
 		row.Parent = scriptListFrame
 		Instance.new("UICorner", row).CornerRadius = UDim.new(0,6)
@@ -611,6 +647,7 @@ local function rebuildList()
 		del.Position = UDim2.new(1,-28,0.5,-12)
 		del.Text = "✕"
 		del.BackgroundColor3 = Color3.fromRGB(200,60,60)
+		del.BackgroundTransparency = 0.2
 		del.TextColor3 = Color3.fromRGB(255,255,255)
 		del.Font = Enum.Font.GothamBold
 		del.TextSize = 14
@@ -661,5 +698,4 @@ toggleButton.MouseButton1Click:Connect(function()
 	toggleButton.Text = menuVisible and "✕" or "⚙"
 end)
 
--- Khởi tạo
 updateCanvas()
