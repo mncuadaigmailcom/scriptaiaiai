@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU (Đầy đủ mọi chức năng + Camera)
+-- EXECUTOR MENU (Thu nhỏ + Đầy đủ tính năng)
 -- Đặt trong StarterGui -> LocalScript
 -- ============================================
 
@@ -17,24 +17,24 @@ screenGui.IgnoreGuiInset = true
 
 -- ==================== NÚT TOGGLE ====================
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 50, 0, 50)
-toggleButton.Position = UDim2.new(1, -60, 1, -60)
+toggleButton.Size = UDim2.new(0, 42, 0, 42)
+toggleButton.Position = UDim2.new(1, -52, 1, -52)
 toggleButton.Text = "⚙"
 toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 toggleButton.BackgroundTransparency = 0.3
 toggleButton.TextColor3 = Color3.fromRGB(50, 50, 50)
 toggleButton.Font = Enum.Font.GothamBold
-toggleButton.TextSize = 24
+toggleButton.TextSize = 20
 toggleButton.BorderSizePixel = 0
 toggleButton.Parent = screenGui
 Instance.new("UICorner", toggleButton).CornerRadius = UDim.new(1, 0)
 Instance.new("UIStroke", toggleButton).Color = Color3.fromRGB(120, 120, 120)
 Instance.new("UIStroke", toggleButton).Thickness = 2
 
--- ==================== KHUNG CHÍNH ====================
+-- ==================== KHUNG CHÍNH (THU NHỎ) ====================
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 360, 0, 480)
-mainFrame.Position = UDim2.new(0.5, -180, 0.5, -240)
+mainFrame.Size = UDim2.new(0, 320, 0, 400)   -- giảm từ 360x480 xuống 320x400
+mainFrame.Position = UDim2.new(0.5, -160, 0.5, -200)
 mainFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 mainFrame.BackgroundTransparency = 0.5
 mainFrame.BorderSizePixel = 0
@@ -47,11 +47,11 @@ mainCorner.CornerRadius = UDim.new(0, 12)
 
 local mainStroke = Instance.new("UIStroke", mainFrame)
 mainStroke.Color = Color3.fromRGB(100, 100, 100)
-mainStroke.Thickness = 3
+mainStroke.Thickness = 2.5
 
 -- ==================== THANH TIÊU ĐỀ ====================
 local titleBar = Instance.new("Frame")
-titleBar.Size = UDim2.new(1, 0, 0, 32)
+titleBar.Size = UDim2.new(1, 0, 0, 28)
 titleBar.BackgroundColor3 = Color3.fromRGB(240, 240, 240)
 titleBar.BackgroundTransparency = 0.4
 titleBar.BorderSizePixel = 0
@@ -66,57 +66,57 @@ titleLabel.Text = "⚡ Executor Pro"
 titleLabel.BackgroundTransparency = 1
 titleLabel.TextColor3 = Color3.fromRGB(50, 50, 50)
 titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextSize = 15
+titleLabel.TextSize = 14
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = titleBar
 
 local closeButton = Instance.new("TextButton")
-closeButton.Size = UDim2.new(0, 30, 0, 30)
-closeButton.Position = UDim2.new(1, -35, 0, 1)
+closeButton.Size = UDim2.new(0, 28, 0, 28)
+closeButton.Position = UDim2.new(1, -32, 0, 0)
 closeButton.Text = "✕"
 closeButton.BackgroundTransparency = 1
 closeButton.TextColor3 = Color3.fromRGB(120, 120, 120)
 closeButton.Font = Enum.Font.GothamBold
-closeButton.TextSize = 18
+closeButton.TextSize = 16
 closeButton.BorderSizePixel = 0
 closeButton.Parent = titleBar
 
 -- ==================== TAY CẦM KÉO RESIZE ====================
 local resizeHandle = Instance.new("TextButton")
-resizeHandle.Size = UDim2.new(0, 18, 0, 18)
-resizeHandle.Position = UDim2.new(1, -20, 1, -20)
+resizeHandle.Size = UDim2.new(0, 16, 0, 16)
+resizeHandle.Position = UDim2.new(1, -18, 1, -18)
 resizeHandle.Text = "↘"
 resizeHandle.BackgroundColor3 = Color3.fromRGB(200, 200, 200)
 resizeHandle.BackgroundTransparency = 0.5
 resizeHandle.TextColor3 = Color3.fromRGB(50, 50, 50)
 resizeHandle.Font = Enum.Font.GothamBold
-resizeHandle.TextSize = 13
+resizeHandle.TextSize = 12
 resizeHandle.BorderSizePixel = 0
 resizeHandle.Parent = mainFrame
 Instance.new("UICorner", resizeHandle).CornerRadius = UDim.new(0, 4)
 
 -- ==================== SCROLLING FRAME ====================
 local scrollFrame = Instance.new("ScrollingFrame")
-scrollFrame.Size = UDim2.new(1, 0, 1, -32)
-scrollFrame.Position = UDim2.new(0, 0, 0, 32)
+scrollFrame.Size = UDim2.new(1, 0, 1, -28)
+scrollFrame.Position = UDim2.new(0, 0, 0, 28)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
-scrollFrame.ScrollBarThickness = 8
+scrollFrame.ScrollBarThickness = 6
 scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80)
 scrollFrame.ClipsDescendants = true
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.Parent = mainFrame
 
--- ===== HÀM TẠO STYLE =====
+-- ===== HÀM TẠO STYLE (THU NHỎ) =====
 local function createLabel(text, y)
 	local lbl = Instance.new("TextLabel")
-	lbl.Size = UDim2.new(1, -20, 0, 16)
-	lbl.Position = UDim2.new(0, 10, 0, y)
+	lbl.Size = UDim2.new(1, -16, 0, 14)
+	lbl.Position = UDim2.new(0, 8, 0, y)
 	lbl.Text = text
 	lbl.BackgroundTransparency = 1
 	lbl.TextColor3 = Color3.fromRGB(60, 60, 60)
 	lbl.Font = Enum.Font.GothamMedium
-	lbl.TextSize = 12
+	lbl.TextSize = 10
 	lbl.TextXAlignment = Enum.TextXAlignment.Left
 	lbl.Parent = scrollFrame
 	return lbl
@@ -124,8 +124,8 @@ end
 
 local function createTextBox(placeholder, y, height, multiline)
 	local box = Instance.new("TextBox")
-	box.Size = UDim2.new(1, -20, 0, height)
-	box.Position = UDim2.new(0, 10, 0, y)
+	box.Size = UDim2.new(1, -16, 0, height)
+	box.Position = UDim2.new(0, 8, 0, y)
 	box.PlaceholderText = placeholder
 	box.PlaceholderColor3 = Color3.fromRGB(160, 160, 160)
 	box.Text = ""
@@ -133,7 +133,7 @@ local function createTextBox(placeholder, y, height, multiline)
 	box.BackgroundTransparency = 0.3
 	box.TextColor3 = Color3.fromRGB(30, 30, 30)
 	box.Font = Enum.Font.GothamMedium
-	box.TextSize = 13
+	box.TextSize = 12
 	box.BorderSizePixel = 0
 	box.ClearTextOnFocus = false
 	if multiline then
@@ -143,9 +143,9 @@ local function createTextBox(placeholder, y, height, multiline)
 		box.TextYAlignment = Enum.TextYAlignment.Top
 	end
 	box.Parent = scrollFrame
-	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
+	Instance.new("UICorner", box).CornerRadius = UDim.new(0, 5)
 	Instance.new("UIStroke", box).Color = Color3.fromRGB(140, 140, 140)
-	Instance.new("UIStroke", box).Thickness = 1.5
+	Instance.new("UIStroke", box).Thickness = 1.2
 	return box
 end
 
@@ -158,13 +158,13 @@ local function createButton(text, y, w, h, accentColor)
 	btn.BackgroundTransparency = 0.2
 	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
 	btn.Font = Enum.Font.GothamBold
-	btn.TextSize = 13
+	btn.TextSize = 11
 	btn.BorderSizePixel = 0
 	btn.Parent = scrollFrame
-	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 7)
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
 	local btnStroke = Instance.new("UIStroke", btn)
 	btnStroke.Color = accentColor and accentColor:Lerp(Color3.new(0,0,0), 0.4) or Color3.fromRGB(0, 100, 70)
-	btnStroke.Thickness = 1.5
+	btnStroke.Thickness = 1.2
 	btn.MouseEnter:Connect(function()
 		TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = accentColor and accentColor:Lerp(Color3.new(1,1,1), 0.3) or Color3.fromRGB(0, 200, 130)}):Play()
 	end)
@@ -174,73 +174,73 @@ local function createButton(text, y, w, h, accentColor)
 	return btn
 end
 
--- ===== NỘI DUNG CUỘN =====
-local yPos = 3
+-- ===== NỘI DUNG CUỘN (GIẢM KHOẢNG CÁCH) =====
+local yPos = 2
 createLabel("👤 Tên", yPos)
-local nameBox = createTextBox("Nhập tên...", yPos+17, 26, false)
+local nameBox = createTextBox("Nhập tên...", yPos+14, 22, false)
 
-yPos = yPos + 46
+yPos = yPos + 38
 createLabel("💻 Code (Lua)", yPos)
-local codeBox = createTextBox([[loadstring(game:HttpGet("..."))()]], yPos+17, 80, true)
+local codeBox = createTextBox([[loadstring(game:HttpGet("..."))()]], yPos+14, 70, true)
 
-yPos = yPos + 100
+yPos = yPos + 86
 createLabel("🔁 Số lần lặp", yPos)
-local loopBox = createTextBox("1", yPos+17, 26, false)
-loopBox.Size = UDim2.new(0, 60, 0, 26)
+local loopBox = createTextBox("1", yPos+14, 22, false)
+loopBox.Size = UDim2.new(0, 50, 0, 22)
 
-yPos = yPos + 46
+yPos = yPos + 38
 createLabel("⏱️ Khoảng thời gian chờ", yPos)
-local delayBox = createTextBox("0", yPos+17, 26, false)
-delayBox.Size = UDim2.new(0, 55, 0, 26)
+local delayBox = createTextBox("0", yPos+14, 22, false)
+delayBox.Size = UDim2.new(0, 50, 0, 22)
 
 -- Chọn đơn vị thời gian
 local unitButton = Instance.new("TextButton")
-unitButton.Size = UDim2.new(0, 65, 0, 26)
-unitButton.Position = UDim2.new(0, 80, 0, yPos+17)
+unitButton.Size = UDim2.new(0, 60, 0, 22)
+unitButton.Position = UDim2.new(0, 70, 0, yPos+14)
 unitButton.Text = "Giây"
 unitButton.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
 unitButton.BackgroundTransparency = 0.3
 unitButton.TextColor3 = Color3.fromRGB(50, 50, 50)
 unitButton.Font = Enum.Font.GothamBold
-unitButton.TextSize = 13
+unitButton.TextSize = 11
 unitButton.BorderSizePixel = 0
 unitButton.Parent = scrollFrame
-Instance.new("UICorner", unitButton).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", unitButton).CornerRadius = UDim.new(0, 5)
 Instance.new("UIStroke", unitButton).Color = Color3.fromRGB(140, 140, 140)
-Instance.new("UIStroke", unitButton).Thickness = 1.5
+Instance.new("UIStroke", unitButton).Thickness = 1.2
 
 local dropdownFrame = Instance.new("Frame")
-dropdownFrame.Size = UDim2.new(0, 65, 0, 52)
-dropdownFrame.Position = UDim2.new(0, 80, 0, yPos+17+26)
+dropdownFrame.Size = UDim2.new(0, 60, 0, 44)
+dropdownFrame.Position = UDim2.new(0, 70, 0, yPos+14+22)
 dropdownFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 dropdownFrame.BackgroundTransparency = 0.2
 dropdownFrame.BorderSizePixel = 0
 dropdownFrame.Visible = false
 dropdownFrame.Parent = scrollFrame
-Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", dropdownFrame).CornerRadius = UDim.new(0, 5)
 Instance.new("UIStroke", dropdownFrame).Color = Color3.fromRGB(140, 140, 140)
-Instance.new("UIStroke", dropdownFrame).Thickness = 1.5
+Instance.new("UIStroke", dropdownFrame).Thickness = 1.2
 
 local secOption = Instance.new("TextButton")
-secOption.Size = UDim2.new(1, 0, 0, 26)
+secOption.Size = UDim2.new(1, 0, 0, 22)
 secOption.Text = "Giây"
 secOption.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
 secOption.BackgroundTransparency = 0.3
 secOption.TextColor3 = Color3.fromRGB(50, 50, 50)
 secOption.Font = Enum.Font.GothamBold
-secOption.TextSize = 13
+secOption.TextSize = 11
 secOption.BorderSizePixel = 0
 secOption.Parent = dropdownFrame
 
 local minOption = Instance.new("TextButton")
-minOption.Size = UDim2.new(1, 0, 0, 26)
-minOption.Position = UDim2.new(0, 0, 0, 26)
+minOption.Size = UDim2.new(1, 0, 0, 22)
+minOption.Position = UDim2.new(0, 0, 0, 22)
 minOption.Text = "Phút"
 minOption.BackgroundColor3 = Color3.fromRGB(245, 245, 245)
 minOption.BackgroundTransparency = 0.3
 minOption.TextColor3 = Color3.fromRGB(50, 50, 50)
 minOption.Font = Enum.Font.GothamBold
-minOption.TextSize = 13
+minOption.TextSize = 11
 minOption.BorderSizePixel = 0
 minOption.Parent = dropdownFrame
 
@@ -269,114 +269,114 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	end
 end)
 
-yPos = yPos + 72
-local runButton = createButton("▶ Chạy Code", yPos, 120, 30, Color3.fromRGB(0, 160, 90))
-runButton.Position = UDim2.new(0.5, -60, 0, yPos)
+yPos = yPos + 62
+local runButton = createButton("▶ Chạy Code", yPos, 110, 26, Color3.fromRGB(0, 160, 90))
+runButton.Position = UDim2.new(0.5, -55, 0, yPos)
 
-yPos = yPos + 38
+yPos = yPos + 32
 local statusLabel = createLabel("", yPos)
 statusLabel.TextColor3 = Color3.fromRGB(220, 170, 0)
-statusLabel.TextSize = 11
+statusLabel.TextSize = 10
 
-yPos = yPos + 20
+yPos = yPos + 16
 local countLabel = createLabel("🔄 Tổng số lần đã chạy: 0", yPos)
 countLabel.TextColor3 = Color3.fromRGB(0, 140, 70)
-countLabel.TextSize = 11
+countLabel.TextSize = 10
 
 -- ===== ĐIỀU KHIỂN MÔI TRƯỜNG =====
-yPos = yPos + 30
+yPos = yPos + 25
 createLabel("⚙️ Điều khiển môi trường", yPos)
 
-yPos = yPos + 20
-local darkButton = createButton("🌙 Trời tối", yPos, 140, 26, Color3.fromRGB(60, 60, 100))
-darkButton.Position = UDim2.new(0, 12, 0, yPos)
-local lightButton = createButton("☀️ Trời sáng", yPos, 140, 26, Color3.fromRGB(255, 200, 50))
-lightButton.Position = UDim2.new(0, 162, 0, yPos)
+yPos = yPos + 18
+local darkButton = createButton("🌙 Trời tối", yPos, 130, 22, Color3.fromRGB(60, 60, 100))
+darkButton.Position = UDim2.new(0, 10, 0, yPos)
+local lightButton = createButton("☀️ Trời sáng", yPos, 130, 22, Color3.fromRGB(255, 200, 50))
+lightButton.Position = UDim2.new(0, 148, 0, yPos)
 
-yPos = yPos + 32
-local fogButton = createButton("🌫️ Sương mù: TẮT", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
-fogButton.Position = UDim2.new(0, 12, 0, yPos)
-local resetEnvButton = createButton("🔄 Reset mặc định", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
-resetEnvButton.Position = UDim2.new(0, 162, 0, yPos)
+yPos = yPos + 28
+local fogButton = createButton("🌫️ Sương mù: TẮT", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
+fogButton.Position = UDim2.new(0, 10, 0, yPos)
+local resetEnvButton = createButton("🔄 Reset mặc định", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
+resetEnvButton.Position = UDim2.new(0, 148, 0, yPos)
 
 -- ===== BAY =====
-yPos = yPos + 40
+yPos = yPos + 35
 createLabel("⚡ Tốc độ bay: 50", yPos)
 local speedLabel = createLabel("⚡ Tốc độ bay: 50", yPos)
-local speedSlider = createTextBox("50", yPos+17, 26, false)
-speedSlider.Size = UDim2.new(0, 55, 0, 26)
+local speedSlider = createTextBox("50", yPos+14, 22, false)
+speedSlider.Size = UDim2.new(0, 50, 0, 22)
 
-local flyButton = createButton("🕊️ Bay: TẮT", yPos+17, 140, 26, Color3.fromRGB(100, 100, 100))
-flyButton.Position = UDim2.new(0, 85, 0, yPos+17)
+local flyButton = createButton("🕊️ Bay: TẮT", yPos+14, 130, 22, Color3.fromRGB(100, 100, 100))
+flyButton.Position = UDim2.new(0, 75, 0, yPos+14)
 
 -- ===== THẢM KÍNH & BAY CHẠY BỘ =====
-yPos = yPos + 50
-local standAirButton = createButton("🪩 Thảm kính: TẮT", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
-standAirButton.Position = UDim2.new(0, 12, 0, yPos)
-local flyWalkButton = createButton("🕹️ Bay chạy bộ: TẮT", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
-flyWalkButton.Position = UDim2.new(0, 162, 0, yPos)
+yPos = yPos + 42
+local standAirButton = createButton("🪩 Thảm kính: TẮT", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
+standAirButton.Position = UDim2.new(0, 10, 0, yPos)
+local flyWalkButton = createButton("🕹️ Bay chạy bộ: TẮT", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
+flyWalkButton.Position = UDim2.new(0, 148, 0, yPos)
 
-yPos = yPos + 32
+yPos = yPos + 28
 createLabel("📏 Kích thước thảm (studs)", yPos)
-local carpetSizeBox = createTextBox("30", yPos+17, 26, false)
-carpetSizeBox.Size = UDim2.new(0, 60, 0, 26)
+local carpetSizeBox = createTextBox("30", yPos+14, 22, false)
+carpetSizeBox.Size = UDim2.new(0, 50, 0, 22)
 
 -- ===== TỐC ĐỘ CHẠY & NHẢY =====
-yPos = yPos + 50
+yPos = yPos + 42
 createLabel("🏃 Tốc độ chạy (WalkSpeed)", yPos)
-local walkSpeedBox = createTextBox("16", yPos+17, 26, false)
-walkSpeedBox.Size = UDim2.new(0, 60, 0, 26)
-local walkSpeedLabel = createLabel("Hiện tại: 16", yPos+17)
-walkSpeedLabel.Position = UDim2.new(0, 80, 0, yPos+17)
-walkSpeedLabel.Size = UDim2.new(0, 100, 0, 16)
+local walkSpeedBox = createTextBox("16", yPos+14, 22, false)
+walkSpeedBox.Size = UDim2.new(0, 50, 0, 22)
+local walkSpeedLabel = createLabel("Hiện tại: 16", yPos+14)
+walkSpeedLabel.Position = UDim2.new(0, 70, 0, yPos+14)
+walkSpeedLabel.Size = UDim2.new(0, 90, 0, 14)
 
-yPos = yPos + 32
+yPos = yPos + 28
 createLabel("📦 Tốc độ nhảy (JumpPower)", yPos)
-local jumpPowerBox = createTextBox("50", yPos+17, 26, false)
-jumpPowerBox.Size = UDim2.new(0, 60, 0, 26)
-local jumpPowerLabel = createLabel("Hiện tại: 50", yPos+17)
-jumpPowerLabel.Position = UDim2.new(0, 80, 0, yPos+17)
-jumpPowerLabel.Size = UDim2.new(0, 100, 0, 16)
+local jumpPowerBox = createTextBox("50", yPos+14, 22, false)
+jumpPowerBox.Size = UDim2.new(0, 50, 0, 22)
+local jumpPowerLabel = createLabel("Hiện tại: 50", yPos+14)
+jumpPowerLabel.Position = UDim2.new(0, 70, 0, yPos+14)
+jumpPowerLabel.Size = UDim2.new(0, 90, 0, 14)
 
 -- ===== NOCLIP =====
-yPos = yPos + 40
+yPos = yPos + 35
 createLabel("🚪 Đi xuyên tường (NoClip)", yPos)
-local noClipButton = createButton("🚶‍♂️ NoClip: TẮT", yPos+17, 160, 26, Color3.fromRGB(100, 100, 100))
-noClipButton.Position = UDim2.new(0, 12, 0, yPos+17)
+local noClipButton = createButton("🚶‍♂️ NoClip: TẮT", yPos+14, 140, 22, Color3.fromRGB(100, 100, 100))
+noClipButton.Position = UDim2.new(0, 10, 0, yPos+14)
 
 -- ===== CAMERA TÙY CHỈNH =====
-yPos = yPos + 50
+yPos = yPos + 42
 createLabel("📷 Camera Tùy Chỉnh", yPos)
-local cameraToggleButton = createButton("📷 Camera: TẮT", yPos+17, 160, 26, Color3.fromRGB(100, 100, 100))
-cameraToggleButton.Position = UDim2.new(0, 12, 0, yPos+17)
+local cameraToggleButton = createButton("📷 Camera: TẮT", yPos+14, 140, 22, Color3.fromRGB(100, 100, 100))
+cameraToggleButton.Position = UDim2.new(0, 10, 0, yPos+14)
 
-yPos = yPos + 32
+yPos = yPos + 28
 createLabel("FOV (30 - 120)", yPos)
-local fovBox = createTextBox("70", yPos+17, 26, false)
-fovBox.Size = UDim2.new(0, 60, 0, 26)
+local fovBox = createTextBox("70", yPos+14, 22, false)
+fovBox.Size = UDim2.new(0, 50, 0, 22)
 
-yPos = yPos + 32
+yPos = yPos + 28
 createLabel("Offset X (ngang)", yPos)
-local camOffsetXBox = createTextBox("0", yPos+17, 26, false)
-camOffsetXBox.Size = UDim2.new(0, 60, 0, 26)
+local camOffsetXBox = createTextBox("0", yPos+14, 22, false)
+camOffsetXBox.Size = UDim2.new(0, 50, 0, 22)
 
-yPos = yPos + 32
+yPos = yPos + 28
 createLabel("Offset Y (dọc)", yPos)
-local camOffsetYBox = createTextBox("0", yPos+17, 26, false)
-camOffsetYBox.Size = UDim2.new(0, 60, 0, 26)
+local camOffsetYBox = createTextBox("0", yPos+14, 22, false)
+camOffsetYBox.Size = UDim2.new(0, 50, 0, 22)
 
 -- ===== LƯU SCRIPT =====
-yPos = yPos + 50
+yPos = yPos + 42
 createLabel("💾 Script đã lưu (nhấn để chạy)", yPos)
 
-yPos = yPos + 20
-local saveButton = createButton("➕ Lưu script hiện tại", yPos, 140, 26, Color3.fromRGB(100, 100, 100))
-saveButton.Position = UDim2.new(0, 12, 0, yPos)
+yPos = yPos + 18
+local saveButton = createButton("➕ Lưu script hiện tại", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
+saveButton.Position = UDim2.new(0, 10, 0, yPos)
 
-yPos = yPos + 35
+yPos = yPos + 32
 local scriptListFrame = Instance.new("Frame")
-scriptListFrame.Size = UDim2.new(1, -20, 0, 0)
-scriptListFrame.Position = UDim2.new(0, 10, 0, yPos)
+scriptListFrame.Size = UDim2.new(1, -16, 0, 0)
+scriptListFrame.Position = UDim2.new(0, 8, 0, yPos)
 scriptListFrame.BackgroundTransparency = 1
 scriptListFrame.BorderSizePixel = 0
 scriptListFrame.Parent = scrollFrame
@@ -384,7 +384,7 @@ scriptListFrame.Parent = scrollFrame
 local scriptListLayout = Instance.new("UIListLayout")
 scriptListLayout.Parent = scriptListFrame
 scriptListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-scriptListLayout.Padding = UDim.new(0, 5)
+scriptListLayout.Padding = UDim.new(0, 4)
 
 -- ==================== CÀI ĐẶT CHUNG ====================
 local flySpeed = 50
@@ -410,7 +410,6 @@ local executionCancelled = false
 local currentThread = nil
 local currentIndicator = nil
 
--- Camera custom
 local camAngleX = 0
 local camAngleY = 0
 
@@ -452,7 +451,6 @@ end
 
 noClipButton.MouseButton1Click:Connect(toggleNoClip)
 
--- Character handling
 player.CharacterAdded:Connect(function(char)
 	character = char
 	if char:FindFirstChild("Humanoid") then applyCharacterSpeed() end
@@ -474,7 +472,6 @@ player.CharacterAdded:Connect(function(char)
 	mobileControlsFrame.Visible = false
 end)
 
--- Xử lý input
 walkSpeedBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(walkSpeedBox.Text) if n and n>0 then walkSpeed = n; applyCharacterSpeed() else walkSpeedBox.Text = tostring(walkSpeed) end end end)
 jumpPowerBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(jumpPowerBox.Text) if n and n>0 then jumpPower = n; applyCharacterSpeed() else jumpPowerBox.Text = tostring(jumpPower) end end end)
 speedSlider.FocusLost:Connect(function(ep) if ep then local n = tonumber(speedSlider.Text) if n and n>=0 then flySpeed = n; speedLabel.Text = "⚡ Tốc độ bay: "..n else speedSlider.Text = tostring(flySpeed) end end end)
@@ -483,7 +480,6 @@ fovBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(fovBox.Text)
 camOffsetXBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(camOffsetXBox.Text) if n then customOffsetX = n else camOffsetXBox.Text = tostring(customOffsetX) end end end)
 camOffsetYBox.FocusLost:Connect(function(ep) if ep then local n = tonumber(camOffsetYBox.Text) if n then customOffsetY = n else camOffsetYBox.Text = tostring(customOffsetY) end end end)
 
--- Resize
 local resizing = false
 local resizeStartSize, resizeStartMousePos
 resizeHandle.InputBegan:Connect(function(input)
@@ -494,7 +490,7 @@ end)
 UserInputService.InputChanged:Connect(function(input)
 	if resizing and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		local delta = input.Position - resizeStartMousePos
-		mainFrame.Size = UDim2.new(0, math.max(280, resizeStartSize.X.Offset + delta.X), 0, math.max(250, resizeStartSize.Y.Offset + delta.Y))
+		mainFrame.Size = UDim2.new(0, math.max(260, resizeStartSize.X.Offset + delta.X), 0, math.max(200, resizeStartSize.Y.Offset + delta.Y))
 	end
 end)
 UserInputService.InputEnded:Connect(function(input)
@@ -503,15 +499,14 @@ end)
 
 -- ==================== FLY ====================
 local mobileControlsFrame = Instance.new("Frame")
-mobileControlsFrame.Size = UDim2.new(0, 200, 0, 80)
-mobileControlsFrame.Position = UDim2.new(0, 10, 1, -90)
+mobileControlsFrame.Size = UDim2.new(0, 180, 0, 70)
+mobileControlsFrame.Position = UDim2.new(0, 10, 1, -80)
 mobileControlsFrame.BackgroundTransparency = 1
 mobileControlsFrame.Visible = false
 mobileControlsFrame.Parent = screenGui
 
-local btnFlyUp = Instance.new("TextButton") btnFlyUp.Size = UDim2.new(0,44,0,44) btnFlyUp.Position = UDim2.new(0,10,0,10) btnFlyUp.Text = "⏫" btnFlyUp.BackgroundColor3 = Color3.fromRGB(255,255,255) btnFlyUp.BackgroundTransparency = 0.3 btnFlyUp.TextColor3 = Color3.fromRGB(50,50,50) btnFlyUp.Font = Enum.Font.GothamBold btnFlyUp.TextSize = 20 btnFlyUp.BorderSizePixel = 0 btnFlyUp.Parent = mobileControlsFrame Instance.new("UICorner",btnFlyUp).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",btnFlyUp).Color = Color3.fromRGB(140,140,140) Instance.new("UIStroke",btnFlyUp).Thickness = 2
-
-local btnFlyDown = Instance.new("TextButton") btnFlyDown.Size = UDim2.new(0,44,0,44) btnFlyDown.Position = UDim2.new(0,146,0,10) btnFlyDown.Text = "⏬" btnFlyDown.BackgroundColor3 = Color3.fromRGB(255,255,255) btnFlyDown.BackgroundTransparency = 0.3 btnFlyDown.TextColor3 = Color3.fromRGB(50,50,50) btnFlyDown.Font = Enum.Font.GothamBold btnFlyDown.TextSize = 20 btnFlyDown.BorderSizePixel = 0 btnFlyDown.Parent = mobileControlsFrame Instance.new("UICorner",btnFlyDown).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",btnFlyDown).Color = Color3.fromRGB(140,140,140) Instance.new("UIStroke",btnFlyDown).Thickness = 2
+local btnFlyUp = Instance.new("TextButton") btnFlyUp.Size = UDim2.new(0,38,0,38) btnFlyUp.Position = UDim2.new(0,8,0,8) btnFlyUp.Text = "⏫" btnFlyUp.BackgroundColor3 = Color3.fromRGB(255,255,255) btnFlyUp.BackgroundTransparency = 0.3 btnFlyUp.TextColor3 = Color3.fromRGB(50,50,50) btnFlyUp.Font = Enum.Font.GothamBold btnFlyUp.TextSize = 18 btnFlyUp.BorderSizePixel = 0 btnFlyUp.Parent = mobileControlsFrame Instance.new("UICorner",btnFlyUp).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",btnFlyUp).Color = Color3.fromRGB(140,140,140) Instance.new("UIStroke",btnFlyUp).Thickness = 1.5
+local btnFlyDown = Instance.new("TextButton") btnFlyDown.Size = UDim2.new(0,38,0,38) btnFlyDown.Position = UDim2.new(0,134,0,8) btnFlyDown.Text = "⏬" btnFlyDown.BackgroundColor3 = Color3.fromRGB(255,255,255) btnFlyDown.BackgroundTransparency = 0.3 btnFlyDown.TextColor3 = Color3.fromRGB(50,50,50) btnFlyDown.Font = Enum.Font.GothamBold btnFlyDown.TextSize = 18 btnFlyDown.BorderSizePixel = 0 btnFlyDown.Parent = mobileControlsFrame Instance.new("UICorner",btnFlyDown).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",btnFlyDown).Color = Color3.fromRGB(140,140,140) Instance.new("UIStroke",btnFlyDown).Thickness = 1.5
 
 local mobileKeys = {FlyUp = false, FlyDown = false}
 local activeTouches = {}
@@ -620,19 +615,18 @@ function toggleStandOnAir()
 	end
 end
 
--- Bay chạy bộ
 local flyWalkOverlay = Instance.new("Frame")
-flyWalkOverlay.Size = UDim2.new(0,200,0,180) flyWalkOverlay.Position = UDim2.new(1,-210,0.5,-90) flyWalkOverlay.BackgroundTransparency = 1 flyWalkOverlay.Visible = false flyWalkOverlay.Parent = screenGui
+flyWalkOverlay.Size = UDim2.new(0,180,0,160) flyWalkOverlay.Position = UDim2.new(1,-190,0.5,-80) flyWalkOverlay.BackgroundTransparency = 1 flyWalkOverlay.Visible = false flyWalkOverlay.Parent = screenGui
 
 local function createOverlayButton(text, y, size, color)
-	local btn = Instance.new("TextButton") btn.Size = UDim2.new(0,size,0,size) btn.Position = UDim2.new(0.5,-size/2,0,y) btn.Text = text btn.BackgroundColor3 = color or Color3.fromRGB(0,120,200) btn.BackgroundTransparency = 0.3 btn.TextColor3 = Color3.fromRGB(255,255,255) btn.Font = Enum.Font.GothamBold btn.TextSize = 24 btn.BorderSizePixel = 0 btn.Parent = flyWalkOverlay
+	local btn = Instance.new("TextButton") btn.Size = UDim2.new(0,size,0,size) btn.Position = UDim2.new(0.5,-size/2,0,y) btn.Text = text btn.BackgroundColor3 = color or Color3.fromRGB(0,120,200) btn.BackgroundTransparency = 0.3 btn.TextColor3 = Color3.fromRGB(255,255,255) btn.Font = Enum.Font.GothamBold btn.TextSize = 20 btn.BorderSizePixel = 0 btn.Parent = flyWalkOverlay
 	Instance.new("UICorner",btn).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",btn).Color = Color3.fromRGB(255,255,255) Instance.new("UIStroke",btn).Thickness = 2
 	return btn
 end
-local carpetToggleBtn = createOverlayButton("🪩", 0, 60, Color3.fromRGB(100,100,100))
-local upBtn = createOverlayButton("⬆", 70, 60, Color3.fromRGB(0,150,0))
-local downBtn = createOverlayButton("⬇", 140, 60, Color3.fromRGB(150,0,0))
-local closeFlyWalkBtn = Instance.new("TextButton") closeFlyWalkBtn.Size = UDim2.new(0,40,0,40) closeFlyWalkBtn.Position = UDim2.new(1,-50,0,10) closeFlyWalkBtn.Text = "✕" closeFlyWalkBtn.BackgroundColor3 = Color3.fromRGB(200,60,60) closeFlyWalkBtn.BackgroundTransparency = 0.3 closeFlyWalkBtn.TextColor3 = Color3.fromRGB(255,255,255) closeFlyWalkBtn.Font = Enum.Font.GothamBold closeFlyWalkBtn.TextSize = 20 closeFlyWalkBtn.BorderSizePixel = 0 closeFlyWalkBtn.Parent = flyWalkOverlay
+local carpetToggleBtn = createOverlayButton("🪩", 0, 50, Color3.fromRGB(100,100,100))
+local upBtn = createOverlayButton("⬆", 60, 50, Color3.fromRGB(0,150,0))
+local downBtn = createOverlayButton("⬇", 120, 50, Color3.fromRGB(150,0,0))
+local closeFlyWalkBtn = Instance.new("TextButton") closeFlyWalkBtn.Size = UDim2.new(0,34,0,34) closeFlyWalkBtn.Position = UDim2.new(1,-44,0,10) closeFlyWalkBtn.Text = "✕" closeFlyWalkBtn.BackgroundColor3 = Color3.fromRGB(200,60,60) closeFlyWalkBtn.BackgroundTransparency = 0.3 closeFlyWalkBtn.TextColor3 = Color3.fromRGB(255,255,255) closeFlyWalkBtn.Font = Enum.Font.GothamBold closeFlyWalkBtn.TextSize = 18 closeFlyWalkBtn.BorderSizePixel = 0 closeFlyWalkBtn.Parent = flyWalkOverlay
 Instance.new("UICorner",closeFlyWalkBtn).CornerRadius = UDim.new(1,0) Instance.new("UIStroke",closeFlyWalkBtn).Color = Color3.fromRGB(255,255,255) Instance.new("UIStroke",closeFlyWalkBtn).Thickness = 2
 closeFlyWalkBtn.MouseButton1Click:Connect(function() toggleFlyWalkMode() end)
 
@@ -704,7 +698,7 @@ resetEnvButton.MouseButton1Click:Connect(function()
 	if isFogOn then isFogOn = false; fogButton.Text = "🌫️ Sương mù: TẮT"; fogButton.BackgroundColor3 = Color3.fromRGB(100,100,100); tweenLight{FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)} end
 end)
 
--- ==================== CAMERA TÙY CHỈNH ====================
+-- ==================== CAMERA ====================
 local camRenderName = "CustomCam"
 function startCustomCamera()
 	local camera = workspace.CurrentCamera
@@ -750,7 +744,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
--- ==================== QUẢN LÝ THỰC THI CODE ====================
+-- ==================== THỰC THI CODE ====================
 local function executeOnce(code, name)
 	if #name>0 then print("👤", name) end
 	local ok, res = pcall(function()
@@ -807,7 +801,7 @@ runButton.MouseButton1Click:Connect(function() runCodeAsync(codeBox.Text, nameBo
 -- Quản lý script
 local function updateCanvas()
 	local count = #savedScripts
-	scrollFrame.CanvasSize = UDim2.new(0,0,0, math.max(yPos + 30 + count*32, 550))
+	scrollFrame.CanvasSize = UDim2.new(0,0,0, math.max(yPos + 30 + count*30, 500))
 end
 local function clearList()
 	for _, v in ipairs(scriptListFrame:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
@@ -815,14 +809,14 @@ end
 local function rebuildList()
 	clearList()
 	for i, data in ipairs(savedScripts) do
-		local row = Instance.new("Frame") row.Size = UDim2.new(1,0,0,28) row.BackgroundColor3 = Color3.fromRGB(245,245,245) row.BackgroundTransparency = 0.3 row.BorderSizePixel = 0 row.Parent = scriptListFrame
+		local row = Instance.new("Frame") row.Size = UDim2.new(1,0,0,26) row.BackgroundColor3 = Color3.fromRGB(245,245,245) row.BackgroundTransparency = 0.3 row.BorderSizePixel = 0 row.Parent = scriptListFrame
 		Instance.new("UICorner", row).CornerRadius = UDim.new(0,5)
 		local rowStroke = Instance.new("UIStroke", row) rowStroke.Color = Color3.fromRGB(140,140,140) rowStroke.Thickness = 1
-		local btn = Instance.new("TextButton") btn.Size = UDim2.new(1,-50,1,0) btn.Text = data.name btn.BackgroundTransparency = 1 btn.TextColor3 = Color3.fromRGB(50,50,50) btn.Font = Enum.Font.GothamMedium btn.TextSize = 12 btn.TextXAlignment = Enum.TextXAlignment.Left btn.Parent = row
-		local indicator = Instance.new("TextButton") indicator.Size = UDim2.new(0,16,0,16) indicator.Position = UDim2.new(1,-44,0.5,-8) indicator.Text = "" indicator.BackgroundColor3 = Color3.fromRGB(0,150,255) indicator.BorderSizePixel = 0 indicator.Parent = row
+		local btn = Instance.new("TextButton") btn.Size = UDim2.new(1,-46,1,0) btn.Text = data.name btn.BackgroundTransparency = 1 btn.TextColor3 = Color3.fromRGB(50,50,50) btn.Font = Enum.Font.GothamMedium btn.TextSize = 11 btn.TextXAlignment = Enum.TextXAlignment.Left btn.Parent = row
+		local indicator = Instance.new("TextButton") indicator.Size = UDim2.new(0,14,0,14) indicator.Position = UDim2.new(1,-40,0.5,-7) indicator.Text = "" indicator.BackgroundColor3 = Color3.fromRGB(0,150,255) indicator.BorderSizePixel = 0 indicator.Parent = row
 		Instance.new("UICorner", indicator).CornerRadius = UDim.new(1,0)
 		indicator.MouseButton1Click:Connect(function() if currentIndicator == indicator then stopExecution() end end)
-		local del = Instance.new("TextButton") del.Size = UDim2.new(0,22,0,22) del.Position = UDim2.new(1,-24,0.5,-11) del.Text = "✕" del.BackgroundColor3 = Color3.fromRGB(200,60,60) del.BackgroundTransparency = 0.2 del.TextColor3 = Color3.fromRGB(255,255,255) del.Font = Enum.Font.GothamBold del.TextSize = 13 del.BorderSizePixel = 0 del.Parent = row
+		local del = Instance.new("TextButton") del.Size = UDim2.new(0,20,0,20) del.Position = UDim2.new(1,-22,0.5,-10) del.Text = "✕" del.BackgroundColor3 = Color3.fromRGB(200,60,60) del.BackgroundTransparency = 0.2 del.TextColor3 = Color3.fromRGB(255,255,255) del.Font = Enum.Font.GothamBold del.TextSize = 12 del.BorderSizePixel = 0 del.Parent = row
 		Instance.new("UICorner", del).CornerRadius = UDim.new(1,0)
 		btn.MouseButton1Click:Connect(function() nameBox.Text = data.name; codeBox.Text = data.code; runCodeAsync(data.code, data.name, indicator) end)
 		del.MouseButton1Click:Connect(function()
