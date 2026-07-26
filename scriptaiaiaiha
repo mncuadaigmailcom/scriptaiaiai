@@ -1,6 +1,6 @@
 -- ============================================
 -- EXECUTOR MENU - Phiên bản Nền Xám Trắng Trong Suốt Sắn Kẻ (Caro)
--- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Reset All + Tùy Chỉnh Thảm Kính Live)
+-- (Banana Cat Hub Style + Chỉnh Kích Thước Bề Mặt Thảm Kính + Reset All)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -381,7 +381,8 @@ activeTab=tabContent[1]
 
 -- ==================== STATE ====================
 local S = {
-    flySpeed=50, carpetSize=1.5, walkSpeed=16, jumpPower=50,
+    flySpeed=50, walkSpeed=16, jumpPower=50,
+    carpetW=5, carpetL=5, -- Đã thay thế carpetSize bằng carpetW (Rộng) và carpetL (Dài)
     noClip=false, fog=false, flying=false, carpet=false, flyRun=false,
     customCam=false, fov=70, camOffX=0, camOffY=0,
     freeCam=false, freeCamSpeed=30, carpetY=nil,
@@ -551,12 +552,13 @@ local function CreateCarpet(y)
     
     if cp then cp:Destroy() end
 
-    local sz = S.carpetSize or 1.5
+    local cw = S.carpetW or 5
+    local cl = S.carpetL or 5
     S.carpetY = y or (r.Position.Y - 3.1)
 
     cp = New("Part", {
         Name="Carpet", 
-        Size=Vector3.new(sz, 0.2, sz),
+        Size=Vector3.new(cw, 0.2, cl),
         Transparency=0.9,
         Color=Color3.fromRGB(200,230,255), 
         Material=Enum.Material.SmoothPlastic,
@@ -566,12 +568,12 @@ local function CreateCarpet(y)
         Position=Vector3.new(r.Position.X, S.carpetY, r.Position.Z),
     }, workspace)
 
-    -- Cập nhật CFrame và Kích thước thảm trực tiếp trên thời gian thực
+    -- Auto update size if changed in menu
     RunService:BindToRenderStep("Carpet", Enum.RenderPriority.Camera.Value - 1, function()
         if not S.carpet or not cp or not r then return end
-        local curSz = S.carpetSize or 1.5
-        if cp.Size.X ~= curSz or cp.Size.Z ~= curSz then
-            cp.Size = Vector3.new(curSz, 0.2, curSz)
+        local curW, curL = S.carpetW or 5, S.carpetL or 5
+        if cp.Size.X ~= curW or cp.Size.Z ~= curL then
+            cp.Size = Vector3.new(curW, 0.2, curL)
         end
         cp.CFrame = CFrame.new(r.Position.X, S.carpetY, r.Position.Z)
     end)
@@ -673,7 +675,8 @@ StopFlyRun = function()
 end
 
 TogFlyRun = function()
-    if S.flyRun then StartFlyRun() else StopFlyRun() end
+    if S.flyRun then StartFlyRun() end
+    if not S.flyRun then StopFlyRun() end
 end
 
 clsOBtn.MouseButton1Click:Connect(function() S.flyRun=false; StopFlyRun() end)
@@ -681,10 +684,7 @@ togCBtn.MouseButton1Click:Connect(function() if S.flyRun then S.carpet=not S.car
 
 movUBtn.MouseButton1Click:Connect(function()
     if S.flyRun then 
-        if not S.carpet then 
-            S.carpet=true
-            TogCarpet() 
-        end
+        if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
         local curY = S.carpetY or (r and (r.Position.Y - 3.1) or 0)
         S.carpetY = curY + 2.5
@@ -693,10 +693,7 @@ end)
 
 movDBtn.MouseButton1Click:Connect(function()
     if S.flyRun then 
-        if not S.carpet then 
-            S.carpet=true
-            TogCarpet() 
-        end
+        if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
         local curY = S.carpetY or (r and (r.Position.Y - 3.1) or 0)
         S.carpetY = curY - 2.5
@@ -1214,46 +1211,27 @@ RebuildScripts()
 -- ==================== TAB 2: DI CHUYỂN ====================
 local my = 8
 
--- Mở rộng mCard1 để chứa bộ chỉnh kích thước thảm kính cực xịn
 local mCard1 = CreateCard(moveTab, "🕊️ Bay & Thảm Kính", my, 150)
 local m1y = 22
 
-Label(mCard1, "Thảm (studs):", 8, m1y)
-
--- Bộ công cụ căn chỉnh kích thước thảm kính (Thực thi Live thời gian thực)
-local carpMinusBtn = Button(mCard1, "-", 82, m1y-3, 20, 22, C.GRAY)
-local carpSzIn = New("TextBox", {
-    Size=UDim2.new(0,40,0,22), Position=UDim2.new(0,105,0,m1y-3), Text="1.5", 
-    BackgroundColor3=Color3.fromRGB(255,255,255), TextColor3=Color3.fromRGB(20,20,20), 
-    Font=Enum.Font.GothamMedium, TextSize=11, ZIndex=6,
-}, mCard1)
-Corner(carpSzIn,UDim.new(0,4)); Stroke(carpSzIn)
-local carpPlusBtn = Button(mCard1, "+", 148, m1y-3, 20, 22, C.GRAY)
-
--- 3 Nút Preset kích thước nhanh
-local szSmall = Button(mCard1, "1.5", 173, m1y-3, 32, 22, C.BLUE)
-local szMed   = Button(mCard1, "3.0", 208, m1y-3, 32, 22, C.BLUE)
-local szLarge = Button(mCard1, "6.0", 243, m1y-3, 32, 22, C.BLUE)
-
--- Hàm cập nhật kích thước thảm kính tập trung
-local function UpdCarpetSize(newSz)
-    newSz = math.clamp(math.round((tonumber(newSz) or 1.5) * 10) / 10, 0.5, 50)
-    S.carpetSize = newSz
-    carpSzIn.Text = tostring(newSz)
-end
-
-carpMinusBtn.MouseButton1Click:Connect(function() UpdCarpetSize(S.carpetSize - 0.5) end)
-carpPlusBtn.MouseButton1Click:Connect(function() UpdCarpetSize(S.carpetSize + 0.5) end)
-szSmall.MouseButton1Click:Connect(function() UpdCarpetSize(1.5) end)
-szMed.MouseButton1Click:Connect(function() UpdCarpetSize(3.0) end)
-szLarge.MouseButton1Click:Connect(function() UpdCarpetSize(6.0) end)
-
-m1y = m1y + 28
 Label(mCard1, "Tốc độ bay:", 8, m1y)
-local flySpdIn = New("TextBox", {Size=UDim2.new(0,45,0,22), Position=UDim2.new(0,82,0,m1y-3), Text="50", BackgroundColor3=Color3.fromRGB(255,255,255), TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=11, ZIndex=6}, mCard1)
+local flySpdIn = New("TextBox", {Size=UDim2.new(0,40,0,22), Position=UDim2.new(0,80,0,m1y-3), Text="50", BackgroundColor3=Color3.fromRGB(255,255,255), TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=11, ZIndex=6}, mCard1)
 Corner(flySpdIn,UDim.new(0,4)); Stroke(flySpdIn)
 
 m1y = m1y + 28
+Label(mCard1, "Bề mặt thảm (Rộng x Dài):", 8, m1y)
+
+-- Khung nhập chiều Rộng (X)
+local carpWIn = New("TextBox", {Size=UDim2.new(0,35,0,22), Position=UDim2.new(0,160,0,m1y-3), Text="5", BackgroundColor3=Color3.fromRGB(255,255,255), TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=11, ZIndex=6}, mCard1)
+Corner(carpWIn,UDim.new(0,4)); Stroke(carpWIn)
+
+Label(mCard1, "x", 200, m1y)
+
+-- Khung nhập chiều Dài (Z)
+local carpLIn = New("TextBox", {Size=UDim2.new(0,35,0,22), Position=UDim2.new(0,215,0,m1y-3), Text="5", BackgroundColor3=Color3.fromRGB(255,255,255), TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=11, ZIndex=6}, mCard1)
+Corner(carpLIn,UDim.new(0,4)); Stroke(carpLIn)
+
+m1y = m1y + 30
 local flyBtn = Button(mCard1, "🕊️ Bay: TẮT", 8, m1y, 115, 24, C.GRAY)
 local carpBtn = Button(mCard1, "🪩 Thảm kính: TẮT", 130, m1y, 125, 24, C.GRAY)
 
@@ -1287,7 +1265,11 @@ Corner(jpIn,UDim.new(0,4)); Stroke(jpIn)
 
 -- Connect move controls
 flySpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flySpdIn.Text); if n and n>=0 then S.flySpeed=n else flySpdIn.Text=tostring(S.flySpeed) end end)
-carpSzIn.FocusLost:Connect(function(e) if not e then return end; UpdCarpetSize(carpSzIn.Text) end)
+
+-- Cập nhật kích thước Chiều rộng (X) và Chiều dài (Z) của Thảm
+carpWIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpWIn.Text); if n and n>=1 then S.carpetW=n else carpWIn.Text=tostring(S.carpetW) end end)
+carpLIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpLIn.Text); if n and n>=1 then S.carpetL=n else carpLIn.Text=tostring(S.carpetL) end end)
+
 wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(wsIn.Text); if n and n>0 then S.walkSpeed=n; UpdChar() else wsIn.Text=tostring(S.walkSpeed) end end)
 jpIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(jpIn.Text); if n and n>0 then S.jumpPower=n; UpdChar() else jpIn.Text=tostring(S.jumpPower) end end)
 
@@ -1610,7 +1592,8 @@ local function ResetAllFeatures()
     S.walkSpeed = 16
     S.jumpPower = 50
     S.flySpeed = 50
-    UpdCarpetSize(1.5)
+    S.carpetW = 5
+    S.carpetL = 5
     UpdChar()
 
     -- Reset UI Di Chuyển
@@ -1621,6 +1604,7 @@ local function ResetAllFeatures()
     infJumpBtn.Text = "🦘 Nhảy Vô Hạn: TẮT"; infJumpBtn.BackgroundColor3 = C.GRAY
     clickTpBtn.Text = "🎯 Click TP (Ctrl+Click): TẮT"; clickTpBtn.BackgroundColor3 = C.GRAY
     wsIn.Text = "16"; jpIn.Text = "50"; flySpdIn.Text = "50"
+    carpWIn.Text = "5"; carpLIn.Text = "5" -- Reset thông số trên giao diện
 
     -- 2. Người chơi
     if S.esp then S.esp = false; ClearAllESP() end
@@ -1696,4 +1680,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Executor Hub (Đã thêm Điều Chỉnh Kích Thước Thảm Kính Live) sẵn sàng!")
+print("✅ Banana Cat Executor Hub sẵn sàng! (Bản hỗ trợ mở rộng bề mặt thảm kính)")
