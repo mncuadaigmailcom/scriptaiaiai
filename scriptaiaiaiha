@@ -361,7 +361,7 @@ activeTab=tabContent[1]
 
 -- ==================== STATE ====================
 local S = {
-    flySpeed=50, carpetSize=2, walkSpeed=16, jumpPower=50, -- carpetSize đã thu nhỏ về 2 cực nhỏ
+    flySpeed=50, carpetSize=6, walkSpeed=16, jumpPower=50, -- carpetSize = 6 chuẩn bằng kích thước thảm kính của tính năng Bay
     noClip=false, fog=false, flying=false, carpet=false, flyRun=false,
     customCam=false, fov=70, camOffX=0, camOffY=0,
     freeCam=false, freeCamSpeed=30, carpetY=nil,
@@ -395,14 +395,14 @@ player.Idled:Connect(function()
     end
 end)
 
--- ==================== INFINITE JUMP / FLY RUN JUMP ====================
+-- ==================== INFINITE JUMP / CARPET & FLY RUN JUMP ====================
 UserInputService.JumpRequest:Connect(function()
     if S.infJump and char and Hum() then
         Hum():ChangeState(Enum.HumanoidStateType.Jumping)
     end
-    -- Hỗ trợ nhảy khi dùng Thảm Kính / Bay Chạy Bộ
+    -- Khi nhảy trong tính năng Thảm Kính hoặc Bay Chạy Bộ: tự động nâng thảm lên +3.5 theo bước nhảy
     if (S.carpet or S.flyRun) and char and Root() then
-        S.carpetY = Root().Position.Y + 2.5
+        S.carpetY = (S.carpetY or (Root().Position.Y - 3.2)) + 3.5
     end
 end)
 
@@ -501,15 +501,18 @@ local function StopCarpet()
     S.carpetY=nil
 end
 
--- Cập nhật Thảm Kính: Nhỏ gọn siêu vi dưới chân + Trong suốt gần như không thấy
+-- Thảm Kính / Bay Chạy Bộ: Kích thước bằng chuẩn thảm của tính năng Bay (6x0.2x6, Transparency=0.7)
 local function CreateCarpet(y)
     local r = Root()
     if not r then return end
     cp = New("Part", {
-        Name="Carpet", Size=Vector3.new(S.carpetSize, 0.1, S.carpetSize), -- Siêu mỏng & nhỏ
-        Transparency=0.95, -- Gần như tàng hình hoàn toàn không thấy dưới chân
-        Color=Color3.fromRGB(200,230,255), Material=Enum.Material.Glass,
-        Anchored=true, CanCollide=true, Position=Vector3.new(r.Position.X, y, r.Position.Z),
+        Name="Carpet",
+        Size=Vector3.new(S.carpetSize, 0.2, S.carpetSize), -- Bằng đúng kích thước thảm Bay
+        Transparency=0.7, -- Kính trong suốt 0.7 giống hệt thảm Bay
+        Color=Color3.fromRGB(200,230,255),
+        Material=Enum.Material.Glass,
+        Anchored=true, CanCollide=true,
+        Position=Vector3.new(r.Position.X, y, r.Position.Z),
     }, workspace)
     
     S.carpetY = y
@@ -518,7 +521,9 @@ local function CreateCarpet(y)
         if not S.carpet or not cp or not r then return end
         local x, z = r.Position.X, r.Position.Z
         
-        -- Thảm giữ nguyên độ cao tuyệt đối, không tự bay lên ngoại trừ bạn nâng Y hoặc Nhảy
+        -- Cập nhật kích thước nếu bạn thay đổi trong cài đặt
+        cp.Size = Vector3.new(S.carpetSize, 0.2, S.carpetSize)
+        -- Thảm giữ nguyên độ cao Y, không tự động bay lên ngoại trừ bạn nâng Y hoặc Nhảy
         cp.Position = Vector3.new(x, S.carpetY or (r.Position.Y - 3.2), z)
     end)
 end
@@ -536,8 +541,11 @@ local function TogFly()
         if h then h.AutoRotate=false; h.PlatformStand=true end
         if not fp then
             fp=New("Part",{
-                Name="Floor", Size=Vector3.new(6,0.2,6), Transparency=0.7,
-                Color=Color3.fromRGB(200,230,255), Material=Enum.Material.Glass,
+                Name="Floor",
+                Size=Vector3.new(S.carpetSize, 0.2, S.carpetSize), -- Đồng bộ kích thước thảm Bay
+                Transparency=0.7,
+                Color=Color3.fromRGB(200,230,255),
+                Material=Enum.Material.Glass,
                 Anchored=true, CanCollide=false,
             }, workspace)
         end
@@ -550,7 +558,10 @@ local function TogFly()
             local vv=(u and 1 or 0)-(dn and 1 or 0)
             bv.Velocity=(t+Vector3.new(0,vv,0))*S.flySpeed
             bg.CFrame=CFrame.new(r.Position,r.Position+workspace.CurrentCamera.CFrame.LookVector)
-            fp.Position=r.Position-Vector3.new(0,3.5,0)
+            if fp then
+                fp.Size = Vector3.new(S.carpetSize, 0.2, S.carpetSize)
+                fp.Position = r.Position - Vector3.new(0, 3.2, 0)
+            end
         end)
     else
         StopFly()
@@ -1275,7 +1286,7 @@ Label(moveTab, "📏 Kích thước thảm (studs)", my)
 my = my + 14
 
 local carpSzIn = New("TextBox", {
-    Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="2", -- Mặc định là 2 siêu nhỏ
+    Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="6", -- Mặc định là 6x6 bằng kích thước Bay
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
     Active=true, Selectable=true, ZIndex=8,
@@ -1330,7 +1341,7 @@ jpLbl.TextColor3=C.GREEN; jpLbl.TextSize=9
 
 -- Connect controls
 flySpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flySpdIn.Text); if n and n>=0 then S.flySpeed=n else flySpdIn.Text=tostring(S.flySpeed) end end)
-carpSzIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpSzIn.Text); if n and n>=0.5 then S.carpetSize=n else carpSzIn.Text=tostring(S.carpetSize) end end)
+carpSzIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpSzIn.Text); if n and n>=1 then S.carpetSize=n else carpSzIn.Text=tostring(S.carpetSize) end end)
 wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(wsIn.Text); if n and n>0 then S.walkSpeed=n; UpdChar() else wsIn.Text=tostring(S.walkSpeed) end; wsLbl.Text="Hiện tại: "..S.walkSpeed end)
 jpIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(jpIn.Text); if n and n>0 then S.jumpPower=n; UpdChar() else jpIn.Text=tostring(S.jumpPower) end; jpLbl.Text="Hiện tại: "..S.jumpPower end)
 
@@ -1823,4 +1834,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Executor Hub (Đã Tùy Chỉnh Thảm Kính Tàng Hình & Bay Chạy Bộ) sẵn sàng!")
+print("✅ Banana Cat Executor Hub (Đã Đồng Bộ Chuẩn Thảm Kính Bay & Chạy Bộ) sẵn sàng!")
