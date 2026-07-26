@@ -329,6 +329,7 @@ local state = {
     flyRun = false,
     freeCam = false,
     freeCamSpeed = 30,
+    carpetYOffset = nil,
     
     -- Graphics
     shadows = true,
@@ -389,7 +390,6 @@ end
 
 local function toggleNoClip()
     state.noClip = not state.noClip
-    -- UI update will be handled by calling function
     if state.noClip then
         enableNoClip()
     else
@@ -398,6 +398,7 @@ local function toggleNoClip()
 end
 
 -- ==================== FLY SYSTEM ====================
+-- Mobile controls for fly
 local mobileControls = create("Frame", {
     Size = UDim2.new(0, 180, 0, 70),
     Position = UDim2.new(0, 10, 1, -80),
@@ -431,7 +432,8 @@ local touchMap = {}
 UserInputService.TouchStarted:Connect(function(input, processed)
     if processed then return end
     local pos = input.Position
-    for _, data in ipairs({{flyUpBtn, "flyUp"}, {flyDownBtn, "flyDown"}}) do
+    local buttons = {{flyUpBtn, "flyUp"}, {flyDownBtn, "flyDown"}}
+    for _, data in ipairs(buttons) do
         local btn, key = data[1], data[2]
         local absPos = btn.AbsolutePosition
         local absSize = btn.AbsoluteSize
@@ -483,58 +485,66 @@ local function stopCarpet()
     if carpetPart then carpetPart:Destroy(); carpetPart = nil end
     if bodyPosition then bodyPosition:Destroy(); bodyPosition = nil end
     RunService:UnbindFromRenderStep("CarpetUpdate")
+    state.carpetYOffset = nil
 end
 
 local function createCarpet(yOffset)
     local root = getRootPart()
     if not root then return end
     
-    carpetPart = Instance.new("Part")
-    carpetPart.Name = "MagicCarpet"
-    carpetPart.Size = Vector3.new(state.carpetSize, 0.5, state.carpetSize)
-    carpetPart.Transparency = 0.7
-    carpetPart.Color = Color3.fromRGB(200, 230, 255)
-    carpetPart.Material = Enum.Material.Glass
-    carpetPart.Anchored = true
-    carpetPart.CanCollide = true
-    carpetPart.Position = Vector3.new(root.Position.X, yOffset, root.Position.Z)
-    carpetPart.Parent = workspace
+    carpetPart = create("Part", {
+        Name = "MagicCarpet",
+        Size = Vector3.new(state.carpetSize, 0.5, state.carpetSize),
+        Transparency = 0.7,
+        Color = Color3.fromRGB(200, 230, 255),
+        Material = Enum.Material.Glass,
+        Anchored = true,
+        CanCollide = true,
+        Position = Vector3.new(root.Position.X, yOffset, root.Position.Z),
+    }, workspace)
     
-    bodyPosition = Instance.new("BodyPosition")
-    bodyPosition.MaxForce = Vector3.new(0, 50000, 0)
-    bodyPosition.P = 5000
-    bodyPosition.D = 500
-    bodyPosition.Position = Vector3.new(root.Position.X, yOffset + 3, root.Position.Z)
-    bodyPosition.Parent = root
+    bodyPosition = create("BodyPosition", {
+        MaxForce = Vector3.new(0, 50000, 0),
+        P = 5000,
+        D = 500,
+        Position = Vector3.new(root.Position.X, yOffset + 3, root.Position.Z),
+    }, root)
+    
+    state.carpetYOffset = yOffset
     
     RunService:BindToRenderStep("CarpetUpdate", 1, function()
         if not state.carpet or not carpetPart or not root or not bodyPosition then return end
         local x, z = root.Position.X, root.Position.Z
-        carpetPart.Position = Vector3.new(x, yOffset, z)
-        bodyPosition.Position = Vector3.new(x, yOffset + 3, z)
+        carpetPart.Position = Vector3.new(x, state.carpetYOffset, z)
+        bodyPosition.Position = Vector3.new(x, state.carpetYOffset + 3, z)
     end)
 end
 
 local function toggleFly()
     state.flying = not state.flying
-    
     local root = getRootPart()
     local hum = getHumanoid()
     if not root then return end
     
     if state.flying then
+        -- Tắt thảm kính nếu đang bật
         if state.carpet then
             stopCarpet()
             state.carpet = false
         end
+        -- Tắt bay chạy bộ nếu đang bật
+        if state.flyRun then
+            stopFlyRun()
+            state.flyRun = false
+        end
         
-        bodyVelocity = Instance.new("BodyVelocity")
-        bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
-        bodyVelocity.Parent = root
+        bodyVelocity = create("BodyVelocity", {
+            MaxForce = Vector3.new(4000, 4000, 4000),
+        }, root)
         
-        bodyGyro = Instance.new("BodyGyro")
-        bodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
-        bodyGyro.Parent = root
+        bodyGyro = create("BodyGyro", {
+            MaxTorque = Vector3.new(4000, 4000, 4000),
+        }, root)
         
         if hum then
             hum.AutoRotate = false
@@ -542,15 +552,15 @@ local function toggleFly()
         end
         
         if not floorPlatform then
-            floorPlatform = Instance.new("Part")
-            floorPlatform.Name = "FlyFloor"
-            floorPlatform.Size = Vector3.new(6, 0.2, 6)
-            floorPlatform.Transparency = 0.7
-            floorPlatform.Color = Color3.fromRGB(200, 230, 255)
-            floorPlatform.Material = Enum.Material.Glass
-            floorPlatform.Anchored = true
-            floorPlatform.CanCollide = false
-            floorPlatform.Parent = workspace
+            floorPlatform = create("Part", {
+                Name = "FlyFloor",
+                Size = Vector3.new(6, 0.2, 6),
+                Transparency = 0.7,
+                Color = Color3.fromRGB(200, 230, 255),
+                Material = Enum.Material.Glass,
+                Anchored = true,
+                CanCollide = false,
+            }, workspace)
         end
         
         RunService:BindToRenderStep("FlyUpdate", 1, function()
@@ -580,11 +590,11 @@ end
 
 local function toggleCarpet()
     state.carpet = not state.carpet
-    
     local root = getRootPart()
     if not root then return end
     
     if state.carpet then
+        -- Tắt bay nếu đang bật
         if state.flying then toggleFly() end
         createCarpet(root.Position.Y - 3.5)
     else
@@ -592,7 +602,7 @@ local function toggleCarpet()
     end
 end
 
--- Fly run overlay
+-- Fly run overlay (phiên bản cũ)
 local flyRunOverlay = create("Frame", {
     Size = UDim2.new(0, 180, 0, 160),
     Position = UDim2.new(1, -190, 0.5, -80),
@@ -635,21 +645,22 @@ local closeOverlayBtn = create("TextButton", {
 addCorner(closeOverlayBtn, UDim.new(1, 0))
 addStroke(closeOverlayBtn, COLOR.WHITE, 2)
 
-local carpetYOffset = nil
-
 local function startFlyRun()
     local root = getRootPart()
     if not root then return end
     
+    -- Tắt bay nếu đang bật
     if state.flying then toggleFly() end
     
+    -- Bật thảm kính nếu chưa bật
     if not state.carpet then
         state.carpet = true
         createCarpet(root.Position.Y - 3.5)
     else
-        carpetYOffset = root.Position.Y - 3.5
+        state.carpetYOffset = root.Position.Y - 3.5
     end
     
+    -- Ẩn menu chính
     mainFrame.Visible = false
     toggleButton.Text = "⚙"
     flyRunOverlay.Visible = true
@@ -675,19 +686,22 @@ end
 
 -- Connect fly run controls
 closeOverlayBtn.MouseButton1Click:Connect(toggleFlyRun)
+
 togCarpetBtn.MouseButton1Click:Connect(function()
     if not state.flyRun then return end
     toggleCarpet()
 end)
+
 moveUpBtn.MouseButton1Click:Connect(function()
     if not state.flyRun then return end
     if not state.carpet then toggleCarpet() end
-    carpetYOffset = (carpetYOffset or 0) + 5
+    state.carpetYOffset = (state.carpetYOffset or 0) + 5
 end)
+
 moveDownBtn.MouseButton1Click:Connect(function()
     if not state.flyRun then return end
     if not state.carpet then toggleCarpet() end
-    carpetYOffset = (carpetYOffset or 0) - 5
+    state.carpetYOffset = (state.carpetYOffset or 0) - 5
 end)
 
 -- ==================== ENVIRONMENT ====================
@@ -933,12 +947,6 @@ local function executeOnce(code, name)
         if not fn then error(err) end
         fn()
     end)
-end
-
-local function getExecutionParams()
-    local times = math.clamp(tonumber("1") or 1, 1, 1000) -- Will be overridden
-    local delay = math.max(tonumber("0") or 0, 0)
-    return times, delay
 end
 
 local function cancelExecution()
@@ -1511,7 +1519,6 @@ currentY = currentY + 28
 local qualityLabel = uiFactory.createLabel("📊 Chất lượng: Tự động")
 qualityLabel.TextColor3 = Color3.fromRGB(0, 140, 70)
 
--- Graphics apply function
 local function applyGraphicsPreset(presetKey)
     local preset = GRAPHICS_PRESETS[presetKey]
     if not preset then return end
@@ -1861,7 +1868,6 @@ local function rebuildScriptList()
         runScriptBtn.MouseButton1Click:Connect(function()
             nameInput.Text = data.name
             codeInput.Text = data.code
-            -- Run with saved script
             local times = math.clamp(tonumber(repeatInput.Text) or 1, 1, 1000)
             local delay = math.max(tonumber(delayInput.Text) or 0, 0)
             if unitButton.Text == "Phút" then delay = delay * 60 end
