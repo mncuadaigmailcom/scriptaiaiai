@@ -360,7 +360,7 @@ activeTab=tabContent[1]
 
 -- ==================== STATE ====================
 local S = {
-    flySpeed=50, carpetSize=1.5, walkSpeed=16, jumpPower=50, -- carpetSize siêu nhỏ mặc định 1.5 studs
+    flySpeed=50, carpetSize=1.5, walkSpeed=16, jumpPower=50,
     noClip=false, fog=false, flying=false, carpet=false, flyRun=false,
     customCam=false, fov=70, camOffX=0, camOffY=0,
     freeCam=false, freeCamSpeed=30, carpetY=nil,
@@ -394,15 +394,13 @@ player.Idled:Connect(function()
     end
 end)
 
--- ==================== INFINITE JUMP / FLY RUN JUMP ====================
+-- ==================== INFINITE JUMP ====================
 UserInputService.JumpRequest:Connect(function()
     if S.infJump and char and Hum() then
         Hum():ChangeState(Enum.HumanoidStateType.Jumping)
     end
-    -- Hỗ trợ nhảy nâng độ cao mượt mà khi dùng Thảm Kính / Bay Chạy Bộ
-    if (S.carpet or S.flyRun) and char and Root() then
-        S.carpetY = (S.carpetY or (Root().Position.Y - 3.1)) + 2.5
-    end
+    -- LƯU Ý: Đã xóa phần tự động đẩy S.carpetY khi nhảy.
+    -- Bây giờ khi bạn bấm nhảy, thảm kính vẫn ở NGUYÊN vị trí Y cũ!
 end)
 
 -- ==================== CLICK TELEPORT ====================
@@ -500,7 +498,7 @@ local function StopCarpet()
     S.carpetY=nil
 end
 
--- Cập nhật Thảm Kính: Bề mặt siêu nhỏ gọn, chống trượt té tuyệt đối khi đứng / bay chạy bộ
+-- Tạo Thảm Kính: Bề mặt nhỏ gọn, giữ Y cố định khi nhảy
 local function CreateCarpet(y)
     local r = Root()
     if not r then return end
@@ -508,21 +506,21 @@ local function CreateCarpet(y)
     if cp then cp:Destroy() end
 
     local sz = S.carpetSize or 1.5
+    S.carpetY = y or (r.Position.Y - 3.1)
+
     cp = New("Part", {
         Name="Carpet", 
-        Size=Vector3.new(sz, 0.2, sz), -- Dày vừa đủ để ma sát tốt
-        Transparency=0.9, -- Trong suốt gần như tàng hình dưới chân
+        Size=Vector3.new(sz, 0.2, sz),
+        Transparency=0.9,
         Color=Color3.fromRGB(200,230,255), 
-        Material=Enum.Material.SmoothPlastic, -- SmoothPlastic giúp chống trượt cực tốt
+        Material=Enum.Material.SmoothPlastic,
         Anchored=true, 
         CanCollide=true, 
         Friction=1,
-        Position=Vector3.new(r.Position.X, y, r.Position.Z),
+        Position=Vector3.new(r.Position.X, S.carpetY, r.Position.Z),
     }, workspace)
-    
-    S.carpetY = y
 
-    -- Ưu tiên bám dính cao mượt mà không bị trễ hay làm rớt nhân vật
+    -- Cập nhật X, Z đi theo nhân vật, độ cao Y ĐỨNG YÊN TẠI S.carpetY
     RunService:BindToRenderStep("Carpet", Enum.RenderPriority.Camera.Value - 1, function()
         if not S.carpet or not cp or not r then return end
         local curSz = S.carpetSize or 1.5
@@ -530,8 +528,8 @@ local function CreateCarpet(y)
             cp.Size = Vector3.new(curSz, 0.2, curSz)
         end
         
-        local targetY = S.carpetY or (r.Position.Y - 3.1)
-        cp.CFrame = CFrame.new(r.Position.X, targetY, r.Position.Z)
+        -- Dùng S.carpetY cố định. Chỉ di chuyển X và Z theo nhân vật.
+        cp.CFrame = CFrame.new(r.Position.X, S.carpetY, r.Position.Z)
     end)
 end
 
@@ -575,8 +573,10 @@ local function TogCarpet()
     if not r then return end
     if S.carpet then
         if S.flying then S.flying=false; StopFly() end
-        CreateCarpet(r.Position.Y-3.1)
+        -- Bật thảm kính: Đặt thảm kính tại vị trí Y dưới chân hiện tại
+        CreateCarpet(r.Position.Y - 3.1)
     else
+        -- Tắt thảm kính
         StopCarpet()
     end
 end
@@ -615,9 +615,12 @@ local function StartFlyRun()
     if not r then return end
     if S.flying then S.flying=false; StopFly() end
     if not S.carpet then
-        S.carpet=true; CreateCarpet(r.Position.Y-3.1)
+        S.carpet=true
+        CreateCarpet(r.Position.Y-3.1)
     else
-        S.carpetY=r.Position.Y-3.1
+        if not cp or not cp.Parent then
+            CreateCarpet(S.carpetY or (r.Position.Y - 3.1))
+        end
     end
     main.Visible=false; togBtn.Text="⚙"; oLay.Visible=true
 end
@@ -633,11 +636,31 @@ end
 
 clsOBtn.MouseButton1Click:Connect(function() S.flyRun=false; StopFlyRun() end)
 togCBtn.MouseButton1Click:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
+
+-- Nút Bay Lên (⬆): Thay đổi trực tiếp S.carpetY của Thảm Kính cũ hiện tại
 movUBtn.MouseButton1Click:Connect(function()
-    if S.flyRun then if not S.carpet then S.carpet=true; TogCarpet() end; S.carpetY=(S.carpetY or 0)+3 end
+    if S.flyRun then 
+        if not S.carpet then 
+            S.carpet=true
+            TogCarpet() 
+        end
+        local r = Root()
+        local curY = S.carpetY or (r and (r.Position.Y - 3.1) or 0)
+        S.carpetY = curY + 2.5
+    end
 end)
+
+-- Nút Bay Xuống (⬇): Thay đổi trực tiếp S.carpetY của Thảm Kính cũ hiện tại
 movDBtn.MouseButton1Click:Connect(function()
-    if S.flyRun then if not S.carpet then S.carpet=true; TogCarpet() end; S.carpetY=(S.carpetY or 0)-3 end
+    if S.flyRun then 
+        if not S.carpet then 
+            S.carpet=true
+            TogCarpet() 
+        end
+        local r = Root()
+        local curY = S.carpetY or (r and (r.Position.Y - 3.1) or 0)
+        S.carpetY = curY - 2.5
+    end
 end)
 
 -- ==================== CUSTOM CAMERA ====================
@@ -1287,7 +1310,7 @@ Label(moveTab, "📏 Kích thước thảm (studs)", my)
 my = my + 14
 
 local carpSzIn = New("TextBox", {
-    Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="1.5", -- Mặc định siêu nhỏ 1.5 studs
+    Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="1.5",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
     Active=true, Selectable=true, ZIndex=8,
@@ -1835,4 +1858,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Executor Hub (Đã Tùy Chỉnh Thảm Kính Tàng Hình Siêu Nhỏ & Chống Trượt Té) sẵn sàng!")
+print("✅ Banana Cat Executor Hub (Đã Tùy Chỉnh Cố Định Vị Trí Thảm Kính Khi Nhảy) sẵn sàng!")
