@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Tiếng Việt (Tối ưu)
+-- EXECUTOR MENU - Phiên bản Tiếng Việt (Nâng cao)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -22,6 +22,8 @@ local COLOR = {
     RED = Color3.fromRGB(200, 60, 60),
     YELLOW = Color3.fromRGB(255, 200, 0),
     BG = Color3.fromRGB(245, 245, 245),
+    PURPLE = Color3.fromRGB(120, 50, 180),
+    ORANGE = Color3.fromRGB(200, 120, 50),
 }
 
 local DEFAULT_LIGHTING = {
@@ -103,8 +105,8 @@ addStroke(toggleButton)
 
 -- Main Frame
 local mainFrame = create("Frame", {
-    Size = UDim2.new(0, 320, 0, 400),
-    Position = UDim2.new(0.5, -160, 0.5, -200),
+    Size = UDim2.new(0, 400, 0, 500),
+    Position = UDim2.new(0.5, -200, 0.5, -250),
     BackgroundColor3 = COLOR.WHITE,
     BackgroundTransparency = 0.5,
     BorderSizePixel = 0,
@@ -203,8 +205,8 @@ UserInputService.InputChanged:Connect(function(input)
        input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - resizeStart
         mainFrame.Size = UDim2.new(
-            0, math.max(260, startSize.X.Offset + delta.X),
-            0, math.max(200, startSize.Y.Offset + delta.Y)
+            0, math.max(350, startSize.X.Offset + delta.X),
+            0, math.max(300, startSize.Y.Offset + delta.Y)
         )
     end
 end)
@@ -216,101 +218,100 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
--- ==================== SCROLLING FRAME ====================
-local scrollFrame = create("ScrollingFrame", {
-    Size = UDim2.new(1, 0, 1, -28),
+-- ==================== TAB SYSTEM ====================
+local tabButtons = {}
+local tabFrames = {}
+local currentTab = nil
+
+-- Tab Buttons Container
+local tabBar = create("Frame", {
+    Size = UDim2.new(1, 0, 0, 32),
     Position = UDim2.new(0, 0, 0, 28),
-    BackgroundTransparency = 1,
+    BackgroundColor3 = Color3.fromRGB(230, 230, 230),
+    BackgroundTransparency = 0.3,
     BorderSizePixel = 0,
-    ScrollBarThickness = 6,
-    ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80),
-    ClipsDescendants = true,
-    CanvasSize = UDim2.new(0, 0, 0, 0),
 }, mainFrame)
 
--- ==================== UI FACTORY ====================
-local uiFactory = {}
-local currentY = 2
+local tabButtonList = create("UIListLayout", {
+    FillDirection = Enum.FillDirection.Horizontal,
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding = UDim.new(0, 2),
+}, tabBar)
 
-function uiFactory.createLabel(text)
-    local label = create("TextLabel", {
-        Size = UDim2.new(1, -16, 0, 14),
-        Position = UDim2.new(0, 8, 0, currentY),
-        Text = text,
-        BackgroundTransparency = 1,
-        TextColor3 = Color3.fromRGB(60, 60, 60),
-        Font = Enum.Font.GothamMedium,
-        TextSize = 10,
-        TextXAlignment = Enum.TextXAlignment.Left,
-    }, scrollFrame)
-    return label
-end
+-- Tab Content Container
+local tabContent = create("Frame", {
+    Size = UDim2.new(1, 0, 1, -60),
+    Position = UDim2.new(0, 0, 0, 60),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+}, mainFrame)
 
-function uiFactory.createInput(placeholder, height, multiline)
-    local box = create("TextBox", {
-        Size = UDim2.new(1, -16, 0, height or 22),
-        Position = UDim2.new(0, 8, 0, currentY),
-        PlaceholderText = placeholder or "",
-        PlaceholderColor3 = Color3.fromRGB(160, 160, 160),
-        Text = "",
+local function createTab(name, icon, order)
+    local button = create("TextButton", {
+        Size = UDim2.new(0, 100, 1, -4),
+        Position = UDim2.new(0, 0, 0, 2),
+        Text = icon .. " " .. name,
         BackgroundColor3 = COLOR.BG,
         BackgroundTransparency = 0.3,
-        TextColor3 = Color3.fromRGB(30, 30, 30),
-        Font = Enum.Font.GothamMedium,
-        TextSize = 12,
-        BorderSizePixel = 0,
-        ClearTextOnFocus = false,
-    }, scrollFrame)
-    
-    if multiline then
-        box.MultiLine = true
-        box.TextWrapped = true
-        box.TextXAlignment = Enum.TextXAlignment.Left
-        box.TextYAlignment = Enum.TextYAlignment.Top
-    end
-    
-    addCorner(box, UDim.new(0, 5))
-    addStroke(box)
-    return box
-end
-
-function uiFactory.createButton(text, width, height, color)
-    color = color or Color3.fromRGB(0, 160, 100)
-    local button = create("TextButton", {
-        Size = UDim2.new(0, width or 110, 0, height or 26),
-        Position = UDim2.new(0.5, -(width or 110)/2, 0, currentY),
-        Text = text,
-        BackgroundColor3 = color,
-        BackgroundTransparency = 0.2,
-        TextColor3 = COLOR.WHITE,
+        TextColor3 = COLOR.DARK,
         Font = Enum.Font.GothamBold,
         TextSize = 11,
         BorderSizePixel = 0,
-    }, scrollFrame)
+        LayoutOrder = order,
+    }, tabBar)
+    addCorner(button, UDim.new(0, 4))
     
-    addCorner(button, UDim.new(0, 6))
-    addStroke(button, color:Lerp(Color3.new(0, 0, 0), 0.4), 1.2)
+    local frame = create("ScrollingFrame", {
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 6,
+        ScrollBarImageColor3 = Color3.fromRGB(80, 80, 80),
+        ClipsDescendants = true,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        Visible = false,
+    }, tabContent)
     
-    local hoverColor = color:Lerp(Color3.new(1, 1, 1), 0.3)
-    button.MouseEnter:Connect(function()
-        tween(button, {BackgroundColor3 = hoverColor}, 0.2)
+    button.MouseButton1Click:Connect(function()
+        if currentTab == frame then return end
+        
+        -- Hide all tabs
+        for _, f in pairs(tabFrames) do
+            f.Visible = false
+        end
+        
+        -- Reset all buttons
+        for _, b in pairs(tabButtons) do
+            b.BackgroundColor3 = COLOR.BG
+            b.BackgroundTransparency = 0.3
+        end
+        
+        -- Show selected tab
+        frame.Visible = true
+        button.BackgroundColor3 = COLOR.BLUE
+        button.BackgroundTransparency = 0.2
+        currentTab = frame
     end)
-    button.MouseLeave:Connect(function()
-        tween(button, {BackgroundColor3 = color}, 0.2)
-    end)
     
-    return button
+    table.insert(tabButtons, button)
+    table.insert(tabFrames, frame)
+    
+    return frame
 end
 
-function uiFactory.createDivider()
-    currentY = currentY + 2
-    uiFactory.createLabel("━━━━━━━━━━━━━━━━━━━━━━")
-    currentY = currentY + 16
-end
+-- Create tabs
+local codeTab = createTab("Code", "💻", 1)
+local savedTab = createTab("Scripts", "💾", 2)
+local flyTab = createTab("Bay", "🕊️", 3)
+local envTab = createTab("Môi Trường", "⚙️", 4)
+local camTab = createTab("Camera", "📷", 5)
+local graphicsTab = createTab("Đồ Họa", "🎨", 6)
 
-function uiFactory.addY(increment)
-    currentY = currentY + increment
-end
+-- Activate first tab by default
+tabButtons[1].BackgroundColor3 = COLOR.BLUE
+tabButtons[1].BackgroundTransparency = 0.2
+tabFrames[1].Visible = true
+currentTab = tabFrames[1]
 
 -- ==================== STATE MANAGEMENT ====================
 local state = {
@@ -527,12 +528,10 @@ local function toggleFly()
     if not root then return end
     
     if state.flying then
-        -- Tắt thảm kính nếu đang bật
         if state.carpet then
             stopCarpet()
             state.carpet = false
         end
-        -- Tắt bay chạy bộ nếu đang bật
         if state.flyRun then
             stopFlyRun()
             state.flyRun = false
@@ -594,7 +593,6 @@ local function toggleCarpet()
     if not root then return end
     
     if state.carpet then
-        -- Tắt bay nếu đang bật
         if state.flying then toggleFly() end
         createCarpet(root.Position.Y - 3.5)
     else
@@ -602,7 +600,7 @@ local function toggleCarpet()
     end
 end
 
--- Fly run overlay (phiên bản cũ)
+-- Fly run overlay
 local flyRunOverlay = create("Frame", {
     Size = UDim2.new(0, 180, 0, 160),
     Position = UDim2.new(1, -190, 0.5, -80),
@@ -649,10 +647,8 @@ local function startFlyRun()
     local root = getRootPart()
     if not root then return end
     
-    -- Tắt bay nếu đang bật
     if state.flying then toggleFly() end
     
-    -- Bật thảm kính nếu chưa bật
     if not state.carpet then
         state.carpet = true
         createCarpet(root.Position.Y - 3.5)
@@ -660,7 +656,6 @@ local function startFlyRun()
         state.carpetYOffset = root.Position.Y - 3.5
     end
     
-    -- Ẩn menu chính
     mainFrame.Visible = false
     toggleButton.Text = "⚙"
     flyRunOverlay.Visible = true
@@ -684,30 +679,21 @@ local function toggleFlyRun()
     end
 end
 
--- Connect fly run controls
 closeOverlayBtn.MouseButton1Click:Connect(toggleFlyRun)
-
 togCarpetBtn.MouseButton1Click:Connect(function()
     if not state.flyRun then return end
     toggleCarpet()
 end)
-
 moveUpBtn.MouseButton1Click:Connect(function()
     if not state.flyRun then return end
     if not state.carpet then toggleCarpet() end
     state.carpetYOffset = (state.carpetYOffset or 0) + 5
 end)
-
 moveDownBtn.MouseButton1Click:Connect(function()
     if not state.flyRun then return end
     if not state.carpet then toggleCarpet() end
     state.carpetYOffset = (state.carpetYOffset or 0) - 5
 end)
-
--- ==================== ENVIRONMENT ====================
-local function updateLighting(props)
-    tween(Lighting, props)
-end
 
 -- ==================== CUSTOM CAMERA ====================
 local customCamX = 0
@@ -1010,33 +996,229 @@ local function runCode(code, name, indicator, times, delay)
     return true, nil
 end
 
--- ==================== BUILD UI ====================
--- Code Execution Section
-uiFactory.createLabel("👤 Tên")
-currentY = currentY + 14
-local nameInput = uiFactory.createInput("Nhập tên...")
+-- ==================== BUILD UI - CODE TAB ====================
+local codeScroll = codeTab
+local cy = 8
 
-currentY = currentY + 24
-uiFactory.createLabel("💻 Code (Lua)")
-currentY = currentY + 14
-local codeInput = uiFactory.createInput([[loadstring(game:HttpGet("..."))()]], 70, true)
+-- Script Library Section
+local function createCodeSection(title)
+    local sectionFrame = create("Frame", {
+        Size = UDim2.new(1, -16, 0, 0),
+        Position = UDim2.new(0, 8, 0, cy),
+        BackgroundColor3 = COLr.GRAY,
+        BackgroundTransparency = 0.8,
+        BorderSizePixel = 0,
+    }, codeScroll)
+    addCorner(sectionFrame, UDim.new(0, 8))
+    addStroke(sectionFrame, nil, 1)
+    
+    local sectionTitle = create("TextLabel", {
+        Size = UDim2.new(1, -20, 0, 22),
+        Position = UDim2.new(0, 10, 0, 2),
+        Text = title,
+        BackgroundTransparency = 1,
+        TextColor3 = COLOR.DARK,
+        Font = Enum.Font.GothamBold,
+        TextSize = 11,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, sectionFrame)
+    
+    return sectionFrame
+end
 
-currentY = currentY + 72
-uiFactory.createLabel("🔁 Số lần lặp")
-currentY = currentY + 14
-local repeatInput = uiFactory.createInput("1")
-repeatInput.Size = UDim2.new(0, 50, 0, 22)
+-- Quick Scripts Section
+local quickSection = createCodeSection("⚡ Code Nhanh - Nhấn để chạy")
+quickSection.Size = UDim2.new(1, -16, 0, 120)
 
-currentY = currentY + 24
-uiFactory.createLabel("⏱️ Thời gian chờ giữa các lần")
-currentY = currentY + 14
-local delayInput = uiFactory.createInput("0")
-delayInput.Size = UDim2.new(0, 50, 0, 22)
+local quickScriptList = create("Frame", {
+    Size = UDim2.new(1, -20, 0, 90),
+    Position = UDim2.new(0, 10, 0, 26),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+}, quickSection)
+create("UIListLayout", {
+    FillDirection = Enum.FillDirection.Vertical,
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding = UDim.new(0, 3),
+}, quickScriptList)
+
+-- Quick script items
+local quickScripts = {
+    {name = "Dex Explorer", desc = "Mở Dex Explorer", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()]], color = Color3.fromRGB(50, 120, 200)},
+    {name = "Infinite Yield", desc = "Admin Commands", code = [[loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()]], color = Color3.fromRGB(120, 50, 180)},
+    {name = "Fly Script", desc = "Bay tự do", code = [[print("Fly Script")]], color = Color3.fromRGB(0, 150, 80)},
+}
+
+local function createQuickScriptButton(data)
+    local btn = create("TextButton", {
+        Size = UDim2.new(1, 0, 0, 28),
+        Text = "",
+        BackgroundColor3 = data.color,
+        BackgroundTransparency = 0.3,
+        BorderSizePixel = 0,
+    }, quickScriptList)
+    addCorner(btn, UDim.new(0, 5))
+    addStroke(btn, data.color, 1.2)
+    
+    create("TextLabel", {
+        Size = UDim2.new(1, -10, 1, 0),
+        Position = UDim2.new(0, 10, 0, 0),
+        Text = data.name .. "\n" .. data.desc,
+        BackgroundTransparency = 1,
+        TextColor3 = COLOR.WHITE,
+        Font = Enum.Font.GothamBold,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+    }, btn)
+    
+    btn.MouseButton1Click:Connect(function()
+        runCode(data.code, data.name, nil, 1, 0)
+    end)
+    
+    -- Hover effect
+    btn.MouseEnter:Connect(function()
+        tween(btn, {BackgroundTransparency = 0.1}, 0.2)
+    end)
+    btn.MouseLeave:Connect(function()
+        tween(btn, {BackgroundTransparency = 0.3}, 0.2)
+    end)
+end
+
+for _, data in ipairs(quickScripts) do
+    createQuickScriptButton(data)
+end
+
+cy = cy + 130
+
+-- Custom Code Section
+local customSection = createCodeSection("💻 Nhập Code Tùy Chỉnh")
+customSection.Size = UDim2.new(1, -16, 0, 260)
+
+create("TextLabel", {
+    Size = UDim2.new(1, -20, 0, 14),
+    Position = UDim2.new(0, 10, 0, 28),
+    Text = "👤 Tên",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(60, 60, 60),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, customSection)
+
+local nameInput = create("TextBox", {
+    Size = UDim2.new(1, -20, 0, 22),
+    Position = UDim2.new(0, 10, 0, 44),
+    PlaceholderText = "Nhập tên...",
+    PlaceholderColor3 = Color3.fromRGB(160, 160, 160),
+    Text = "",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, customSection)
+addCorner(nameInput, UDim.new(0, 5))
+addStroke(nameInput)
+
+create("TextLabel", {
+    Size = UDim2.new(1, -20, 0, 14),
+    Position = UDim2.new(0, 10, 0, 70),
+    Text = "💻 Code (Lua)",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(60, 60, 60),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, customSection)
+
+local codeInput = create("TextBox", {
+    Size = UDim2.new(1, -20, 0, 60),
+    Position = UDim2.new(0, 10, 0, 86),
+    PlaceholderText = [[loadstring(game:HttpGet("..."))()]],
+    PlaceholderColor3 = Color3.fromRGB(160, 160, 160),
+    Text = "",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+    MultiLine = true,
+    TextWrapped = true,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+}, customSection)
+addCorner(codeInput, UDim.new(0, 5))
+addStroke(codeInput)
+
+-- Loop settings
+local loopFrame = create("Frame", {
+    Size = UDim2.new(1, -20, 0, 50),
+    Position = UDim2.new(0, 10, 0, 150),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+}, customSection)
+
+create("TextLabel", {
+    Size = UDim2.new(0, 80, 0, 14),
+    Position = UDim2.new(0, 0, 0, 0),
+    Text = "🔁 Số lần lặp",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(60, 60, 60),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, loopFrame)
+
+local repeatInput = create("TextBox", {
+    Size = UDim2.new(0, 60, 0, 22),
+    Position = UDim2.new(0, 0, 0, 16),
+    Text = "1",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, loopFrame)
+addCorner(repeatInput, UDim.new(0, 5))
+addStroke(repeatInput)
+
+create("TextLabel", {
+    Size = UDim2.new(0, 80, 0, 14),
+    Position = UDim2.new(0, 80, 0, 0),
+    Text = "⏱️ Thời gian chờ",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(60, 60, 60),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, loopFrame)
+
+local delayInput = create("TextBox", {
+    Size = UDim2.new(0, 60, 0, 22),
+    Position = UDim2.new(0, 80, 0, 16),
+    Text = "0",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, loopFrame)
+addCorner(delayInput, UDim.new(0, 5))
+addStroke(delayInput)
 
 -- Unit dropdown
 local unitButton = create("TextButton", {
     Size = UDim2.new(0, 60, 0, 22),
-    Position = UDim2.new(0, 70, 0, currentY),
+    Position = UDim2.new(0, 145, 0, 16),
     Text = "Giây",
     BackgroundColor3 = COLOR.BG,
     BackgroundTransparency = 0.3,
@@ -1044,19 +1226,19 @@ local unitButton = create("TextButton", {
     Font = Enum.Font.GothamBold,
     TextSize = 11,
     BorderSizePixel = 0,
-}, scrollFrame)
+}, loopFrame)
 addCorner(unitButton, UDim.new(0, 5))
 addStroke(unitButton)
 
 local dropdownFrame = create("Frame", {
     Size = UDim2.new(0, 60, 0, 44),
-    Position = UDim2.new(0, 70, 0, currentY + 22),
+    Position = UDim2.new(0, 145, 0, 38),
     BackgroundColor3 = COLOR.WHITE,
     BackgroundTransparency = 0.2,
     BorderSizePixel = 0,
     Visible = false,
     ZIndex = 10,
-}, scrollFrame)
+}, loopFrame)
 addCorner(dropdownFrame, UDim.new(0, 5))
 addStroke(dropdownFrame)
 
@@ -1109,6 +1291,7 @@ minutesOption.MouseButton1Click:Connect(function()
     dropdownFrame.Visible = false
 end)
 
+-- Close dropdown when clicking outside
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or
@@ -1127,20 +1310,56 @@ UserInputService.InputBegan:Connect(function(input, gp)
     end
 end)
 
-currentY = currentY + 48
-local runButton = uiFactory.createButton("▶ Chạy Code", 110, 26, Color3.fromRGB(0, 160, 90))
+-- Run button
+local runButton = create("TextButton", {
+    Size = UDim2.new(0, 120, 0, 24),
+    Position = UDim2.new(0, 10, 0, 205),
+    Text = "▶ Chạy Code",
+    BackgroundColor3 = Color3.fromRGB(0, 160, 90),
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 11,
+    BorderSizePixel = 0,
+}, customSection)
+addCorner(runButton, UDim.new(0, 6))
+addStroke(runButton, Color3.fromRGB(0, 100, 60), 1.2)
 
-currentY = currentY + 32
-local statusLabel = uiFactory.createLabel("")
-statusLabel.TextColor3 = Color3.fromRGB(220, 170, 0)
-statusLabel.TextSize = 10
+local saveButton = create("TextButton", {
+    Size = UDim2.new(0, 120, 0, 24),
+    Position = UDim2.new(0, 140, 0, 205),
+    Text = "💾 Lưu Script",
+    BackgroundColor3 = COLOR.BLUE,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 11,
+    BorderSizePixel = 0,
+}, customSection)
+addCorner(saveButton, UDim.new(0, 6))
+addStroke(saveButton, Color3.fromRGB(0, 80, 160), 1.2)
 
-currentY = currentY + 16
-local counterLabel = uiFactory.createLabel("🔄 Tổng số lần đã chạy: 0")
-counterLabel.TextColor3 = Color3.fromRGB(0, 140, 70)
-counterLabel.TextSize = 10
+local statusLabel = create("TextLabel", {
+    Size = UDim2.new(1, -20, 0, 14),
+    Position = UDim2.new(0, 10, 0, 233),
+    Text = "",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(220, 170, 0),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, customSection)
 
-currentY = currentY + 25
+local counterLabel = create("TextLabel", {
+    Size = UDim2.new(1, -20, 0, 14),
+    Position = UDim2.new(0, 10, 0, 248),
+    Text = "🔄 Tổng số lần đã chạy: 0",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(0, 140, 70),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 10,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, customSection)
 
 runButton.MouseButton1Click:Connect(function()
     local times = math.clamp(tonumber(repeatInput.Text) or 1, 1, 1000)
@@ -1154,7 +1373,6 @@ runButton.MouseButton1Click:Connect(function()
         statusLabel.Text = "⏳ Đang thực thi..."
     end
     
-    -- Poll for completion
     task.spawn(function()
         while currentThread do
             if isCancelled then
@@ -1170,152 +1388,375 @@ runButton.MouseButton1Click:Connect(function()
     end)
 end)
 
--- Environment Section
-uiFactory.createDivider()
-uiFactory.createLabel("⚙️ Điều Khiển Môi Trường")
-
-currentY = currentY + 18
-local darkButton = uiFactory.createButton("🌙 Trời tối", 130, 22, Color3.fromRGB(60, 60, 100))
-darkButton.Position = UDim2.new(0, 10, 0, currentY)
-
-local brightButton = uiFactory.createButton("☀️ Trời sáng", 130, 22, COLOR.YELLOW)
-brightButton.Position = UDim2.new(0, 148, 0, currentY)
-
-currentY = currentY + 28
-local fogButton = uiFactory.createButton("🌫️ Sương mù: TẮT", 130, 22, COLOR.GRAY)
-fogButton.Position = UDim2.new(0, 10, 0, currentY)
-
-local resetEnvButton = uiFactory.createButton("🔄 Đặt lại", 130, 22, COLOR.GRAY)
-resetEnvButton.Position = UDim2.new(0, 148, 0, currentY)
-
-darkButton.MouseButton1Click:Connect(function()
-    updateLighting({
-        ClockTime = 0, Brightness = 0.3,
-        OutdoorAmbient = Color3.fromRGB(20, 20, 40),
-        Ambient = Color3.fromRGB(20, 20, 40),
-    })
-end)
-
-brightButton.MouseButton1Click:Connect(function()
-    updateLighting({
-        ClockTime = 14, Brightness = 2.5,
-        OutdoorAmbient = COLOR.WHITE,
-        Ambient = COLOR.WHITE,
-        EnvironmentDiffuseScale = 1,
-        EnvironmentSpecularScale = 1,
-    })
-    if state.fog then
-        state.fog = false
-        fogButton.Text = "🌫️ Sương mù: TẮT"
-        fogButton.BackgroundColor3 = COLOR.GRAY
+saveButton.MouseButton1Click:Connect(function()
+    local name = nameInput.Text
+    local code = codeInput.Text
+    if #code == 0 then
+        statusLabel.Text = "⚠️ Vui lòng nhập code!"
+        return
     end
-    tween(Lighting, {FogEnd = 100000, FogStart = 0, FogColor = Color3.new(1, 1, 1)})
+    if #name == 0 then name = "Script " .. (#scripts + 1) end
+    
+    local baseName = name
+    local counter = 1
+    while true do
+        local exists = false
+        for _, s in ipairs(scripts) do
+            if s.name == name then exists = true; break end
+        end
+        if not exists then break end
+        counter += 1
+        name = baseName .. " (" .. counter .. ")"
+    end
+    
+    table.insert(scripts, {name = name, code = code})
+    statusLabel.Text = "✅ Đã lưu: " .. name
+    rebuildScriptList()
 end)
 
-fogButton.MouseButton1Click:Connect(function()
-    state.fog = not state.fog
-    fogButton.Text = state.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
-    fogButton.BackgroundColor3 = state.fog and Color3.fromRGB(70, 70, 70) or COLOR.GRAY
-    tweenLighting(state.fog and
-        {FogStart = 0, FogEnd = 80, FogColor = Color3.fromRGB(180, 180, 180)} or
-        {FogStart = 0, FogEnd = 100000, FogColor = Color3.new(1, 1, 1)})
-end)
+cy = cy + 270
+codeScroll.CanvasSize = UDim2.new(0, 0, 0, cy + 20)
 
-resetEnvButton.MouseButton1Click:Connect(function()
-    updateLighting(DEFAULT_LIGHTING)
-    state.fog = false
-    fogButton.Text = "🌫️ Sương mù: TẮT"
-    fogButton.BackgroundColor3 = COLOR.GRAY
-end)
+-- ==================== BUILD UI - SAVED SCRIPTS TAB ====================
+local savedScroll = savedTab
+local sy = 8
 
--- Fly Section
-currentY = currentY + 35
-uiFactory.createDivider()
-local flySpeedLabel = uiFactory.createLabel("⚡ Tốc độ bay: 50")
+-- Search section
+local searchFrame = create("Frame", {
+    Size = UDim2.new(1, -16, 0, 50),
+    Position = UDim2.new(0, 8, 0, sy),
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.5,
+    BorderSizePixel = 0,
+}, savedScroll)
+addCorner(searchFrame, UDim.new(0, 8))
+addStroke(searchFrame)
 
-currentY = currentY + 14
-local flySpeedInput = uiFactory.createInput("50")
-flySpeedInput.Size = UDim2.new(0, 50, 0, 22)
+create("TextLabel", {
+    Size = UDim2.new(1, -20, 0, 14),
+    Position = UDim2.new(0, 10, 0, 4),
+    Text = "🔍 Tìm kiếm Script",
+    BackgroundTransparency = 1,
+    TextColor3 = COLOR.DARK,
+    Font = Enum.Font.GothamBold,
+    TextSize = 11,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, searchFrame)
 
-local flyButton = uiFactory.createButton("🕊️ Bay: TẮT", 130, 22, COLOR.GRAY)
-flyButton.Position = UDim2.new(0, 75, 0, currentY)
+local searchInput = create("TextBox", {
+    Size = UDim2.new(1, -20, 0, 22),
+    Position = UDim2.new(0, 10, 0, 22),
+    PlaceholderText = "Nhập tên script để tìm kiếm...",
+    PlaceholderColor3 = Color3.fromRGB(160, 160, 160),
+    Text = "",
+    BackgroundColor3 = COLOR.WHITE,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 11,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, searchFrame)
+addCorner(searchInput, UDim.new(0, 5))
+addStroke(searchInput)
 
-currentY = currentY + 28
-local carpetButton = uiFactory.createButton("🪩 Thảm kính: TẮT", 130, 22, COLOR.GRAY)
-carpetButton.Position = UDim2.new(0, 10, 0, currentY)
+sy = sy + 58
 
-local flyRunButton = uiFactory.createButton("🕹️ Bay chạy bộ: TẮT", 130, 22, COLOR.GRAY)
-flyRunButton.Position = UDim2.new(0, 148, 0, currentY)
+-- Saved scripts list
+local savedListFrame = create("Frame", {
+    Size = UDim2.new(1, -16, 0, 0),
+    Position = UDim2.new(0, 8, 0, sy),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+}, savedScroll)
+create("UIListLayout", {
+    SortOrder = Enum.SortOrder.LayoutOrder,
+    Padding = UDim.new(0, 4),
+}, savedListFrame)
 
-currentY = currentY + 28
-uiFactory.createLabel("📏 Kích thước thảm (studs)")
+local function rebuildScriptList()
+    -- Search filter
+    local searchTerm = searchInput.Text:lower()
+    
+    for _, child in ipairs(savedListFrame:GetChildren()) do
+        if child:IsA("Frame") then child:Destroy() end
+    end
+    
+    local displayScripts = {}
+    for _, data in ipairs(scripts) do
+        if searchTerm == "" or data.name:lower():find(searchTerm) then
+            table.insert(displayScripts, data)
+        end
+    end
+    
+    if #displayScripts == 0 then
+        local emptyLabel = create("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 40),
+            Text = "📭 " .. (searchTerm ~= "" and "Không tìm thấy script nào" or "Chưa có script nào được lưu"),
+            BackgroundTransparency = 1,
+            TextColor3 = COLOR.GRAY,
+            Font = Enum.Font.GothamMedium,
+            TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Center,
+            TextYAlignment = Enum.TextYAlignment.Center,
+        }, savedListFrame)
+        addCorner(emptyLabel, UDim.new(0, 5))
+    end
+    
+    for i, data in ipairs(displayScripts) do
+        local row = create("Frame", {
+            Size = UDim2.new(1, 0, 0, 50),
+            BackgroundColor3 = COLOR.BG,
+            BackgroundTransparency = 0.3,
+            BorderSizePixel = 0,
+        }, savedListFrame)
+        addCorner(row, UDim.new(0, 5))
+        addStroke(row)
+        
+        -- Script info
+        local infoFrame = create("Frame", {
+            Size = UDim2.new(1, -50, 0, 30),
+            Position = UDim2.new(0, 8, 0, 4),
+            BackgroundTransparency = 1,
+        }, row)
+        
+        local runScriptBtn = create("TextButton", {
+            Size = UDim2.new(1, 0, 1, 0),
+            Text = "",
+            BackgroundTransparency = 1,
+            BorderSizePixel = 0,
+        }, infoFrame)
+        
+        create("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 14),
+            Position = UDim2.new(0, 0, 0, 0),
+            Text = data.name,
+            BackgroundTransparency = 1,
+            TextColor3 = COLOR.DARK,
+            Font = Enum.Font.GothamBold,
+            TextSize = 11,
+            TextXAlignment = Enum.TextXAlignment.Left,
+        }, infoFrame)
+        
+        -- Show preview of code (first line)
+        local preview = data.code:gsub("%s+", " "):sub(1, 50)
+        create("TextLabel", {
+            Size = UDim2.new(1, 0, 0, 14),
+            Position = UDim2.new(0, 0, 0, 16),
+            Text = preview .. (#data.code > 50 and "..." or ""),
+            BackgroundTransparency = 1,
+            TextColor3 = Color3.fromRGB(100, 100, 100),
+            Font = Enum.Font.GothamMedium,
+            TextSize = 9,
+            TextXAlignment = Enum.TextXAlignment.Left,
+        }, infoFrame)
+        
+        -- Action buttons
+        local indicator = create("TextButton", {
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(1, -44, 0, 6),
+            Text = "▶",
+            BackgroundColor3 = COLOR.GREEN,
+            BackgroundTransparency = 0.2,
+            TextColor3 = COLOR.WHITE,
+            Font = Enum.Font.GothamBold,
+            TextSize = 10,
+            BorderSizePixel = 0,
+        }, row)
+        addCorner(indicator, UDim.new(1, 0))
+        
+        local editBtn = create("TextButton", {
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(1, -24, 0, 6),
+            Text = "✏",
+            BackgroundColor3 = COLOR.BLUE,
+            BackgroundTransparency = 0.2,
+            TextColor3 = COLOR.WHITE,
+            Font = Enum.Font.GothamBold,
+            TextSize = 10,
+            BorderSizePixel = 0,
+        }, row)
+        addCorner(editBtn, UDim.new(1, 0))
+        
+        local deleteBtn = create("TextButton", {
+            Size = UDim2.new(0, 16, 0, 16),
+            Position = UDim2.new(1, -4, 0, 28),
+            Text = "✕",
+            BackgroundColor3 = COLOR.RED,
+            BackgroundTransparency = 0.2,
+            TextColor3 = COLOR.WHITE,
+            Font = Enum.Font.GothamBold,
+            TextSize = 10,
+            BorderSizePixel = 0,
+        }, row)
+        addCorner(deleteBtn, UDim.new(1, 0))
+        
+        -- Label for total runs
+        local runCountLabel = create("TextLabel", {
+            Size = UDim2.new(0, 60, 0, 14),
+            Position = UDim2.new(1, -64, 0, 32),
+            Text = "0 lần chạy",
+            BackgroundTransparency = 1,
+            TextColor3 = Color3.fromRGB(0, 140, 70),
+            Font = Enum.Font.GothamMedium,
+            TextSize = 9,
+            TextXAlignment = Enum.TextXAlignment.Right,
+        }, row)
+        
+        local idx = i
+        indicator.MouseButton1Click:Connect(function()
+            if currentScriptIndicator == indicator then cancelExecution() end
+            runCode(data.code, data.name, indicator, 1, 0)
+        end)
+        
+        editBtn.MouseButton1Click:Connect(function()
+            -- Switch to code tab and load script
+            tabButtons[1].BackgroundColor3 = COLOR.BLUE
+            tabButtons[1].BackgroundTransparency = 0.2
+            tabFrames[1].Visible = true
+            currentTab = tabFrames[1]
+            
+            nameInput.Text = data.name
+            codeInput.Text = data.code
+        end)
+        
+        deleteBtn.MouseButton1Click:Connect(function()
+            if currentScriptIndicator == indicator then cancelExecution() end
+            table.remove(scripts, idx)
+            rebuildScriptList()
+        end)
+        
+        -- Hover effect
+        runScriptBtn.MouseEnter:Connect(function()
+            tween(row, {BackgroundTransparency = 0.1}, 0.2)
+        end)
+        runScriptBtn.MouseLeave:Connect(function()
+            tween(row, {BackgroundTransparency = 0.3}, 0.2)
+        end)
+    end
+    
+    savedScroll.CanvasSize = UDim2.new(0, 0, 0, sy + #displayScripts * 58 + 20)
+end
 
-currentY = currentY + 14
-local carpetSizeInput = uiFactory.createInput("30")
-carpetSizeInput.Size = UDim2.new(0, 50, 0, 22)
+searchInput:GetPropertyChangedSignal("Text"):Connect(rebuildScriptList)
 
+-- Initial build
+rebuildScriptList()
+
+-- ==================== BUILD UI - FLY TAB ====================
+local flyScroll = flyTab
+local fy = 8
+
+local function addFlyLabel(text)
+    local label = create("TextLabel", {
+        Size = UDim2.new(1, -16, 0, 14),
+        Position = UDim2.new(0, 8, 0, fy),
+        Text = text,
+        BackgroundTransparency = 1,
+        TextColor3 = Color3.fromRGB(60, 60, 60),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, flyScroll)
+    return label
+end
+
+local function addFlyInput(placeholder, width)
+    local input = create("TextBox", {
+        Size = UDim2.new(0, width or 50, 0, 22),
+        Position = UDim2.new(0, 8, 0, fy),
+        Text = placeholder,
+        BackgroundColor3 = COLOR.BG,
+        BackgroundTransparency = 0.3,
+        TextColor3 = Color3.fromRGB(30, 30, 30),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 12,
+        BorderSizePixel = 0,
+        ClearTextOnFocus = false,
+    }, flyScroll)
+    addCorner(input, UDim.new(0, 5))
+    addStroke(input)
+    return input
+end
+
+local function addFlyButton(text, width, color, x)
+    local button = create("TextButton", {
+        Size = UDim2.new(0, width or 140, 0, 22),
+        Position = UDim2.new(0, x or 8, 0, fy),
+        Text = text,
+        BackgroundColor3 = color or COLOR.GRAY,
+        BackgroundTransparency = 0.2,
+        TextColor3 = COLOR.WHITE,
+        Font = Enum.Font.GothamBold,
+        TextSize = 10,
+        BorderSizePixel = 0,
+    }, flyScroll)
+    addCorner(button, UDim.new(0, 5))
+    addStroke(button, color:Lerp(Color3.new(0,0,0), 0.4), 1)
+    return button
+end
+
+addFlyLabel("⚡ Tốc độ bay")
+fy = fy + 14
+local flySpeedInput = addFlyInput("50")
+local flyButton = addFlyButton("🕊️ Bay: TẮT", 130, COLOR.GRAY, 70)
+
+fy = fy + 26
+addFlyLabel("🪩 Thảm kính")
+fy = fy + 14
+local carpetButton = addFlyButton("🪩 Thảm kính: TẮT", 130, COLOR.GRAY, 8)
+local flyRunButton = addFlyButton("🕹️ Bay chạy bộ: TẮT", 130, COLOR.GRAY, 148)
+
+fy = fy + 28
+addFlyLabel("📏 Kích thước thảm (studs)")
+fy = fy + 14
+local carpetSizeInput = addFlyInput("30")
+local noClipButton = addFlyButton("🚶 NoClip: TẮT", 120, COLOR.GRAY, 70)
+
+fy = fy + 28
+addFlyLabel("🏃 Tốc độ chạy (WalkSpeed)")
+fy = fy + 14
+local walkSpeedInput = addFlyInput("16")
+local walkSpeedLabel = create("TextLabel", {
+    Size = UDim2.new(0, 100, 0, 14),
+    Position = UDim2.new(0, 70, 0, fy),
+    Text = "Hiện tại: 16",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(0, 140, 70),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 9,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, flyScroll)
+
+fy = fy + 26
+addFlyLabel("📦 Lực nhảy (JumpPower)")
+fy = fy + 14
+local jumpPowerInput = addFlyInput("50")
+local jumpPowerLabel = create("TextLabel", {
+    Size = UDim2.new(0, 100, 0, 14),
+    Position = UDim2.new(0, 70, 0, fy),
+    Text = "Hiện tại: 50",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(0, 140, 70),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 9,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, flyScroll)
+
+-- Connect fly controls
 flySpeedInput.FocusLost:Connect(function(ep)
     if not ep then return end
     local n = tonumber(flySpeedInput.Text)
-    if n and n >= 0 then
-        state.flySpeed = n
-        flySpeedLabel.Text = "⚡ Tốc độ bay: " .. n
-    else
-        flySpeedInput.Text = tostring(state.flySpeed)
-    end
+    if n and n >= 0 then state.flySpeed = n
+    else flySpeedInput.Text = tostring(state.flySpeed) end
 end)
 
 carpetSizeInput.FocusLost:Connect(function(ep)
     if not ep then return end
     local n = tonumber(carpetSizeInput.Text)
-    if n and n >= 10 then
-        state.carpetSize = n
-    else
-        carpetSizeInput.Text = tostring(state.carpetSize)
-    end
+    if n and n >= 10 then state.carpetSize = n
+    else carpetSizeInput.Text = tostring(state.carpetSize) end
 end)
-
-flyButton.MouseButton1Click:Connect(function()
-    toggleFly()
-    flyButton.Text = state.flying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
-    flyButton.BackgroundColor3 = state.flying and Color3.fromRGB(70, 130, 180) or COLOR.GRAY
-end)
-
-carpetButton.MouseButton1Click:Connect(function()
-    toggleCarpet()
-    carpetButton.Text = state.carpet and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
-    carpetButton.BackgroundColor3 = state.carpet and Color3.fromRGB(160, 100, 200) or COLOR.GRAY
-end)
-
-flyRunButton.MouseButton1Click:Connect(function()
-    toggleFlyRun()
-    flyRunButton.Text = state.flyRun and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
-    flyRunButton.BackgroundColor3 = state.flyRun and Color3.fromRGB(200, 150, 50) or COLOR.GRAY
-end)
-
--- Character Speed Section
-currentY = currentY + 42
-uiFactory.createDivider()
-uiFactory.createLabel("🏃 Tốc độ chạy (WalkSpeed)")
-
-currentY = currentY + 14
-local walkSpeedInput = uiFactory.createInput("16")
-walkSpeedInput.Size = UDim2.new(0, 50, 0, 22)
-
-local walkSpeedLabel = uiFactory.createLabel("Hiện tại: 16")
-walkSpeedLabel.Position = UDim2.new(0, 70, 0, currentY)
-walkSpeedLabel.Size = UDim2.new(0, 100, 0, 14)
-
-currentY = currentY + 24
-uiFactory.createLabel("📦 Lực nhảy (JumpPower)")
-
-currentY = currentY + 14
-local jumpPowerInput = uiFactory.createInput("50")
-jumpPowerInput.Size = UDim2.new(0, 50, 0, 22)
-
-local jumpPowerLabel = uiFactory.createLabel("Hiện tại: 50")
-jumpPowerLabel.Position = UDim2.new(0, 70, 0, currentY)
-jumpPowerLabel.Size = UDim2.new(0, 100, 0, 14)
 
 walkSpeedInput.FocusLost:Connect(function(ep)
     if not ep then return end
@@ -1341,14 +1782,23 @@ jumpPowerInput.FocusLost:Connect(function(ep)
     jumpPowerLabel.Text = "Hiện tại: " .. state.jumpPower
 end)
 
--- NoClip Section
-currentY = currentY + 35
-uiFactory.createDivider()
-uiFactory.createLabel("🚪 Đi xuyên tường (NoClip)")
+flyButton.MouseButton1Click:Connect(function()
+    toggleFly()
+    flyButton.Text = state.flying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
+    flyButton.BackgroundColor3 = state.flying and Color3.fromRGB(70, 130, 180) or COLOR.GRAY
+end)
 
-currentY = currentY + 14
-local noClipButton = uiFactory.createButton("🚶 NoClip: TẮT", 140, 22, COLOR.GRAY)
-noClipButton.Position = UDim2.new(0, 10, 0, currentY)
+carpetButton.MouseButton1Click:Connect(function()
+    toggleCarpet()
+    carpetButton.Text = state.carpet and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
+    carpetButton.BackgroundColor3 = state.carpet and Color3.fromRGB(160, 100, 200) or COLOR.GRAY
+end)
+
+flyRunButton.MouseButton1Click:Connect(function()
+    toggleFlyRun()
+    flyRunButton.Text = state.flyRun and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
+    flyRunButton.BackgroundColor3 = state.flyRun and Color3.fromRGB(200, 150, 50) or COLOR.GRAY
+end)
 
 noClipButton.MouseButton1Click:Connect(function()
     toggleNoClip()
@@ -1356,104 +1806,370 @@ noClipButton.MouseButton1Click:Connect(function()
     noClipButton.BackgroundColor3 = state.noClip and Color3.fromRGB(0, 180, 100) or COLOR.GRAY
 end)
 
--- Custom Camera Section
-currentY = currentY + 42
-uiFactory.createDivider()
-uiFactory.createLabel("📷 Camera Tùy Chỉnh (Bám nhân vật)")
+flyScroll.CanvasSize = UDim2.new(0, 0, 0, fy + 30)
 
-currentY = currentY + 14
-local customCamButton = uiFactory.createButton("📷 Camera tùy chỉnh: TẮT", 200, 22, COLOR.GRAY)
-customCamButton.Position = UDim2.new(0, 10, 0, currentY)
+-- ==================== BUILD UI - ENVIRONMENT TAB ====================
+local envScroll = envTab
+local ey = 8
 
-currentY = currentY + 24
-uiFactory.createLabel("Góc nhìn FOV (30-120)")
+local function addEnvLabel(text)
+    local label = create("TextLabel", {
+        Size = UDim2.new(1, -16, 0, 14),
+        Position = UDim2.new(0, 8, 0, ey),
+        Text = text,
+        BackgroundTransparency = 1,
+        TextColor3 = Color3.fromRGB(60, 60, 60),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, envScroll)
+    return label
+end
 
-currentY = currentY + 14
-local fovInput = uiFactory.createInput("70")
-fovInput.Size = UDim2.new(0, 55, 0, 22)
+addEnvLabel("🌤 Thời tiết")
+ey = ey + 14
+local darkButton = create("TextButton", {
+    Size = UDim2.new(0, 130, 0, 22),
+    Position = UDim2.new(0, 8, 0, ey),
+    Text = "🌙 Trời tối",
+    BackgroundColor3 = Color3.fromRGB(60, 60, 100),
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, envScroll)
+addCorner(darkButton, UDim.new(0, 5))
+addStroke(darkButton, Color3.fromRGB(40, 40, 70), 1)
 
-currentY = currentY + 24
-uiFactory.createLabel("Độ lệch ngang (Offset X)")
+local brightButton = create("TextButton", {
+    Size = UDim2.new(0, 130, 0, 22),
+    Position = UDim2.new(0, 148, 0, ey),
+    Text = "☀️ Trời sáng",
+    BackgroundColor3 = COLOR.YELLOW,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.DARK,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, envScroll)
+addCorner(brightButton, UDim.new(0, 5))
+addStroke(brightButton, Color3.fromRGB(200, 170, 0), 1)
 
-currentY = currentY + 14
-local camOffsetXInput = uiFactory.createInput("0")
-camOffsetXInput.Size = UDim2.new(0, 55, 0, 22)
+ey = ey + 28
+local fogButton = create("TextButton", {
+    Size = UDim2.new(0, 130, 0, 22),
+    Position = UDim2.new(0, 8, 0, ey),
+    Text = "🌫️ Sương mù: TẮT",
+    BackgroundColor3 = COLOR.GRAY,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, envScroll)
+addCorner(fogButton, UDim.new(0, 5))
+addStroke(fogButton)
 
-currentY = currentY + 24
-uiFactory.createLabel("Độ lệch dọc (Offset Y)")
+local resetEnvButton = create("TextButton", {
+    Size = UDim2.new(0, 130, 0, 22),
+    Position = UDim2.new(0, 148, 0, ey),
+    Text = "🔄 Đặt lại",
+    BackgroundColor3 = COLOR.GRAY,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, envScroll)
+addCorner(resetEnvButton, UDim.new(0, 5))
+addStroke(resetEnvButton)
 
-currentY = currentY + 14
-local camOffsetYInput = uiFactory.createInput("0")
-camOffsetYInput.Size = UDim2.new(0, 55, 0, 22)
+ey = ey + 30
+addEnvLabel("💡 Độ sáng (0.5 - 3)")
+ey = ey + 14
+local brightnessInput = create("TextBox", {
+    Size = UDim2.new(0, 55, 0, 22),
+    Position = UDim2.new(0, 8, 0, ey),
+    Text = "1.2",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, envScroll)
+addCorner(brightnessInput, UDim.new(0, 5))
+addStroke(brightnessInput)
 
+local applyBrightnessButton = create("TextButton", {
+    Size = UDim2.new(0, 80, 0, 22),
+    Position = UDim2.new(0, 70, 0, ey),
+    Text = "✔ Áp dụng",
+    BackgroundColor3 = COLOR.BLUE,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, envScroll)
+addCorner(applyBrightnessButton, UDim.new(0, 5))
+addStroke(applyBrightnessButton)
+
+ey = ey + 28
+addEnvLabel("🎨 Màu môi trường (R G B)")
+ey = ey + 14
+local ambientR = create("TextBox", {
+    Size = UDim2.new(0, 42, 0, 22),
+    Position = UDim2.new(0, 8, 0, ey),
+    Text = "128",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, envScroll)
+addCorner(ambientR, UDim.new(0, 5))
+addStroke(ambientR)
+
+local ambientG = create("TextBox", {
+    Size = UDim2.new(0, 42, 0, 22),
+    Position = UDim2.new(0, 55, 0, ey),
+    Text = "128",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, envScroll)
+addCorner(ambientG, UDim.new(0, 5))
+addStroke(ambientG)
+
+local ambientB = create("TextBox", {
+    Size = UDim2.new(0, 42, 0, 22),
+    Position = UDim2.new(0, 102, 0, ey),
+    Text = "128",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, envScroll)
+addCorner(ambientB, UDim.new(0, 5))
+addStroke(ambientB)
+
+local applyAmbientButton = create("TextButton", {
+    Size = UDim2.new(0, 80, 0, 22),
+    Position = UDim2.new(0, 150, 0, ey),
+    Text = "✔ Áp dụng",
+    BackgroundColor3 = COLOR.BLUE,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, envScroll)
+addCorner(applyAmbientButton, UDim.new(0, 5))
+addStroke(applyAmbientButton)
+
+-- Connect environment controls
+darkButton.MouseButton1Click:Connect(function()
+    tweenLighting({
+        ClockTime = 0, Brightness = 0.3,
+        OutdoorAmbient = Color3.fromRGB(20, 20, 40),
+        Ambient = Color3.fromRGB(20, 20, 40),
+    })
+end)
+
+brightButton.MouseButton1Click:Connect(function()
+    tweenLighting({
+        ClockTime = 14, Brightness = 2.5,
+        OutdoorAmbient = COLOR.WHITE,
+        Ambient = COLOR.WHITE,
+    })
+    if state.fog then
+        state.fog = false
+        fogButton.Text = "🌫️ Sương mù: TẮT"
+        fogButton.BackgroundColor3 = COLOR.GRAY
+        tween(Lighting, {FogEnd = 100000, FogStart = 0, FogColor = Color3.new(1, 1, 1)})
+    end
+end)
+
+fogButton.MouseButton1Click:Connect(function()
+    state.fog = not state.fog
+    fogButton.Text = state.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
+    fogButton.BackgroundColor3 = state.fog and Color3.fromRGB(70, 70, 70) or COLOR.GRAY
+    tweenLighting(state.fog and
+        {FogStart = 0, FogEnd = 80, FogColor = Color3.fromRGB(180, 180, 180)} or
+        {FogStart = 0, FogEnd = 100000, FogColor = Color3.new(1, 1, 1)})
+end)
+
+resetEnvButton.MouseButton1Click:Connect(function()
+    tweenLighting(DEFAULT_LIGHTING)
+    state.fog = false
+    fogButton.Text = "🌫️ Sương mù: TẮT"
+    fogButton.BackgroundColor3 = COLOR.GRAY
+end)
+
+applyBrightnessButton.MouseButton1Click:Connect(function()
+    local n = tonumber(brightnessInput.Text)
+    if n and n >= 0.5 and n <= 3 then
+        tweenLighting({Brightness = n})
+    else
+        brightnessInput.Text = string.format("%.1f", Lighting.Brightness)
+    end
+end)
+
+applyAmbientButton.MouseButton1Click:Connect(function()
+    local r = math.clamp(tonumber(ambientR.Text) or 128, 0, 255)
+    local g = math.clamp(tonumber(ambientG.Text) or 128, 0, 255)
+    local b = math.clamp(tonumber(ambientB.Text) or 128, 0, 255)
+    tweenLighting({Ambient = Color3.fromRGB(r, g, b)})
+end)
+
+envScroll.CanvasSize = UDim2.new(0, 0, 0, ey + 20)
+
+-- ==================== BUILD UI - CAMERA TAB ====================
+local camScroll = camTab
+local cy = 8
+
+local function addCamLabel(text)
+    local label = create("TextLabel", {
+        Size = UDim2.new(1, -16, 0, 14),
+        Position = UDim2.new(0, 8, 0, cy),
+        Text = text,
+        BackgroundTransparency = 1,
+        TextColor3 = Color3.fromRGB(60, 60, 60),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, camScroll)
+    return label
+end
+
+addCamLabel("📷 Camera Tùy Chỉnh (Bám nhân vật)")
+cy = cy + 14
+local customCamButton = create("TextButton", {
+    Size = UDim2.new(0, 200, 0, 22),
+    Position = UDim2.new(0, 8, 0, cy),
+    Text = "📷 Camera tùy chỉnh: TẮT",
+    BackgroundColor3 = COLOR.GRAY,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, camScroll)
+addCorner(customCamButton, UDim.new(0, 5))
+addStroke(customCamButton)
+
+cy = cy + 28
+addCamLabel("Góc nhìn FOV (30-120)")
+cy = cy + 14
+local fovInput = create("TextBox", {
+    Size = UDim2.new(0, 55, 0, 22),
+    Position = UDim2.new(0, 8, 0, cy),
+    Text = "70",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, camScroll)
+addCorner(fovInput, UDim.new(0, 5))
+addStroke(fovInput)
+
+cy = cy + 28
+addCamLabel("Độ lệch ngang (Offset X)")
+cy = cy + 14
+local camOffsetXInput = create("TextBox", {
+    Size = UDim2.new(0, 55, 0, 22),
+    Position = UDim2.new(0, 8, 0, cy),
+    Text = "0",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, camScroll)
+addCorner(camOffsetXInput, UDim.new(0, 5))
+addStroke(camOffsetXInput)
+
+cy = cy + 28
+addCamLabel("Độ lệch dọc (Offset Y)")
+cy = cy + 14
+local camOffsetYInput = create("TextBox", {
+    Size = UDim2.new(0, 55, 0, 22),
+    Position = UDim2.new(0, 8, 0, cy),
+    Text = "0",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, camScroll)
+addCorner(camOffsetYInput, UDim.new(0, 5))
+addStroke(camOffsetYInput)
+
+cy = cy + 35
+addCamLabel("🎥 Camera Tự Do")
+cy = cy + 14
+local freeCamButton = create("TextButton", {
+    Size = UDim2.new(0, 200, 0, 22),
+    Position = UDim2.new(0, 8, 0, cy),
+    Text = "🎥 Camera tự do: TẮT",
+    BackgroundColor3 = COLOR.GRAY,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, camScroll)
+addCorner(freeCamButton, UDim.new(0, 5))
+addStroke(freeCamButton)
+
+cy = cy + 28
+addCamLabel("⚡ Tốc độ di chuyển camera")
+cy = cy + 14
+local freeCamSpeedInput = create("TextBox", {
+    Size = UDim2.new(0, 55, 0, 22),
+    Position = UDim2.new(0, 8, 0, cy),
+    Text = "30",
+    BackgroundColor3 = COLOR.BG,
+    BackgroundTransparency = 0.3,
+    TextColor3 = Color3.fromRGB(30, 30, 30),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 12,
+    BorderSizePixel = 0,
+    ClearTextOnFocus = false,
+}, camScroll)
+addCorner(freeCamSpeedInput, UDim.new(0, 5))
+addStroke(freeCamSpeedInput)
+
+cy = cy + 28
+addCamLabel("📌 Hướng dẫn: WASD di chuyển, Q/E lên/xuống")
+cy = cy + 14
+addCamLabel("🖱 Giữ chuột phải để xoay, [F] để thoát")
+
+-- Connect camera controls
 customCamButton.MouseButton1Click:Connect(function()
     toggleCustomCamera()
     customCamButton.Text = state.customCamera and "📷 Camera tùy chỉnh: BẬT" or "📷 Camera tùy chỉnh: TẮT"
     customCamButton.BackgroundColor3 = state.customCamera and Color3.fromRGB(200, 120, 50) or COLOR.GRAY
 end)
-
-fovInput.FocusLost:Connect(function(ep)
-    if not ep then return end
-    local n = tonumber(fovInput.Text)
-    if n and n >= 30 and n <= 120 then
-        state.fov = n
-    else
-        fovInput.Text = tostring(state.fov)
-    end
-end)
-
-camOffsetXInput.FocusLost:Connect(function(ep)
-    if not ep then return end
-    local n = tonumber(camOffsetXInput.Text)
-    if n then
-        state.camOffsetX = n
-    else
-        camOffsetXInput.Text = tostring(state.camOffsetX)
-    end
-end)
-
-camOffsetYInput.FocusLost:Connect(function(ep)
-    if not ep then return end
-    local n = tonumber(camOffsetYInput.Text)
-    if n then
-        state.camOffsetY = n
-    else
-        camOffsetYInput.Text = tostring(state.camOffsetY)
-    end
-end)
-
--- Free Camera Section
-currentY = currentY + 38
-uiFactory.createDivider()
-uiFactory.createLabel("🎥 Camera Tự Do (Xuyên tường - Nhân vật đứng yên)")
-
-currentY = currentY + 14
-local freeCamButton = uiFactory.createButton("🎥 Camera tự do: TẮT", 200, 22, COLOR.GRAY)
-freeCamButton.Position = UDim2.new(0, 10, 0, currentY)
-
-currentY = currentY + 24
-uiFactory.createLabel("⚡ Tốc độ di chuyển camera")
-
-currentY = currentY + 14
-local freeCamSpeedInput = uiFactory.createInput("30")
-freeCamSpeedInput.Size = UDim2.new(0, 55, 0, 22)
-
-currentY = currentY + 24
-local helpLabel = create("TextLabel", {
-    Size = UDim2.new(1, -16, 0, 60),
-    Position = UDim2.new(0, 8, 0, currentY),
-    Text = "📌 WASD: Di chuyển | Q/E: Lên/Xuống\n🖱 Chuột phải giữ: Xoay camera\nF: Tăng tốc | Nhân vật đứng yên",
-    BackgroundColor3 = Color3.fromRGB(230, 245, 255),
-    BackgroundTransparency = 0.3,
-    TextColor3 = Color3.fromRGB(40, 80, 120),
-    Font = Enum.Font.GothamMedium,
-    TextSize = 10,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    TextYAlignment = Enum.TextYAlignment.Top,
-    BorderSizePixel = 0,
-}, scrollFrame)
-addCorner(helpLabel, UDim.new(0, 6))
-addStroke(helpLabel, Color3.fromRGB(100, 160, 220), 1.2)
 
 freeCamButton.MouseButton1Click:Connect(function()
     toggleFreeCamera()
@@ -1461,125 +2177,131 @@ freeCamButton.MouseButton1Click:Connect(function()
     freeCamButton.BackgroundColor3 = state.freeCam and Color3.fromRGB(0, 160, 200) or COLOR.GRAY
 end)
 
+fovInput.FocusLost:Connect(function(ep)
+    if not ep then return end
+    local n = tonumber(fovInput.Text)
+    if n and n >= 30 and n <= 120 then state.fov = n
+    else fovInput.Text = tostring(state.fov) end
+end)
+
+camOffsetXInput.FocusLost:Connect(function(ep)
+    if not ep then return end
+    local n = tonumber(camOffsetXInput.Text)
+    if n then state.camOffsetX = n
+    else camOffsetXInput.Text = tostring(state.camOffsetX) end
+end)
+
+camOffsetYInput.FocusLost:Connect(function(ep)
+    if not ep then return end
+    local n = tonumber(camOffsetYInput.Text)
+    if n then state.camOffsetY = n
+    else camOffsetYInput.Text = tostring(state.camOffsetY) end
+end)
+
 freeCamSpeedInput.FocusLost:Connect(function(ep)
     if not ep then return end
     local n = tonumber(freeCamSpeedInput.Text)
-    if n and n > 0 then
-        state.freeCamSpeed = n
-    else
-        freeCamSpeedInput.Text = tostring(state.freeCamSpeed)
-    end
+    if n and n > 0 then state.freeCamSpeed = n
+    else freeCamSpeedInput.Text = tostring(state.freeCamSpeed) end
 end)
 
--- Script Save Section
-currentY = currentY + 68
-uiFactory.createDivider()
-uiFactory.createLabel("💾 Script đã lưu (nhấn tên để chạy)")
+camScroll.CanvasSize = UDim2.new(0, 0, 0, cy + 20)
 
-currentY = currentY + 18
-local saveButton = uiFactory.createButton("➕ Lưu script hiện tại", 130, 22, COLOR.GRAY)
-saveButton.Position = UDim2.new(0, 10, 0, currentY)
+-- ==================== BUILD UI - GRAPHICS TAB ====================
+local graphicsScroll = graphicsTab
+local gy = 8
 
-currentY = currentY + 32
-local scriptListFrame = create("Frame", {
-    Size = UDim2.new(1, -16, 0, 0),
-    Position = UDim2.new(0, 8, 0, currentY),
-    BackgroundTransparency = 1,
-    BorderSizePixel = 0,
-}, scrollFrame)
-create("UIListLayout", {
-    SortOrder = Enum.SortOrder.LayoutOrder,
-    Padding = UDim.new(0, 4),
-}, scriptListFrame)
-
--- Graphics Section
-currentY = currentY + 18
-uiFactory.createDivider()
-uiFactory.createLabel("🎨 Đồ Họa & Hiệu Suất")
-
-currentY = currentY + 18
-uiFactory.createLabel("📊 Chất lượng đồ họa")
-
-currentY = currentY + 14
-local ultraButton = uiFactory.createButton("✨ Siêu cao", 68, 22, Color3.fromRGB(180, 50, 50))
-local highButton = uiFactory.createButton("🔵 Cao", 68, 22, Color3.fromRGB(50, 100, 180))
-local mediumButton = uiFactory.createButton("🟡 Trung", 68, 22, Color3.fromRGB(180, 140, 30))
-local lowButton = uiFactory.createButton("🟢 Thấp", 68, 22, Color3.fromRGB(60, 160, 80))
-
-ultraButton.Position = UDim2.new(0, 8, 0, currentY)
-highButton.Position = UDim2.new(0, 80, 0, currentY)
-mediumButton.Position = UDim2.new(0, 152, 0, currentY)
-lowButton.Position = UDim2.new(0, 224, 0, currentY)
-
-currentY = currentY + 28
-local ultraLowButton = uiFactory.createButton("⚡ Siêu thấp - Tối đa FPS", 200, 22, Color3.fromRGB(100, 60, 60))
-ultraLowButton.Position = UDim2.new(0, 8, 0, currentY)
-
-currentY = currentY + 28
-local qualityLabel = uiFactory.createLabel("📊 Chất lượng: Tự động")
-qualityLabel.TextColor3 = Color3.fromRGB(0, 140, 70)
-
-local function applyGraphicsPreset(presetKey)
-    local preset = GRAPHICS_PRESETS[presetKey]
-    if not preset then return end
-    
-    pcall(function() settings().Rendering.QualityLevel = preset.level end)
-    Lighting.ShadowSoftness = preset.shadow
-    Lighting.GlobalShadows = preset.shadows
-    Lighting.EnvironmentDiffuseScale = preset.diffuse
-    Lighting.EnvironmentSpecularScale = preset.specular
-    
-    local names = {
-        Ultra = "✨ Siêu cao",
-        High = "🔵 Cao",
-        Medium = "🟡 Trung bình",
-        Low = "🟢 Thấp",
-        UltraLow = "⚡ Siêu thấp",
-    }
-    
-    qualityLabel.Text = "📊 Chất lượng: " .. (names[presetKey] or presetKey)
-    qualityLabel.TextColor3 = presetKey == "Ultra" and Color3.fromRGB(220, 80, 80) or Color3.fromRGB(0, 140, 70)
-    
-    state.shadows = preset.shadows
+local function addGraphicsLabel(text)
+    local label = create("TextLabel", {
+        Size = UDim2.new(1, -16, 0, 14),
+        Position = UDim2.new(0, 8, 0, gy),
+        Text = text,
+        BackgroundTransparency = 1,
+        TextColor3 = Color3.fromRGB(60, 60, 60),
+        Font = Enum.Font.GothamMedium,
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+    }, graphicsScroll)
+    return label
 end
 
-ultraButton.MouseButton1Click:Connect(function() applyGraphicsPreset("Ultra") end)
-highButton.MouseButton1Click:Connect(function() applyGraphicsPreset("High") end)
-mediumButton.MouseButton1Click:Connect(function() applyGraphicsPreset("Medium") end)
-lowButton.MouseButton1Click:Connect(function() applyGraphicsPreset("Low") end)
-ultraLowButton.MouseButton1Click:Connect(function() applyGraphicsPreset("UltraLow") end)
+addGraphicsLabel("📊 Chất lượng đồ họa")
+gy = gy + 14
+local qualityButtons = {
+    {text = "✨ Siêu cao", color = Color3.fromRGB(180, 50, 50), preset = "Ultra"},
+    {text = "🔵 Cao", color = Color3.fromRGB(50, 100, 180), preset = "High"},
+    {text = "🟡 Trung", color = Color3.fromRGB(180, 140, 30), preset = "Medium"},
+    {text = "🟢 Thấp", color = Color3.fromRGB(60, 160, 80), preset = "Low"},
+}
 
--- Shadow toggle
-currentY = currentY + 20
-uiFactory.createLabel("🌑 Bóng đổ")
-currentY = currentY + 14
-local shadowButton = uiFactory.createButton("🌑 Bóng đổ: BẬT", 140, 22, COLOR.GREEN)
-shadowButton.Position = UDim2.new(0, 10, 0, currentY)
+local qualityLabel = create("TextLabel", {
+    Size = UDim2.new(1, -16, 0, 14),
+    Position = UDim2.new(0, 8, 0, gy),
+    Text = "📊 Chất lượng: Tự động",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(0, 140, 70),
+    Font = Enum.Font.GothamMedium,
+    TextSize = 9,
+    TextXAlignment = Enum.TextXAlignment.Left,
+}, graphicsScroll)
 
-shadowButton.MouseButton1Click:Connect(function()
-    state.shadows = not state.shadows
-    Lighting.GlobalShadows = state.shadows
-    shadowButton.Text = state.shadows and "🌑 Bóng đổ: BẬT" or "🌑 Bóng đổ: TẮT"
-    shadowButton.BackgroundColor3 = state.shadows and COLOR.GREEN or COLOR.GRAY
-end)
+gy = gy + 14
+for i, data in ipairs(qualityButtons) do
+    local btn = create("TextButton", {
+        Size = UDim2.new(0, 80, 0, 22),
+        Position = UDim2.new(0, 8 + (i-1)*85, 0, gy),
+        Text = data.text,
+        BackgroundColor3 = data.color,
+        BackgroundTransparency = 0.2,
+        TextColor3 = COLOR.WHITE,
+        Font = Enum.Font.GothamBold,
+        TextSize = 9,
+        BorderSizePixel = 0,
+    }, graphicsScroll)
+    addCorner(btn, UDim.new(0, 5))
+    addStroke(btn, data.color:Lerp(Color3.new(0,0,0), 0.4), 1)
+    
+    btn.MouseButton1Click:Connect(function()
+        local preset = GRAPHICS_PRESETS[data.preset]
+        if not preset then return end
+        pcall(function() settings().Rendering.QualityLevel = preset.level end)
+        Lighting.ShadowSoftness = preset.shadow
+        Lighting.GlobalShadows = preset.shadows
+        Lighting.EnvironmentDiffuseScale = preset.diffuse
+        Lighting.EnvironmentSpecularScale = preset.specular
+        qualityLabel.Text = "📊 Chất lượng: " .. data.text
+        qualityLabel.TextColor3 = data.preset == "Ultra" and Color3.fromRGB(220, 80, 80) or Color3.fromRGB(0, 140, 70)
+        state.shadows = preset.shadows
+    end)
+end
 
--- Post effects
-currentY = currentY + 28
-uiFactory.createLabel("✨ Hiệu ứng hậu kỳ")
-currentY = currentY + 14
+gy = gy + 28
+local ultraLowButton = create("TextButton", {
+    Size = UDim2.new(0, 200, 0, 22),
+    Position = UDim2.new(0, 8, 0, gy),
+    Text = "⚡ Siêu thấp - Tối đa FPS",
+    BackgroundColor3 = Color3.fromRGB(100, 60, 60),
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, graphicsScroll)
+addCorner(ultraLowButton, UDim.new(0, 5))
+addStroke(ultraLowButton)
 
-local bloomButton = uiFactory.createButton("🌸 Bloom: BẬT", 130, 22, COLOR.GREEN)
-local blurButton = uiFactory.createButton("🌫 Làm mờ: TẮT", 130, 22, COLOR.GRAY)
-bloomButton.Position = UDim2.new(0, 10, 0, currentY)
-blurButton.Position = UDim2.new(0, 148, 0, currentY)
+gy = gy + 30
+addGraphicsLabel("✨ Hiệu ứng hậu kỳ")
+gy = gy + 14
 
-currentY = currentY + 28
-local sunRaysButton = uiFactory.createButton("☀ Tia nắng: BẬT", 130, 22, COLOR.GREEN)
-local colorCorrButton = uiFactory.createButton("🎨 Màu sắc: TẮT", 130, 22, COLOR.GRAY)
-sunRaysButton.Position = UDim2.new(0, 10, 0, currentY)
-colorCorrButton.Position = UDim2.new(0, 148, 0, currentY)
+local effectButtons = {
+    {text = "🌸 Bloom: BẬT", color = COLOR.GREEN, state = "bloom", effect = "bloomEffect"},
+    {text = "🌫 Làm mờ: TẮT", color = COLOR.GRAY, state = "blur", effect = "blurEffect"},
+    {text = "☀ Tia nắng: BẬT", color = COLOR.GREEN, state = "sunRays", effect = "sunRaysEffect"},
+    {text = "🎨 Màu sắc: TẮT", color = COLOR.GRAY, state = "colorCorrection", effect = "colorCorrEffect"},
+}
 
--- Post effects setup
+-- Setup effects
 local bloomEffect = Lighting:FindFirstChild("HQ_Bloom") or Instance.new("BloomEffect")
 bloomEffect.Name = "HQ_Bloom"
 bloomEffect.Enabled = true
@@ -1605,83 +2327,52 @@ colorCorrEffect.Contrast = 0.15
 colorCorrEffect.Saturation = 0.2
 colorCorrEffect.Parent = Lighting
 
-bloomButton.MouseButton1Click:Connect(function()
-    state.bloom = not state.bloom
-    bloomEffect.Enabled = state.bloom
-    bloomButton.Text = state.bloom and "🌸 Bloom: BẬT" or "🌸 Bloom: TẮT"
-    bloomButton.BackgroundColor3 = state.bloom and COLOR.GREEN or COLOR.GRAY
-end)
+local effectRefs = {
+    bloomEffect = bloomEffect,
+    blurEffect = blurEffect,
+    sunRaysEffect = sunRaysEffect,
+    colorCorrEffect = colorCorrEffect,
+}
 
-blurButton.MouseButton1Click:Connect(function()
-    state.blur = not state.blur
-    blurEffect.Enabled = state.blur
-    blurButton.Text = state.blur and "🌫 Làm mờ: BẬT" or "🌫 Làm mờ: TẮT"
-    blurButton.BackgroundColor3 = state.blur and COLOR.GREEN or COLOR.GRAY
-end)
+for i, data in ipairs(effectButtons) do
+    local btn = create("TextButton", {
+        Size = UDim2.new(0, 130, 0, 22),
+        Position = UDim2.new(0, i%2 == 1 and 8 or 148, 0, gy + (i-1)//2 * 28),
+        Text = data.text,
+        BackgroundColor3 = data.color,
+        BackgroundTransparency = 0.2,
+        TextColor3 = COLOR.WHITE,
+        Font = Enum.Font.GothamBold,
+        TextSize = 10,
+        BorderSizePixel = 0,
+    }, graphicsScroll)
+    addCorner(btn, UDim.new(0, 5))
+    addStroke(btn)
+    
+    btn.MouseButton1Click:Connect(function()
+        state[data.state] = not state[data.state]
+        effectRefs[data.effect].Enabled = state[data.state]
+        btn.Text = state[data.state] and btn.Text:gsub("TẮT", "BẬT") or btn.Text:gsub("BẬT", "TẮT")
+        btn.BackgroundColor3 = state[data.state] and COLOR.GREEN or COLOR.GRAY
+    end)
+end
 
-sunRaysButton.MouseButton1Click:Connect(function()
-    state.sunRays = not state.sunRays
-    sunRaysEffect.Enabled = state.sunRays
-    sunRaysButton.Text = state.sunRays and "☀ Tia nắng: BẬT" or "☀ Tia nắng: TẮT"
-    sunRaysButton.BackgroundColor3 = state.sunRays and COLOR.GREEN or COLOR.GRAY
-end)
-
-colorCorrButton.MouseButton1Click:Connect(function()
-    state.colorCorrection = not state.colorCorrection
-    colorCorrEffect.Enabled = state.colorCorrection
-    colorCorrButton.Text = state.colorCorrection and "🎨 Màu sắc: BẬT" or "🎨 Màu sắc: TẮT"
-    colorCorrButton.BackgroundColor3 = state.colorCorrection and Color3.fromRGB(200, 120, 50) or COLOR.GRAY
-end)
-
--- Brightness
-currentY = currentY + 42
-uiFactory.createLabel("💡 Độ sáng (0.5 - 3)")
-currentY = currentY + 14
-local brightnessInput = uiFactory.createInput("1.2")
-brightnessInput.Size = UDim2.new(0, 55, 0, 22)
-
-local applyBrightnessButton = uiFactory.createButton("✔ Áp dụng", 80, 22, COLOR.BLUE)
-applyBrightnessButton.Position = UDim2.new(0, 70, 0, currentY)
-
-applyBrightnessButton.MouseButton1Click:Connect(function()
-    local n = tonumber(brightnessInput.Text)
-    if n and n >= 0.5 and n <= 3 then
-        tweenLighting({Brightness = n})
-    else
-        brightnessInput.Text = string.format("%.1f", Lighting.Brightness)
-    end
-end)
-
--- Ambient color
-currentY = currentY + 28
-uiFactory.createLabel("🎨 Màu môi trường (R  G  B)")
-currentY = currentY + 14
-local ambientR = uiFactory.createInput("128")
-ambientR.Size = UDim2.new(0, 42, 0, 22)
-ambientR.Position = UDim2.new(0, 8, 0, currentY)
-local ambientG = uiFactory.createInput("128")
-ambientG.Size = UDim2.new(0, 42, 0, 22)
-ambientG.Position = UDim2.new(0, 55, 0, currentY)
-local ambientB = uiFactory.createInput("128")
-ambientB.Size = UDim2.new(0, 42, 0, 22)
-ambientB.Position = UDim2.new(0, 102, 0, currentY)
-
-local applyAmbientButton = uiFactory.createButton("✔ Áp dụng", 80, 22, COLOR.BLUE)
-applyAmbientButton.Position = UDim2.new(0, 150, 0, currentY)
-
-applyAmbientButton.MouseButton1Click:Connect(function()
-    local r = math.clamp(tonumber(ambientR.Text) or 128, 0, 255)
-    local g = math.clamp(tonumber(ambientG.Text) or 128, 0, 255)
-    local b = math.clamp(tonumber(ambientB.Text) or 128, 0, 255)
-    tweenLighting({Ambient = Color3.fromRGB(r, g, b)})
-end)
-
--- FPS Counter
-currentY = currentY + 28
-uiFactory.createLabel("📈 Đếm FPS")
-currentY = currentY + 14
-local fpsButton = uiFactory.createButton("📈 Hiện FPS: TẮT", 160, 22, COLOR.GRAY)
-fpsButton.Position = UDim2.new(0, 10, 0, currentY)
+gy = gy + 60
+addGraphicsLabel("📈 Đếm FPS")
+gy = gy + 14
+local fpsButton = create("TextButton", {
+    Size = UDim2.new(0, 160, 0, 22),
+    Position = UDim2.new(0, 8, 0, gy),
+    Text = "📈 Hiện FPS: TẮT",
+    BackgroundColor3 = COLOR.GRAY,
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, graphicsScroll)
+addCorner(fpsButton, UDim.new(0, 5))
+addStroke(fpsButton)
 
 local fpsLabel = create("TextLabel", {
     Size = UDim2.new(0, 90, 0, 22),
@@ -1726,188 +2417,35 @@ fpsButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- Texture quality
-currentY = currentY + 42
-uiFactory.createLabel("🖼 Chất lượng hình ảnh")
-currentY = currentY + 14
-local texHighButton = uiFactory.createButton("🔵 Cao", 88, 22, Color3.fromRGB(50, 100, 180))
-local texLowButton = uiFactory.createButton("🟢 Thấp", 88, 22, Color3.fromRGB(60, 160, 80))
-local texOffButton = uiFactory.createButton("⚫ Tắt", 88, 22, COLOR.GRAY)
-texHighButton.Position = UDim2.new(0, 8, 0, currentY)
-texLowButton.Position = UDim2.new(0, 102, 0, currentY)
-texOffButton.Position = UDim2.new(0, 196, 0, currentY)
-
-local function setTextures(mode)
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Texture") or obj:IsA("Decal") then
-            obj.Transparency = mode == "Off" and 1 or 0
-        end
-    end
-end
-
-texHighButton.MouseButton1Click:Connect(function()
-    setTextures("High")
-end)
-texLowButton.MouseButton1Click:Connect(function()
-    setTextures("Low")
-end)
-texOffButton.MouseButton1Click:Connect(function()
-    setTextures("Off")
-end)
-
--- Particles and Decals
-currentY = currentY + 32
-uiFactory.createLabel("💨 Hiệu ứng hạt & Hình dán")
-currentY = currentY + 14
-local particleButton = uiFactory.createButton("💨 Hạt: BẬT", 130, 22, COLOR.GREEN)
-local decalButton = uiFactory.createButton("🖼 Hình dán: BẬT", 130, 22, COLOR.GREEN)
-particleButton.Position = UDim2.new(0, 10, 0, currentY)
-decalButton.Position = UDim2.new(0, 148, 0, currentY)
-
-local function setParticles(enabled)
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
-            obj.Enabled = enabled
-        end
-    end
-end
-
-local function setDecals(enabled)
-    for _, obj in ipairs(workspace:GetDescendants()) do
-        if obj:IsA("Decal") then
-            obj.Transparency = enabled and 0 or 1
-        end
-    end
-end
-
-particleButton.MouseButton1Click:Connect(function()
-    state.particles = not state.particles
-    setParticles(state.particles)
-    particleButton.Text = state.particles and "💨 Hạt: BẬT" or "💨 Hạt: TẮT"
-    particleButton.BackgroundColor3 = state.particles and COLOR.GREEN or COLOR.GRAY
-end)
-
-decalButton.MouseButton1Click:Connect(function()
-    state.decals = not state.decals
-    setDecals(state.decals)
-    decalButton.Text = state.decals and "🖼 Hình dán: BẬT" or "🖼 Hình dán: TẮT"
-    decalButton.BackgroundColor3 = state.decals and COLOR.GREEN or COLOR.GRAY
-end)
-
--- Reset graphics
-currentY = currentY + 42
-local resetGraphicsButton = uiFactory.createButton("🔄 Đặt lại đồ họa về mặc định", 200, 22, Color3.fromRGB(150, 60, 60))
-resetGraphicsButton.Position = UDim2.new(0.5, -100, 0, currentY)
+gy = gy + 28
+local resetGraphicsButton = create("TextButton", {
+    Size = UDim2.new(0, 200, 0, 22),
+    Position = UDim2.new(0.5, -100, 0, gy),
+    Text = "🔄 Đặt lại đồ họa",
+    BackgroundColor3 = Color3.fromRGB(150, 60, 60),
+    BackgroundTransparency = 0.2,
+    TextColor3 = COLOR.WHITE,
+    Font = Enum.Font.GothamBold,
+    TextSize = 10,
+    BorderSizePixel = 0,
+}, graphicsScroll)
+addCorner(resetGraphicsButton, UDim.new(0, 5))
+addStroke(resetGraphicsButton)
 
 resetGraphicsButton.MouseButton1Click:Connect(function()
-    applyGraphicsPreset("Ultra")
-    state.bloom = true; bloomEffect.Enabled = true
-    state.blur = false; blurEffect.Enabled = false
-    state.sunRays = true; sunRaysEffect.Enabled = true
-    state.colorCorrection = false; colorCorrEffect.Enabled = false
-    
-    updateLighting(DEFAULT_LIGHTING)
-    setParticles(true); state.particles = true
-    setDecals(true); state.decals = true
-    setTextures("High")
-    brightnessInput.Text = "1.2"
+    local preset = GRAPHICS_PRESETS["Ultra"]
+    pcall(function() settings().Rendering.QualityLevel = preset.level end)
+    Lighting.ShadowSoftness = preset.shadow
+    Lighting.GlobalShadows = preset.shadows
+    Lighting.EnvironmentDiffuseScale = preset.diffuse
+    Lighting.EnvironmentSpecularScale = preset.specular
+    tweenLighting(DEFAULT_LIGHTING)
+    bloomEffect.Enabled = true; blurEffect.Enabled = false
+    sunRaysEffect.Enabled = true; colorCorrEffect.Enabled = false
+    state.shadows = true
 end)
 
--- Script management
-local function rebuildScriptList()
-    for _, child in ipairs(scriptListFrame:GetChildren()) do
-        if child:IsA("Frame") then child:Destroy() end
-    end
-    
-    for i, data in ipairs(scripts) do
-        local row = create("Frame", {
-            Size = UDim2.new(1, 0, 0, 26),
-            BackgroundColor3 = COLOR.BG,
-            BackgroundTransparency = 0.3,
-            BorderSizePixel = 0,
-        }, scriptListFrame)
-        addCorner(row, UDim.new(0, 5))
-        addStroke(row)
-        
-        local runScriptBtn = create("TextButton", {
-            Size = UDim2.new(1, -46, 1, 0),
-            Text = data.name,
-            BackgroundTransparency = 1,
-            TextColor3 = COLOR.DARK,
-            Font = Enum.Font.GothamMedium,
-            TextSize = 11,
-            TextXAlignment = Enum.TextXAlignment.Left,
-        }, row)
-        
-        local indicator = create("TextButton", {
-            Size = UDim2.new(0, 14, 0, 14),
-            Position = UDim2.new(1, -40, 0.5, -7),
-            Text = "",
-            BackgroundColor3 = COLOR.BLUE,
-            BorderSizePixel = 0,
-        }, row)
-        addCorner(indicator, UDim.new(1, 0))
-        
-        local deleteBtn = create("TextButton", {
-            Size = UDim2.new(0, 20, 0, 20),
-            Position = UDim2.new(1, -22, 0.5, -10),
-            Text = "✕",
-            BackgroundColor3 = COLOR.RED,
-            BackgroundTransparency = 0.2,
-            TextColor3 = COLOR.WHITE,
-            Font = Enum.Font.GothamBold,
-            TextSize = 12,
-            BorderSizePixel = 0,
-        }, row)
-        addCorner(deleteBtn, UDim.new(1, 0))
-        
-        local idx = i
-        indicator.MouseButton1Click:Connect(function()
-            if currentScriptIndicator == indicator then cancelExecution() end
-        end)
-        runScriptBtn.MouseButton1Click:Connect(function()
-            nameInput.Text = data.name
-            codeInput.Text = data.code
-            local times = math.clamp(tonumber(repeatInput.Text) or 1, 1, 1000)
-            local delay = math.max(tonumber(delayInput.Text) or 0, 0)
-            if unitButton.Text == "Phút" then delay = delay * 60 end
-            runCode(data.code, data.name, indicator, times, delay)
-            statusLabel.Text = "⏳ Đang thực thi..."
-        end)
-        deleteBtn.MouseButton1Click:Connect(function()
-            if currentScriptIndicator == indicator then cancelExecution() end
-            table.remove(scripts, idx)
-            rebuildScriptList()
-        end)
-    end
-end
-
-saveButton.MouseButton1Click:Connect(function()
-    local name = nameInput.Text
-    local code = codeInput.Text
-    if #code == 0 then
-        statusLabel.Text = "⚠️ Vui lòng nhập code!"
-        return
-    end
-    if #name == 0 then name = "Script " .. (#scripts + 1) end
-    
-    local baseName = name
-    local counter = 1
-    while true do
-        local exists = false
-        for _, s in ipairs(scripts) do
-            if s.name == name then exists = true; break end
-        end
-        if not exists then break end
-        counter += 1
-        name = baseName .. " (" .. counter .. ")"
-    end
-    
-    table.insert(scripts, {name = name, code = code})
-    rebuildScriptList()
-    statusLabel.Text = "✅ Đã lưu: " .. name
-    scrollFrame.CanvasPosition = Vector2.new(0, scrollFrame.CanvasSize.Y.Offset)
-end)
+graphicsScroll.CanvasSize = UDim2.new(0, 0, 0, gy + 30)
 
 -- ==================== TOGGLE MENU ====================
 closeButton.MouseButton1Click:Connect(function()
@@ -1930,12 +2468,9 @@ player.CharacterAdded:Connect(function(char)
     local hum = getHumanoid()
     if hum then updateCharacterProperties() end
     
-    -- Reset fly states
     if state.flying then stopFly(); state.flying = false end
     if state.carpet then stopCarpet(); state.carpet = false end
     if state.flyRun then stopFlyRun(); state.flyRun = false end
-    
-    -- Reset camera states
     if state.freeCam then
         state.freeCam = false
         disableFreeCamera()
@@ -1944,11 +2479,8 @@ player.CharacterAdded:Connect(function(char)
         state.customCamera = false
         disableCustomCamera()
     end
-    
-    -- Re-enable NoClip if active
     if state.noClip then enableNoClip() end
     
-    -- Reset UI buttons
     flyButton.Text = "🕊️ Bay: TẮT"
     flyButton.BackgroundColor3 = COLOR.GRAY
     carpetButton.Text = "🪩 Thảm kính: TẮT"
@@ -1961,10 +2493,5 @@ player.CharacterAdded:Connect(function(char)
 end)
 
 -- ==================== INITIALIZATION ====================
-local function updateCanvas()
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(currentY + #scripts * 30 + 60, 700))
-end
-
 updateCharacterProperties()
-updateCanvas()
 if state.noClip then enableNoClip() end
