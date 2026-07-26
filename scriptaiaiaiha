@@ -1,6 +1,6 @@
 -- ============================================
--- EXECUTOR MENU - Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
--- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
+-- EXECUTOR MENU - Phiên bản Tích Hợp Save/Load Config Toàn Bộ Menu
+-- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Save Config)
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -435,7 +435,7 @@ UserInputService.InputBegan:Connect(function(i, gp)
     end
 end)
 
--- ==================== NOCLIP (FIXED: CHẠY TRÊN STEPPED MƯỢT 100%) ====================
+-- ==================== NOCLIP ====================
 local ncConn = nil
 
 local function EnNC()
@@ -445,19 +445,14 @@ local function EnNC()
         local c = GetChar()
         if c then
             for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then 
-                    p.CanCollide = false 
-                end
+                if p:IsA("BasePart") then p.CanCollide = false end
             end
         end
     end)
 end
 
 local function DisNC()
-    if ncConn then 
-        ncConn:Disconnect() 
-        ncConn = nil 
-    end
+    if ncConn then ncConn:Disconnect(); ncConn = nil end
     local c = GetChar()
     if c then
         for _, p in ipairs(c:GetDescendants()) do
@@ -532,7 +527,6 @@ end
 local function CreateCarpet(y)
     local r = Root()
     if not r then return end
-    
     if cp then cp:Destroy() end
 
     local w = S.carpetWidth or 1.5
@@ -567,7 +561,6 @@ local function CreateCarpet(y)
         
         cp.CFrame = CFrame.new(curR.Position.X, S.carpetY, curR.Position.Z)
 
-        -- FIX NOCLIP KHÔNG BỊ RƠI XUYÊN QUA THẢM KÍNH
         if S.noClip then
             local standingY = S.carpetY + (curT / 2) + 3.0
             if curR.Position.Y < standingY then
@@ -1230,6 +1223,16 @@ local scriptList = New("Frame", {
 }, codeTab)
 New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,3)}, scriptList)
 
+-- CÁC BIẾN CONTROL GIAO DIỆN SẼ ĐƯỢC LOAD
+local flySpdIn, carpWIn, carpTIn, carpLIn, wsIn, jpIn, fovIn, offXIn, offYIn, fcSpdIn, brightIn
+local flyBtn, carpBtn, flyRunBtn, noclipBtn, infJumpBtn, clickTpBtn, espBtn, antiAfkBtn, fogBtn, fullBrightBtn, ccBtn, fcBtn
+
+-- FRAME CẤU HÌNH TẠI CUỐI TAB CODE
+local configFrame = New("Frame", {
+    Size=UDim2.new(1,-16,0,110), Position=UDim2.new(0,8,0,y+40),
+    BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
+}, codeTab)
+
 RebuildScripts = function()
     for _,c in ipairs(scriptList:GetChildren()) do
         if not c:IsA("UIListLayout") then c:Destroy() end
@@ -1321,11 +1324,13 @@ RebuildScripts = function()
 
     local listH = #disp>0 and #disp*49 or 33
     scriptList.Size=UDim2.new(1,-16,0,listH)
-    codeTab.CanvasSize=UDim2.new(0,0,0,y+listH+20)
+    
+    -- Đặt vị trí cho Phần Cấu Hình nằm ngay dưới ScriptList
+    configFrame.Position = UDim2.new(0,0,0,y+listH+10)
+    codeTab.CanvasSize=UDim2.new(0,0,0,y+listH+130)
 end
 
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
-RebuildScripts()
 
 -- ==================== TAB 2: DI CHUYỂN ====================
 local my = 8
@@ -1333,7 +1338,7 @@ local my = 8
 Label(moveTab, "⚡ Tốc độ bay", my)
 my = my + 14
 
-local flySpdIn = New("TextBox", {
+flySpdIn = New("TextBox", {
     Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="50",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1341,13 +1346,13 @@ local flySpdIn = New("TextBox", {
 }, moveTab)
 Corner(flySpdIn,UDim.new(0,5)); Stroke(flySpdIn)
 
-local flyBtn = Button(moveTab, "🕊️ Bay: TẮT", 72, my, 130, 24, C.GRAY)
+flyBtn = Button(moveTab, "🕊️ Bay: TẮT", 72, my, 130, 24, C.GRAY)
 my = my + 30
 
 Label(moveTab, "🪩 Thảm kính", my)
 my = my + 14
-local carpBtn = Button(moveTab, "🪩 Thảm kính: TẮT", 8, my, 130, 24, C.GRAY)
-local flyRunBtn = Button(moveTab, "🕹️ Bay chạy bộ: TẮT", 148, my, 130, 24, C.GRAY)
+carpBtn = Button(moveTab, "🪩 Thảm kính: TẮT", 8, my, 130, 24, C.GRAY)
+flyRunBtn = Button(moveTab, "🕹️ Bay chạy bộ: TẮT", 148, my, 130, 24, C.GRAY)
 my = my + 30
 
 -- ĐIỀU CHỈNH 3 CHIỀU THẢM
@@ -1360,7 +1365,7 @@ New("TextLabel", {
     Font=Enum.Font.GothamBold, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8
 }, moveTab)
 
-local carpWIn = New("TextBox", {
+carpWIn = New("TextBox", {
     Size=UDim2.new(0,42,0,24), Position=UDim2.new(0,48,0,my), Text=tostring(S.carpetWidth),
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1374,7 +1379,7 @@ New("TextLabel", {
     Font=Enum.Font.GothamBold, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8
 }, moveTab)
 
-local carpTIn = New("TextBox", {
+carpTIn = New("TextBox", {
     Size=UDim2.new(0,42,0,24), Position=UDim2.new(0,130,0,my), Text=tostring(S.carpetThickness),
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1388,7 +1393,7 @@ New("TextLabel", {
     Font=Enum.Font.GothamBold, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8
 }, moveTab)
 
-local carpLIn = New("TextBox", {
+carpLIn = New("TextBox", {
     Size=UDim2.new(0,42,0,24), Position=UDim2.new(0,212,0,my), Text=tostring(S.carpetLength),
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1400,11 +1405,11 @@ my = my + 32
 
 Label(moveTab, "🚪 Bổ trợ di chuyển đặc biệt", my)
 my = my + 14
-local noclipBtn = Button(moveTab, "🚶 NoClip: TẮT", 8, my, 130, 24, C.GRAY)
-local infJumpBtn = Button(moveTab, "🦘 Nhảy Vô Hạn: TẮT", 148, my, 130, 24, C.GRAY)
+noclipBtn = Button(moveTab, "🚶 NoClip: TẮT", 8, my, 130, 24, C.GRAY)
+infJumpBtn = Button(moveTab, "🦘 Nhảy Vô Hạn: TẮT", 148, my, 130, 24, C.GRAY)
 my = my + 30
 
-local clickTpBtn = Button(moveTab, "🎯 Click TP (Ctrl+Click): TẮT", 8, my, 210, 24, C.GRAY)
+clickTpBtn = Button(moveTab, "🎯 Click TP (Ctrl+Click): TẮT", 8, my, 210, 24, C.GRAY)
 my = my + 32
 
 Label(moveTab, "━━━━━━━━━━━━━━━━━━━━━━", my)
@@ -1413,7 +1418,7 @@ my = my + 16
 Label(moveTab, "🏃 Tốc độ chạy (WalkSpeed)", my)
 my = my + 14
 
-local wsIn = New("TextBox", {
+wsIn = New("TextBox", {
     Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="16",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1430,7 +1435,7 @@ my = my + 30
 Label(moveTab, "📦 Lực nhảy (JumpPower)", my)
 my = my + 14
 
-local jpIn = New("TextBox", {
+jpIn = New("TextBox", {
     Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="50",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1495,7 +1500,7 @@ local py = 8
 Label(playerTab, "👁️ Quan sát & Nhìn xuyên tường", py)
 py = py + 14
 
-local espBtn = Button(playerTab, "👁️ ESP Người Chơi: TẮT", 8, py, 200, 24, C.GRAY)
+espBtn = Button(playerTab, "👁️ ESP Người Chơi: TẮT", 8, py, 200, 24, C.GRAY)
 espBtn.Activated:Connect(function()
     S.esp = not S.esp
     espBtn.Text = S.esp and "👁️ ESP Người Chơi: BẬT" or "👁️ ESP Người Chơi: TẮT"
@@ -1507,7 +1512,7 @@ py = py + 30
 Label(playerTab, "🛡️ Treo máy & Hệ thống", py)
 py = py + 14
 
-local antiAfkBtn = Button(playerTab, "🛡️ Anti-AFK (Treo máy): BẬT", 8, py, 200, 24, C.GREEN)
+antiAfkBtn = Button(playerTab, "🛡️ Anti-AFK (Treo máy): BẬT", 8, py, 200, 24, C.GREEN)
 antiAfkBtn.Activated:Connect(function()
     S.antiAfk = not S.antiAfk
     antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
@@ -1560,8 +1565,8 @@ local darkBtn = Button(envTab, "🌙 Trời tối", 8, ey, 130, 24, Color3.fromR
 local brightBtn = Button(envTab, "☀️ Trời sáng", 148, ey, 130, 24, C.YELLOW)
 ey = ey + 30
 
-local fogBtn = Button(envTab, "🌫️ Sương mù: TẮT", 8, ey, 130, 24, C.GRAY)
-local fullBrightBtn = Button(envTab, "💡 Sáng Đêm: TẮT", 148, ey, 130, 24, C.GRAY)
+fogBtn = Button(envTab, "🌫️ Sương mù: TẮT", 8, ey, 130, 24, C.GRAY)
+fullBrightBtn = Button(envTab, "💡 Sáng Đêm: TẮT", 148, ey, 130, 24, C.GRAY)
 ey = ey + 30
 
 local resetEnvBtn = Button(envTab, "🔄 Đặt lại mặc định", 8, ey, 130, 24, C.GRAY)
@@ -1570,7 +1575,7 @@ ey = ey + 36
 Label(envTab, "💡 Độ sáng (0.5 - 3.0)", ey)
 ey = ey + 14
 
-local brightIn = New("TextBox", {
+brightIn = New("TextBox", {
     Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,ey), Text="1.2",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1642,27 +1647,27 @@ local cy = 8
 
 Label(camTab, "📷 Camera Tùy Chỉnh (Bám nhân vật)", cy)
 cy = cy + 14
-local ccBtn = Button(camTab, "📷 Camera tùy chỉnh: TẮT", 8, cy, 200, 24, C.GRAY)
+ccBtn = Button(camTab, "📷 Camera tùy chỉnh: TẮT", 8, cy, 200, 24, C.GRAY)
 cy = cy + 30
 
 Label(camTab, "Góc nhìn FOV (30-120)", cy)
 cy = cy + 14
 
-local fovIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="70", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
+fovIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="70", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
 Corner(fovIn,UDim.new(0,5)); Stroke(fovIn)
 cy = cy + 30
 
 Label(camTab, "Độ lệch ngang (Offset X)", cy)
 cy = cy + 14
 
-local offXIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="0", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
+offXIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="0", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
 Corner(offXIn,UDim.new(0,5)); Stroke(offXIn)
 cy = cy + 30
 
 Label(camTab, "Độ lệch dọc (Offset Y)", cy)
 cy = cy + 14
 
-local offYIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="0", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
+offYIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="0", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
 Corner(offYIn,UDim.new(0,5)); Stroke(offYIn)
 cy = cy + 34
 
@@ -1671,13 +1676,13 @@ cy = cy + 16
 
 Label(camTab, "🎥 Camera Tự Do (Xuyên tường)", cy)
 cy = cy + 14
-local fcBtn = Button(camTab, "🎥 Camera tự do: TẮT", 8, cy, 200, 24, C.GRAY)
+fcBtn = Button(camTab, "🎥 Camera tự do: TẮT", 8, cy, 200, 24, C.GRAY)
 cy = cy + 30
 
 Label(camTab, "⚡ Tốc độ di chuyển camera", cy)
 cy = cy + 14
 
-local fcSpdIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="30", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
+fcSpdIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="30", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
 Corner(fcSpdIn,UDim.new(0,5)); Stroke(fcSpdIn)
 cy = cy + 32
 
@@ -1909,6 +1914,128 @@ end)
 
 gfxTab.CanvasSize=UDim2.new(0,0,0,gy+40)
 
+-- ==================== CẤU HÌNH HỆ THỐNG (SAVE / LOAD CONFIG) TẠI CUỐI TAB CODE ====================
+Label(configFrame, "━━━━━━━━━━━━━━━━━━━━━━", 0)
+Label(configFrame, "⚙️ Quản Lý Cấu Hình Toàn Bộ Menu", 16)
+
+local cfgSaveBtn = Button(configFrame, "💾 Lưu Cấu Hình", 8, 34, 110, 24, C.BLUE)
+local cfgLoadBtn = Button(configFrame, "📂 Tải Cấu Hình", 124, 34, 110, 24, C.GREEN)
+local cfgResetBtn = Button(configFrame, "🔄 Đặt Lại Gốc", 240, 34, 90, 24, C.RED)
+
+local cfgStatusLbl = Label(configFrame, "", 64)
+cfgStatusLbl.TextColor3 = C.YELLOW
+cfgStatusLbl.TextSize = 9
+
+local function ApplyAllUIFromState()
+    -- Cập nhật TextBoxes
+    flySpdIn.Text = tostring(S.flySpeed)
+    carpWIn.Text = tostring(S.carpetWidth)
+    carpTIn.Text = tostring(S.carpetThickness)
+    carpLIn.Text = tostring(S.carpetLength)
+    wsIn.Text = tostring(S.walkSpeed)
+    jpIn.Text = tostring(S.jumpPower)
+    fovIn.Text = tostring(S.fov)
+    offXIn.Text = tostring(S.camOffX)
+    offYIn.Text = tostring(S.camOffY)
+    fcSpdIn.Text = tostring(S.freeCamSpeed)
+    
+    -- Cập nhật Nút Toggles
+    noclipBtn.Text = S.noClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
+    noclipBtn.BackgroundColor3 = S.noClip and Color3.fromRGB(0,180,100) or C.GRAY
+    if S.noClip then EnNC() else DisNC() end
+
+    infJumpBtn.Text = S.infJump and "🦘 Nhảy Vô Hạn: BẬT" or "🦘 Nhảy Vô Hạn: TẮT"
+    infJumpBtn.BackgroundColor3 = S.infJump and C.GREEN or C.GRAY
+
+    clickTpBtn.Text = S.clickTp and "🎯 Click TP (Ctrl+Click): BẬT" or "🎯 Click TP (Ctrl+Click): TẮT"
+    clickTpBtn.BackgroundColor3 = S.clickTp and C.GREEN or C.GRAY
+
+    espBtn.Text = S.esp and "👁️ ESP Người Chơi: BẬT" or "👁️ ESP Người Chơi: TẮT"
+    espBtn.BackgroundColor3 = S.esp and C.GREEN or C.GRAY
+    UpdateESP()
+
+    antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
+    antiAfkBtn.BackgroundColor3 = S.antiAfk and C.GREEN or C.GRAY
+
+    fogBtn.Text = S.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
+    fogBtn.BackgroundColor3 = S.fog and Color3.fromRGB(70,70,70) or C.GRAY
+
+    fullBrightBtn.Text = S.fullBright and "💡 Sáng Đêm: BẬT" or "💡 Sáng Đêm: TẮT"
+    fullBrightBtn.BackgroundColor3 = S.fullBright and C.GREEN or C.GRAY
+
+    UpdChar()
+    RebuildScripts()
+end
+
+local configFile = "BananaCatHub_Config.json"
+
+local function SaveConfig()
+    local data = {
+        State = S,
+        Scripts = scripts
+    }
+    local success, json = pcall(function() return HttpService:JSONEncode(data) end)
+    if success and json then
+        if writefile then
+            pcall(function() writefile(configFile, json) end)
+            cfgStatusLbl.Text = "✅ Đã lưu cấu hình vào máy!"
+        else
+            cfgStatusLbl.Text = "⚠️ Executor không hỗ trợ writefile!"
+        end
+    else
+        cfgStatusLbl.Text = "❌ Lỗi mã hóa dữ liệu!"
+    end
+end
+
+local function LoadConfig()
+    if isfile and isfile(configFile) and readfile then
+        local success, content = pcall(function() return readfile(configFile) end)
+        if success and content then
+            local pSuccess, data = pcall(function() return HttpService:JSONDecode(content) end)
+            if pSuccess and data then
+                if data.State then
+                    for k, v in pairs(data.State) do
+                        S[k] = v
+                    end
+                end
+                if data.Scripts then
+                    scripts = data.Scripts
+                end
+                ApplyAllUIFromState()
+                cfgStatusLbl.Text = "✅ Đã tải cấu hình thành công!"
+                return
+            end
+        end
+    end
+    cfgStatusLbl.Text = "📭 Chưa có file cấu hình được lưu!"
+end
+
+cfgSaveBtn.Activated:Connect(SaveConfig)
+cfgLoadBtn.Activated:Connect(LoadConfig)
+cfgResetBtn.Activated:Connect(function()
+    S.walkSpeed = 16
+    S.jumpPower = 50
+    S.flySpeed = 50
+    S.carpetWidth = 1.5
+    S.carpetThickness = 0.2
+    S.carpetLength = 1.5
+    S.noClip = false
+    S.infJump = false
+    S.clickTp = false
+    S.esp = false
+    S.fov = 70
+    ApplyAllUIFromState()
+    cfgStatusLbl.Text = "🔄 Đã reset cấu hình về mặc định!"
+end)
+
+-- Tự động Load cấu hình khi vừa bật Menu
+task.defer(function()
+    RebuildScripts()
+    if isfile and isfile(configFile) then
+        LoadConfig()
+    end
+end)
+
 -- ==================== TOGGLE MENU LOGIC ====================
 local function ToggleMainFrame()
     if S.flyRun then
@@ -1952,4 +2079,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Hub đã sửa triệt để lỗi NoClip xuyên thảm và chập chờn!")
+print("✅ Banana Cat Hub đã tích hợp thành công Hệ thống Save/Load Config!")
