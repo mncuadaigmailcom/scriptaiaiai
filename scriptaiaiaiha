@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Tiếng Việt (Đã sửa lỗi nhập TextBox)
+-- EXECUTOR MENU - Phiên bản Tiếng Việt
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -72,13 +72,14 @@ local function TweenL(p)
 end
 
 -- ==================== SCREEN GUI ====================
-local gui = New("ScreenGui", {Name="ExMenu", IgnoreGuiInset=true, ResetOnSpawn=false}, playerGui)
+local gui = New("ScreenGui", {Name="ExMenu", IgnoreGuiInset=true, ResetOnSpawn=false, ZIndexBehavior=Enum.ZIndexBehavior.Sibling}, playerGui)
 
 -- Toggle Button
 local togBtn = New("TextButton", {
     Size=UDim2.new(0,42,0,42), Position=UDim2.new(1,-52,1,-52), Text="⚙",
-    BackgroundColor3=C.WHITE, BackgroundTransparency=0.3,
+    BackgroundColor3=C.WHITE, BackgroundTransparency=0.1,
     TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=20, BorderSizePixel=0,
+    ZIndex = 100,
 }, gui)
 Corner(togBtn, UDim.new(1,0))
 Stroke(togBtn)
@@ -86,8 +87,9 @@ Stroke(togBtn)
 -- Main Frame
 local main = New("Frame", {
     Size=UDim2.new(0,420,0,500), Position=UDim2.new(0.5,-210,0.5,-250),
-    BackgroundColor3=C.WHITE, BackgroundTransparency=0.5, BorderSizePixel=0,
+    BackgroundColor3=C.WHITE, BackgroundTransparency=0.1, BorderSizePixel=0,
     Visible=false, ClipsDescendants=true,
+    ZIndex = 50,
 }, gui)
 Corner(main, UDim.new(0,12))
 Stroke(main, nil, 2.5)
@@ -95,7 +97,7 @@ Stroke(main, nil, 2.5)
 -- Title Bar
 local titleBar = New("Frame", {
     Size=UDim2.new(1,0,0,28), BackgroundColor3=Color3.fromRGB(240,240,240),
-    BackgroundTransparency=0.4, BorderSizePixel=0,
+    BackgroundTransparency=0.1, BorderSizePixel=0,
 }, main)
 Corner(titleBar, UDim.new(0,12))
 
@@ -120,12 +122,14 @@ titleBar.InputBegan:Connect(function(i)
         startPos=main.Position
     end
 end)
+
 UserInputService.InputChanged:Connect(function(i)
     if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
         local d=i.Position-dragStart
         main.Position=UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X, startPos.Y.Scale, startPos.Y.Offset+d.Y)
     end
 end)
+
 UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
         dragging=false
@@ -148,39 +152,37 @@ resizeBtn.InputBegan:Connect(function(i)
         resizeStartPos=i.Position
     end
 end)
+
 UserInputService.InputChanged:Connect(function(i)
     if resizing and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
         local d=i.Position-resizeStartPos
         main.Size=UDim2.new(0, math.max(340, sizeStart.X.Offset+d.X), 0, math.max(300, sizeStart.Y.Offset+d.Y))
     end
 end)
+
 UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
         resizing=false
     end
 end)
 
--- ==================== TAB SYSTEM (DỌC BÊN PHẢI) ====================
+-- ==================== TAB SYSTEM ====================
 local tabs = {}
 local tabContent = {}
 
--- Tạo tab bar dọc bên phải
 local tabBar = New("Frame", {
     Size=UDim2.new(0,80,1,-28), Position=UDim2.new(1,-80,0,28),
-    BackgroundColor3=Color3.fromRGB(230,230,230), BackgroundTransparency=0.3, BorderSizePixel=0,
+    BackgroundColor3=Color3.fromRGB(230,230,230), BackgroundTransparency=0.1, BorderSizePixel=0,
 }, main)
 
--- Thêm UIListLayout dọc cho tab bar
 New("UIListLayout", {
     FillDirection=Enum.FillDirection.Vertical,
     SortOrder=Enum.SortOrder.LayoutOrder,
     Padding=UDim.new(0,4),
 }, tabBar)
 
--- Padding trên cho tab bar
 New("UIPadding", {PaddingTop=UDim.new(0,8)}, tabBar)
 
--- Content area - chiếm phần còn lại bên trái
 local contentArea = New("Frame", {
     Size=UDim2.new(1,-80,1,-28), Position=UDim2.new(0,0,0,28),
     BackgroundTransparency=1, BorderSizePixel=0,
@@ -191,7 +193,7 @@ local activeTab = nil
 local function AddTab(name, icon, order)
     local btn = New("TextButton", {
         Size=UDim2.new(1,-8,0,36), Position=UDim2.new(0,4,0,0),
-        Text=icon.." "..name, BackgroundColor3=C.BG, BackgroundTransparency=0.3,
+        Text=icon.." "..name, BackgroundColor3=C.BG, BackgroundTransparency=0.1,
         TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, LayoutOrder=order,
         TextXAlignment=Enum.TextXAlignment.Left,
     }, tabBar)
@@ -202,23 +204,21 @@ local function AddTab(name, icon, order)
         BackgroundTransparency=1, BorderSizePixel=0,
         ScrollBarThickness=5, ScrollBarImageColor3=Color3.fromRGB(80,80,80),
         ClipsDescendants=true, CanvasSize=UDim2.new(0,0,0,0), Visible=false,
-        -- QUAN TRỌNG: Thêm các thuộc tính này để cho phép nhập TextBox
         Active = true,
         Selectable = false,
         ScrollingDirection = Enum.ScrollingDirection.Y,
         ZIndex = 1,
     }, contentArea)
     
-    -- === THÊM MỚI: Đảm bảo TextBox con có thể nhận input ===
+    -- Fix TextBox input trong ScrollingFrame
     sf.ChildAdded:Connect(function(child)
-        if child:IsA("TextBox") or child:IsA("TextButton") then
+        if child:IsA("GuiObject") then
             child.ZIndex = 5
-            child.Active = true
             if child:IsA("TextBox") then
+                child.Active = true
                 child.Selectable = true
             end
         end
-        -- Đệ quy cho các phần tử con
         for _, descendant in ipairs(child:GetDescendants()) do
             if descendant:IsA("TextBox") then
                 descendant.ZIndex = 5
@@ -227,12 +227,11 @@ local function AddTab(name, icon, order)
             end
         end
     end)
-    -- === KẾT THÚC THÊM MỚI ===
     
     btn.MouseButton1Click:Connect(function()
         if activeTab==sf then return end
         for _, t in ipairs(tabContent) do t.Visible=false end
-        for _, b in ipairs(tabs) do b.BackgroundColor3=C.BG; b.BackgroundTransparency=0.3 end
+        for _, b in ipairs(tabs) do b.BackgroundColor3=C.BG; b.BackgroundTransparency=0.1 end
         sf.Visible=true
         btn.BackgroundColor3=C.BLUE
         btn.BackgroundTransparency=0.2
@@ -252,10 +251,14 @@ local camTab = AddTab("Camera", "📷", 4)
 local gfxTab = AddTab("Đồ Họa", "🎨", 5)
 
 -- Activate first tab
-tabs[1].BackgroundColor3=C.BLUE
-tabs[1].BackgroundTransparency=0.2
-tabContent[1].Visible=true
-activeTab=tabContent[1]
+if tabs[1] then
+    tabs[1].BackgroundColor3=C.BLUE
+    tabs[1].BackgroundTransparency=0.2
+end
+if tabContent[1] then
+    tabContent[1].Visible=true
+    activeTab=tabContent[1]
+end
 
 -- ==================== STATE ====================
 local S = {
@@ -321,7 +324,7 @@ local mobile = New("Frame", {
 local function MobBtn(t, p)
     local b = New("TextButton", {
         Size=UDim2.new(0,38,0,38), Position=p, Text=t,
-        BackgroundColor3=C.WHITE, BackgroundTransparency=0.3,
+        BackgroundColor3=C.WHITE, BackgroundTransparency=0.1,
         TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=18, BorderSizePixel=0,
     }, mobile)
     Corner(b, UDim.new(1,0))
@@ -459,7 +462,7 @@ local oLay = New("Frame", {
 local function OBtn(t,y,s,c)
     local b = New("TextButton", {
         Size=UDim2.new(0,s,0,s), Position=UDim2.new(0.5,-s/2,0,y), Text=t,
-        BackgroundColor3=c or C.BLUE, BackgroundTransparency=0.3,
+        BackgroundColor3=c or C.BLUE, BackgroundTransparency=0.1,
         TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=20, BorderSizePixel=0,
     }, oLay)
     Corner(b, UDim.new(1,0))
@@ -473,7 +476,7 @@ local movDBtn = OBtn("⬇",120,50,Color3.fromRGB(150,0,0))
 
 local clsOBtn = New("TextButton", {
     Size=UDim2.new(0,34,0,34), Position=UDim2.new(1,-44,0,10), Text="✕",
-    BackgroundColor3=C.RED, BackgroundTransparency=0.3,
+    BackgroundColor3=C.RED, BackgroundTransparency=0.1,
     TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=18, BorderSizePixel=0,
 }, oLay)
 Corner(clsOBtn,UDim.new(1,0))
@@ -716,11 +719,10 @@ local function Input(parent, text, y, w, h, ml)
     local inp = New("TextBox", {
         Size=UDim2.new(0,w or 1,-16,0,h or 22), Position=UDim2.new(0,8,0,y or 0),
         Text=text or "", PlaceholderColor3=Color3.fromRGB(160,160,160),
-        BackgroundColor3=C.BG, BackgroundTransparency=0.3,
+        BackgroundColor3=C.BG, BackgroundTransparency=0.1,
         TextColor3=Color3.fromRGB(30,30,30), Font=Enum.Font.GothamMedium, TextSize=12,
         BorderSizePixel=0, ClearTextOnFocus=false,
-        -- QUAN TRỌNG: Đảm bảo TextBox có thể nhận input
-        ZIndex = 5,
+        ZIndex = 10,
         Active = true,
         Selectable = true,
     }, parent)
@@ -731,26 +733,22 @@ local function Input(parent, text, y, w, h, ml)
         inp.TextYAlignment=Enum.TextYAlignment.Top
     end
     
-    -- === THÊM MỚI: Xử lý focus cho TextBox ===
+    -- Fix focus
     inp.MouseButton1Click:Connect(function()
         inp:CaptureFocus()
     end)
-    
     inp.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or 
            input.UserInputType == Enum.UserInputType.Touch then
             inp:CaptureFocus()
         end
     end)
-    
     inp.Focused:Connect(function()
         inp.BackgroundColor3 = Color3.fromRGB(255, 255, 240)
     end)
-    
     inp.FocusLost:Connect(function(enterPressed)
         inp.BackgroundColor3 = C.BG
     end)
-    -- === KẾT THÚC THÊM MỚI ===
     
     Corner(inp, UDim.new(0,5))
     Stroke(inp)
@@ -787,7 +785,7 @@ local quickScripts = {
 for _, s in ipairs(quickScripts) do
     local btn = New("TextButton", {
         Size=UDim2.new(1,-16,0,28), Position=UDim2.new(0,8,0,y),
-        Text="", BackgroundColor3=s.cl, BackgroundTransparency=0.3, BorderSizePixel=0,
+        Text="", BackgroundColor3=s.cl, BackgroundTransparency=0.1, BorderSizePixel=0,
         ZIndex = 2,
     }, codeTab)
     Corner(btn, UDim.new(0,5))
@@ -830,15 +828,15 @@ Label(codeTab, "🔁 Cài đặt lặp", y)
 y = y + 14
 Label(codeTab, "Số lần lặp:", y)
 Label(codeTab, "Thời gian chờ:", y+24)
-local repIn = Input(codeTab, "1", y, 0.4, 50)
+local repIn = Input(codeTab, "1", y, 0.4, 22)
 repIn.Position=UDim2.new(0,8,0,y)
-local delIn = Input(codeTab, "0", y+24, 0.4, 50)
+local delIn = Input(codeTab, "0", y+24, 0.4, 22)
 delIn.Position=UDim2.new(0,8,0,y+24)
 
 -- Unit dropdown
 local unitBtn = New("TextButton", {
     Size=UDim2.new(0,55,0,22), Position=UDim2.new(0,75,0,y+24),
-    Text="Giây", BackgroundColor3=C.BG, BackgroundTransparency=0.3,
+    Text="Giây", BackgroundColor3=C.BG, BackgroundTransparency=0.1,
     TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0,
     ZIndex = 2,
 }, codeTab)
@@ -965,7 +963,7 @@ end)
 y = y + 20
 Label(codeTab, "━━━━━━━━━━━━━━━━━━━━━━", y)
 y = y + 16
-Label(codeTab, "💾 Script Đã Lưu (nhấn tên để chạy, ✏ để sửa)", y)
+Label(codeTab, "💾 Script Đã Lưu (nhấn ▶ để chạy, ✏ để sửa)", y)
 y = y + 16
 
 -- Search
@@ -1012,7 +1010,7 @@ function RebuildScripts()
     for i,d in ipairs(disp) do
         local row = New("Frame", {
             Size=UDim2.new(1,0,0,44),
-            BackgroundColor3=C.BG, BackgroundTransparency=0.3,
+            BackgroundColor3=C.BG, BackgroundTransparency=0.1,
             BorderSizePixel=0,
         }, scriptList)
         Corner(row,UDim.new(0,5))
@@ -1086,8 +1084,8 @@ function RebuildScripts()
             RebuildScripts()
         end)
         
-        rn.MouseEnter:Connect(function() Tween(row,{BackgroundTransparency=0.1},0.2) end)
-        rn.MouseLeave:Connect(function() Tween(row,{BackgroundTransparency=0.3},0.2) end)
+        rn.MouseEnter:Connect(function() Tween(row,{BackgroundTransparency=0.05},0.2) end)
+        rn.MouseLeave:Connect(function() Tween(row,{BackgroundTransparency=0.1},0.2) end)
     end
     
     codeTab.CanvasSize=UDim2.new(0,0,0,y+#disp*50+40)
@@ -1199,11 +1197,11 @@ ey = ey + 28
 
 Label(envTab, "🎨 Màu môi trường (R  G  B)", ey)
 ey = ey + 14
-local aR = Input(envTab, "128", ey, 0.4, 42)
+local aR = Input(envTab, "128", ey, 0.4, 22)
 aR.Position=UDim2.new(0,8,0,ey)
-local aG = Input(envTab, "128", ey, 0.4, 42)
+local aG = Input(envTab, "128", ey, 0.4, 22)
 aG.Position=UDim2.new(0,55,0,ey)
-local aB = Input(envTab, "128", ey, 0.4, 42)
+local aB = Input(envTab, "128", ey, 0.4, 22)
 aB.Position=UDim2.new(0,102,0,ey)
 local applyAmbBtn = Button(envTab, "✔ Áp dụng", 155, ey, 80, 24, C.BLUE)
 
