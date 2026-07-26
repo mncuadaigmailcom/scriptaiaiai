@@ -1,6 +1,6 @@
 -- ============================================
 -- EXECUTOR MENU - Phiên bản Tiếng Việt Full Tính Năng
--- (Đã thêm: Chỉnh kích thước 4 góc & Khôi phục tính năng khi hồi sinh)
+-- (Đã sửa nút Kéo Chỉnh Kích Thước 4 Góc To & Nổi Bật 100%)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -126,7 +126,7 @@ Corner(titleBar, UDim.new(0,12))
 New("TextLabel", {
     Size=UDim2.new(1,-40,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="⚡ Executor Pro v2.5",
+    Text="⚡ Executor Pro v2.6",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -168,7 +168,7 @@ UserInputService.InputEnded:Connect(function(i)
     end
 end)
 
--- ===== RESIZE TẠI 4 GÓC (4-CORNER RESIZING) =====
+-- ===== RESIZE TẠI 4 GÓC (4-CORNER RESIZING - RÕ RÀNG NỔI BẬT) =====
 local minW, minH = 340, 280
 
 local function SetupResizeHandle(btn, cornerType)
@@ -219,16 +219,34 @@ local function SetupResizeHandle(btn, cornerType)
     end)
 end
 
--- Tạo 4 nút kéo ở 4 góc
-local handleTL = New("TextButton", {Size=UDim2.new(0,14,0,14), Position=UDim2.new(0,2,0,2), Text="↖", BackgroundColor3=Color3.fromRGB(200,200,200), BackgroundTransparency=0.5, TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=15}, main)
-local handleTR = New("TextButton", {Size=UDim2.new(0,14,0,14), Position=UDim2.new(1,-16,0,2), Text="↗", BackgroundColor3=Color3.fromRGB(200,200,200), BackgroundTransparency=0.5, TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=15}, main)
-local handleBL = New("TextButton", {Size=UDim2.new(0,14,0,14), Position=UDim2.new(0,2,1,-16), Text="↙", BackgroundColor3=Color3.fromRGB(200,200,200), BackgroundTransparency=0.5, TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=15}, main)
-local handleBR = New("TextButton", {Size=UDim2.new(0,14,0,14), Position=UDim2.new(1,-16,1,-16), Text="↘", BackgroundColor3=Color3.fromRGB(200,200,200), BackgroundTransparency=0.5, TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=15}, main)
+-- Tạo 4 nút kéo màu Xanh Dương ở 4 góc (ZIndex = 100 để luôn đè lên trên cùng)
+local function CreateHandle(icon, pos)
+    local btn = New("TextButton", {
+        Size=UDim2.new(0,22,0,22),
+        Position=pos,
+        Text=icon,
+        BackgroundColor3=C.BLUE,
+        BackgroundTransparency=0.1,
+        TextColor3=C.WHITE,
+        Font=Enum.Font.GothamBold,
+        TextSize=12,
+        BorderSizePixel=0,
+        ZIndex=100, -- Luôn nổi lên trên cùng
+    }, main)
+    Corner(btn, UDim.new(0,6))
+    Stroke(btn, Color3.fromRGB(255,255,255), 1.5)
+    return btn
+end
 
-Corner(handleTL, UDim.new(0,4)); SetupResizeHandle(handleTL, "TL")
-Corner(handleTR, UDim.new(0,4)); SetupResizeHandle(handleTR, "TR")
-Corner(handleBL, UDim.new(0,4)); SetupResizeHandle(handleBL, "BL")
-Corner(handleBR, UDim.new(0,4)); SetupResizeHandle(handleBR, "BR")
+local handleTL = CreateHandle("↖", UDim2.new(0, 2, 0, 2))
+local handleTR = CreateHandle("↗", UDim2.new(1, -24, 0, 2))
+local handleBL = CreateHandle("↙", UDim2.new(0, 2, 1, -24))
+local handleBR = CreateHandle("↘", UDim2.new(1, -24, 1, -24))
+
+SetupResizeHandle(handleTL, "TL")
+SetupResizeHandle(handleTR, "TR")
+SetupResizeHandle(handleBL, "BL")
+SetupResizeHandle(handleBR, "BR")
 
 -- ==================== TAB SYSTEM ====================
 local tabs = {}
@@ -1714,31 +1732,17 @@ togBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ==================== CHARACTER RESPAWN & AUTO RESTORE STATE ====================
--- Tự động kích hoạt lại toàn bộ tính năng đang bật khi Hồi sinh
 player.CharacterAdded:Connect(function(c)
     char = c
     task.wait(0.2)
 
-    -- 1. Cập nhật WalkSpeed & JumpPower
     UpdChar()
-
-    -- 2. Khôi phục NoClip
     if S.noClip then EnNC() end
-
-    -- 3. Khôi phục Fly
     if S.flying then StopFly(); TogFly() end
-
-    -- 4. Khôi phục Thảm kính
     if S.carpet then StopCarpet(); TogCarpet() end
-
-    -- 5. Khôi phục FlyRun
     if S.flyRun then TogFlyRun() end
-
-    -- 6. Khôi phục Camera
     if S.customCam then EnCC() end
     if S.freeCam then EnFC() end
-
-    -- 7. Khôi phục ESP
     if S.esp then UpdateESP() end
 end)
 
@@ -1746,4 +1750,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Executor Menu v2.5 đã sẵn sàng! Đã thêm nút kéo 4 góc & Khôi phục tính năng khi hồi sinh.")
+print("✅ Executor Menu v2.6 đã hoàn tất! 4 Nút Kéo Góc MÀU XANH DƯƠNG hiện to rõ nét ở 4 góc.")
