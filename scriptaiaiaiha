@@ -1,6 +1,6 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Banana Cat Hub Style
--- (Kích thước ngang chuẩn 540x340 + Chỉnh kích thước 4 góc + Tự khôi phục)
+-- EXECUTOR MENU - Phiên bản Nền Xám Trắng Trong Suốt Sắn Kẻ (Caro)
+-- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -20,7 +20,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local C = {
     WHITE = Color3.fromRGB(255, 255, 255),
     DARK = Color3.fromRGB(40, 40, 45),
-    GRAY = Color3.fromRGB(100, 100, 100),
+    GRAY = Color3.fromRGB(110, 115, 125),
     GREEN = Color3.fromRGB(0, 170, 90),
     BLUE = Color3.fromRGB(0, 130, 220),
     RED = Color3.fromRGB(220, 60, 60),
@@ -64,7 +64,7 @@ local function Corner(p, r)
 end
 
 local function Stroke(p, c, t)
-    return New("UIStroke", {Color = c or Color3.fromRGB(160, 165, 180), Thickness = t or 1.2}, p)
+    return New("UIStroke", {Color = c or Color3.fromRGB(170, 175, 190), Thickness = t or 1.2}, p)
 end
 
 local function Tween(o, p, d, e)
@@ -99,12 +99,12 @@ local togBtn = New("TextButton", {
 Corner(togBtn, UDim.new(1,0))
 Stroke(togBtn, C.BLUE, 1.5)
 
--- Main Frame (KÍCH THƯỚC CHUẨN BANANA CAT HUB: 540x340)
+-- Main Frame (Nền Xám Trắng Trong Suốt: 540x340)
 local main = New("Frame", {
     Size=UDim2.new(0,540,0,340),
     Position=UDim2.new(0.5,-270,0.5,-170),
-    BackgroundColor3=C.WHITE,
-    BackgroundTransparency=0.03,
+    BackgroundColor3=Color3.fromRGB(235, 238, 245),
+    BackgroundTransparency=0.25, -- Trong suốt nhẹ
     BorderSizePixel=0,
     Visible=false,
     ClipsDescendants=false,
@@ -113,11 +113,26 @@ local main = New("Frame", {
 Corner(main, UDim.new(0,10))
 Stroke(main, Color3.fromRGB(180,185,200), 2)
 
+-- 🏁 TẠO HOA VĂN SẮN KẺ / CARO (CHECKERED PATTERN OVERLAY)
+local bgPattern = New("ImageLabel", {
+    Name = "CheckeredBG",
+    Size = UDim2.new(1, 0, 1, 0),
+    Position = UDim2.new(0, 0, 0, 0),
+    BackgroundTransparency = 1,
+    Image = "rbxassetid://9822602710", -- Tileable checkerboard asset
+    ScaleType = Enum.ScaleType.Tile,
+    TileSize = UDim2.new(0, 20, 0, 20),
+    ImageTransparency = 0.82, -- Hoa văn caro chìm sang trọng
+    ImageColor3 = Color3.fromRGB(150, 160, 185),
+    ZIndex = 2,
+}, main)
+Corner(bgPattern, UDim.new(0, 10))
+
 -- Title Bar
 local titleBar = New("Frame", {
     Size=UDim2.new(1,0,0,30),
-    BackgroundColor3=Color3.fromRGB(235,238,245),
-    BackgroundTransparency=0.1,
+    BackgroundColor3=Color3.fromRGB(225,230,240),
+    BackgroundTransparency=0.2,
     BorderSizePixel=0,
     ZIndex=3,
 }, main)
@@ -126,7 +141,7 @@ Corner(titleBar, UDim.new(0,10))
 New("TextLabel", {
     Size=UDim2.new(1,-40,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="🍌 Banana Cat Executor Hub v3.0",
+    Text="🍌 Banana Cat Executor Hub (Caro Style)",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -219,7 +234,7 @@ local function SetupResizeHandle(btn, cornerType)
     end)
 end
 
--- Nút kéo 4 góc
+-- Nút kéo 4 góc màu Xanh Dương
 local function CreateHandle(icon, pos)
     local btn = New("TextButton", {
         Size=UDim2.new(0,20,0,20),
@@ -255,8 +270,8 @@ local tabContent = {}
 local tabBar = New("ScrollingFrame", {
     Size=UDim2.new(0,95,1,-30),
     Position=UDim2.new(1,-95,0,30),
-    BackgroundColor3=Color3.fromRGB(232,235,242),
-    BackgroundTransparency=0.1,
+    BackgroundColor3=Color3.fromRGB(225,230,240),
+    BackgroundTransparency=0.3,
     BorderSizePixel=0,
     ZIndex=3,
     ScrollBarThickness=3,
@@ -1750,4 +1765,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Executor Hub v3.0 đã tải hoàn tất!")
+print("✅ Banana Cat Executor Hub (Nền Xám Trắng Trong Suốt Caro) đã sẵn sàng!")
