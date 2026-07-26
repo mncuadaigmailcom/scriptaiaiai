@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Nền Xám Trắng Trong Suốt Sắn Kẻ (Caro)
+-- EXECUTOR MENU - Phiên bản Fix Lỗi Click/Kẹt Menu
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
@@ -16,7 +16,7 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Xác định Parent an toàn cho UI (Hỗ trợ cả Executor lẫn LocalScript)
+-- Xác định Parent an toàn cho UI
 local targetGui = playerGui
 if gethui then
     targetGui = gethui()
@@ -340,7 +340,7 @@ local function AddTab(name, icon, order)
         ZIndex=4,
     }, contentArea)
 
-    btn.MouseButton1Click:Connect(function()
+    btn.Activated:Connect(function()
         if activeTab==sf then return end
         for _, t in ipairs(tabContent) do t.Visible=false end
         for _, b in ipairs(tabs) do
@@ -375,7 +375,7 @@ activeTab=tabContent[1]
 -- ==================== STATE ====================
 local S = {
     flySpeed=50, 
-    carpetWidth=1.5, carpetThickness=0.2, carpetLength=1.5, -- Bổ sung điều chỉnh 3 chiều cho Thảm
+    carpetWidth=1.5, carpetThickness=0.2, carpetLength=1.5,
     walkSpeed=16, jumpPower=50,
     noClip=false, fog=false, flying=false, carpet=false, flyRun=false,
     customCam=false, fov=70, camOffX=0, camOffY=0,
@@ -389,7 +389,7 @@ local scripts = {}
 local totalRuns, cancelled = 0, false
 local curThread, curIndicator = nil, nil
 
--- ==================== HELPERS (AN TOÀN KHI RE-SPAWN) ====================
+-- ==================== HELPERS ====================
 local function GetChar() return player.Character end
 local function Hum() 
     local c = GetChar()
@@ -500,7 +500,7 @@ local function VInput()
            UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or mInput.down
 end
 
-local bv, bg, fp, cp, bp
+local bv, bg, fp, cp
 local StopFlyRun, TogFlyRun
 
 local function StopFly()
@@ -515,7 +515,6 @@ end
 
 local function StopCarpet()
     if cp then cp:Destroy(); cp=nil end
-    if bp then bp:Destroy(); bp=nil end
     RunService:UnbindFromRenderStep("Carpet")
     S.carpetY=nil
 end
@@ -552,7 +551,6 @@ local function CreateCarpet(y)
         local curT = S.carpetThickness or 0.2
         local curL = S.carpetLength or 1.5
 
-        -- Cập nhật kích thước động ngay lập tức nếu người dùng thay đổi
         if cp.Size.X ~= curW or cp.Size.Y ~= curT or cp.Size.Z ~= curL then
             cp.Size = Vector3.new(curW, curT, curL)
         end
@@ -609,7 +607,7 @@ local function TogCarpet()
     end
 end
 
--- Fly Run Overlay
+-- Overlay Fly Run
 local oLay = New("Frame", {
     Size=UDim2.new(0,180,0,160), Position=UDim2.new(1,-190,0.5,-80),
     BackgroundTransparency=1, Visible=false, ZIndex=10,
@@ -650,39 +648,37 @@ local function StartFlyRun()
             CreateCarpet(S.carpetY or (r.Position.Y - 3.0 - ((S.carpetThickness or 0.2) / 2)))
         end
     end
-    main.Visible=false; togBtn.Text="⚙"; oLay.Visible=true
+    main.Visible=false
+    togBtn.Text="⚙"
+    oLay.Visible=true
 end
 
 StopFlyRun = function()
     if S.carpet then StopCarpet(); S.carpet=false end
-    oLay.Visible=false; S.flyRun=false
+    oLay.Visible=false
+    S.flyRun=false
+    togBtn.Text = main.Visible and "✕" or "🍌"
 end
 
 TogFlyRun = function()
     if S.flyRun then StartFlyRun() else StopFlyRun() end
 end
 
-clsOBtn.MouseButton1Click:Connect(function() S.flyRun=false; StopFlyRun() end)
-togCBtn.MouseButton1Click:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
+clsOBtn.Activated:Connect(function() S.flyRun=false; StopFlyRun() end)
+togCBtn.Activated:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
 
-movUBtn.MouseButton1Click:Connect(function()
+movUBtn.Activated:Connect(function()
     if S.flyRun then 
-        if not S.carpet then 
-            S.carpet=true
-            TogCarpet() 
-        end
+        if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
         local curY = S.carpetY or (r and (r.Position.Y - 3.0) or 0)
         S.carpetY = curY + 2.5
     end
 end)
 
-movDBtn.MouseButton1Click:Connect(function()
+movDBtn.Activated:Connect(function()
     if S.flyRun then 
-        if not S.carpet then 
-            S.carpet=true
-            TogCarpet() 
-        end
+        if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
         local curY = S.carpetY or (r and (r.Position.Y - 3.0) or 0)
         S.carpetY = curY - 2.5
@@ -1025,7 +1021,7 @@ for _, s in ipairs(quickScripts) do
         BackgroundTransparency=1, TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10,
         TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
     }, btn)
-    btn.MouseButton1Click:Connect(function() RunCode(s.c, s.n, nil, 1, 0) end)
+    btn.Activated:Connect(function() RunCode(s.c, s.n, nil, 1, 0) end)
     y = y + 32
 end
 
@@ -1116,9 +1112,9 @@ local minOpt = New("TextButton", {
     Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=16,
 }, ddFrame)
 
-unitBtn.MouseButton1Click:Connect(function() ddFrame.Visible=not ddFrame.Visible end)
-secOpt.MouseButton1Click:Connect(function() unitBtn.Text="Giây ▾"; ddFrame.Visible=false end)
-minOpt.MouseButton1Click:Connect(function() unitBtn.Text="Phút ▾"; ddFrame.Visible=false end)
+unitBtn.Activated:Connect(function() ddFrame.Visible=not ddFrame.Visible end)
+secOpt.Activated:Connect(function() unitBtn.Text="Giây ▾"; ddFrame.Visible=false end)
+minOpt.Activated:Connect(function() unitBtn.Text="Phút ▾"; ddFrame.Visible=false end)
 
 UserInputService.InputBegan:Connect(function(i,gp)
     if gp then return end
@@ -1149,9 +1145,9 @@ countLbl.TextColor3=C.GREEN; countLbl.TextSize=9; countLbl.ZIndex=6
 
 local RebuildScripts
 
-stopBtn.MouseButton1Click:Connect(function() Cancel(); statusLbl.Text="⏹️ Đã dừng" end)
+stopBtn.Activated:Connect(function() Cancel(); statusLbl.Text="⏹️ Đã dừng" end)
 
-runBtn.MouseButton1Click:Connect(function()
+runBtn.Activated:Connect(function()
     local t=math.clamp(tonumber(repIn.Text)or 1,1,1000)
     local d=math.max(tonumber(delIn.Text)or 0,0)
     if unitBtn.Text:find("Phút") then d=d*60 end
@@ -1171,7 +1167,7 @@ runBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-saveBtn.MouseButton1Click:Connect(function()
+saveBtn.Activated:Connect(function()
     local n=nameIn.Text
     local c=codeIn.Text
     if #c==0 then statusLbl.Text="⚠️ Vui lòng nhập code!"; return end
@@ -1282,18 +1278,18 @@ RebuildScripts = function()
         Corner(del,UDim.new(1,0))
 
         local idx=i
-        ind.MouseButton1Click:Connect(function()
+        ind.Activated:Connect(function()
             if curIndicator==ind then Cancel() return end
             RunCode(d.code,d.name,ind,1,0)
             statusLbl.Text="⏳ Đang chạy: "..d.name
         end)
-        edit.MouseButton1Click:Connect(function()
+        edit.Activated:Connect(function()
             nameIn.Text=d.name
             codeIn.Text=d.code
             codeTab.CanvasPosition=Vector2.new(0,0)
         end)
-        del.MouseButton1Click:Connect(function()
-            if curIndicator==ind me Cancel() end
+        del.Activated:Connect(function()
+            if curIndicator==ind then Cancel() end
             table.remove(scripts,idx)
             RebuildScripts()
         end)
@@ -1333,11 +1329,10 @@ local carpBtn = Button(moveTab, "🪩 Thảm kính: TẮT", 8, my, 130, 24, C.GR
 local flyRunBtn = Button(moveTab, "🕹️ Bay chạy bộ: TẮT", 148, my, 130, 24, C.GRAY)
 my = my + 30
 
--- ===== BỔ SUNG ĐIỀU CHỈNH 3 CHIỀU CHO THẢM KÍNH =====
+-- ĐIỀU CHỈNH 3 CHIỀU THẢM
 Label(moveTab, "📐 Kích thước thảm kính (Rộng x Dày x Dài)", my)
 my = my + 16
 
--- Ô nhập Chiều Rộng (Width - X)
 New("TextLabel", {
     Size=UDim2.new(0,40,0,24), Position=UDim2.new(0,8,0,my),
     Text="Rộng:", BackgroundTransparency=1, TextColor3=C.DARK,
@@ -1352,7 +1347,6 @@ local carpWIn = New("TextBox", {
 }, moveTab)
 Corner(carpWIn,UDim.new(0,5)); Stroke(carpWIn)
 
--- Ô nhập Chiều Dày (Thickness - Y)
 New("TextLabel", {
     Size=UDim2.new(0,32,0,24), Position=UDim2.new(0,98,0,my),
     Text="Dày:", BackgroundTransparency=1, TextColor3=C.DARK,
@@ -1367,7 +1361,6 @@ local carpTIn = New("TextBox", {
 }, moveTab)
 Corner(carpTIn,UDim.new(0,5)); Stroke(carpTIn)
 
--- Ô nhập Chiều Dài (Length - Z)
 New("TextLabel", {
     Size=UDim2.new(0,32,0,24), Position=UDim2.new(0,180,0,my),
     Text="Dài:", BackgroundTransparency=1, TextColor3=C.DARK,
@@ -1431,7 +1424,6 @@ jpLbl.TextColor3=C.GREEN; jpLbl.TextSize=9
 -- Connect controls
 flySpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flySpdIn.Text); if n and n>=0 then S.flySpeed=n else flySpdIn.Text=tostring(S.flySpeed) end end)
 
--- Xử lý sự kiện chỉnh kích thước 3 chiều thảm
 carpWIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpWIn.Text); if n and n>=0.1 then S.carpetWidth=n else carpWIn.Text=tostring(S.carpetWidth) end end)
 carpTIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpTIn.Text); if n and n>=0.05 then S.carpetThickness=n else carpTIn.Text=tostring(S.carpetThickness) end end)
 carpLIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpLIn.Text); if n and n>=0.1 then S.carpetLength=n else carpLIn.Text=tostring(S.carpetLength) end end)
@@ -1439,36 +1431,36 @@ carpLIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber
 wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(wsIn.Text); if n and n>0 then S.walkSpeed=n; UpdChar() else wsIn.Text=tostring(S.walkSpeed) end; wsLbl.Text="Hiện tại: "..S.walkSpeed end)
 jpIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(jpIn.Text); if n and n>0 then S.jumpPower=n; UpdChar() else jpIn.Text=tostring(S.jumpPower) end; jpLbl.Text="Hiện tại: "..S.jumpPower end)
 
-flyBtn.MouseButton1Click:Connect(function()
+flyBtn.Activated:Connect(function()
     S.flying = not S.flying
     TogFly()
     flyBtn.Text=S.flying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
     flyBtn.BackgroundColor3=S.flying and Color3.fromRGB(70,130,180) or C.GRAY
 end)
-carpBtn.MouseButton1Click:Connect(function()
+carpBtn.Activated:Connect(function()
     S.carpet = not S.carpet
     TogCarpet()
     carpBtn.Text=S.carpet and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
     carpBtn.BackgroundColor3=S.carpet and Color3.fromRGB(160,100,200) or C.GRAY
 end)
-flyRunBtn.MouseButton1Click:Connect(function()
+flyRunBtn.Activated:Connect(function()
     S.flyRun = not S.flyRun
     TogFlyRun()
     flyRunBtn.Text=S.flyRun and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
     flyRunBtn.BackgroundColor3=S.flyRun and C.ORANGE or C.GRAY
 end)
-noclipBtn.MouseButton1Click:Connect(function()
+noclipBtn.Activated:Connect(function()
     S.noClip=not S.noClip
     noclipBtn.Text=S.noClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
     noclipBtn.BackgroundColor3=S.noClip and Color3.fromRGB(0,180,100) or C.GRAY
     if S.noClip then EnNC() else DisNC() end
 end)
-infJumpBtn.MouseButton1Click:Connect(function()
+infJumpBtn.Activated:Connect(function()
     S.infJump=not S.infJump
     infJumpBtn.Text=S.infJump and "🦘 Nhảy Vô Hạn: BẬT" or "🦘 Nhảy Vô Hạn: TẮT"
     infJumpBtn.BackgroundColor3=S.infJump and C.GREEN or C.GRAY
 end)
-clickTpBtn.MouseButton1Click:Connect(function()
+clickTpBtn.Activated:Connect(function()
     S.clickTp=not S.clickTp
     clickTpBtn.Text=S.clickTp and "🎯 Click TP (Ctrl+Click): BẬT" or "🎯 Click TP (Ctrl+Click): TẮT"
     clickTpBtn.BackgroundColor3=S.clickTp and C.GREEN or C.GRAY
@@ -1483,7 +1475,7 @@ Label(playerTab, "👁️ Quan sát & Nhìn xuyên tường", py)
 py = py + 14
 
 local espBtn = Button(playerTab, "👁️ ESP Người Chơi: TẮT", 8, py, 200, 24, C.GRAY)
-espBtn.MouseButton1Click:Connect(function()
+espBtn.Activated:Connect(function()
     S.esp = not S.esp
     espBtn.Text = S.esp and "👁️ ESP Người Chơi: BẬT" or "👁️ ESP Người Chơi: TẮT"
     espBtn.BackgroundColor3 = S.esp and C.GREEN or C.GRAY
@@ -1495,7 +1487,7 @@ Label(playerTab, "🛡️ Treo máy & Hệ thống", py)
 py = py + 14
 
 local antiAfkBtn = Button(playerTab, "🛡️ Anti-AFK (Treo máy): BẬT", 8, py, 200, 24, C.GREEN)
-antiAfkBtn.MouseButton1Click:Connect(function()
+antiAfkBtn.Activated:Connect(function()
     S.antiAfk = not S.antiAfk
     antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
     antiAfkBtn.BackgroundColor3 = S.antiAfk and C.GREEN or C.GRAY
@@ -1511,11 +1503,11 @@ py = py + 14
 local rejoinBtn = Button(playerTab, "🔄 Vào Lại Server", 8, py, 110, 24, C.BLUE)
 local serverHopBtn = Button(playerTab, "🌐 Đổi Server Khác", 126, py, 110, 24, C.PURPLE)
 
-rejoinBtn.MouseButton1Click:Connect(function()
+rejoinBtn.Activated:Connect(function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 end)
 
-serverHopBtn.MouseButton1Click:Connect(function()
+serverHopBtn.Activated:Connect(function()
     local servers = {}
     local req = request or http_request or (syn and syn.request)
     if req then
@@ -1579,21 +1571,21 @@ local aB = New("TextBox", {Size=UDim2.new(0,40,0,24), Position=UDim2.new(0,100,0
 Corner(aB,UDim.new(0,5)); Stroke(aB)
 local applyAmbBtn = Button(envTab, "✔ Áp dụng", 150, ey, 80, 24, C.BLUE)
 
-darkBtn.MouseButton1Click:Connect(function()
+darkBtn.Activated:Connect(function()
     TweenL({ClockTime=0, Brightness=0.3, OutdoorAmbient=Color3.fromRGB(20,20,40), Ambient=Color3.fromRGB(20,20,40)})
 end)
-brightBtn.MouseButton1Click:Connect(function()
+brightBtn.Activated:Connect(function()
     TweenL({ClockTime=14, Brightness=2.5, OutdoorAmbient=C.WHITE, Ambient=C.WHITE, EnvironmentDiffuseScale=1, EnvironmentSpecularScale=1})
     if S.fog then S.fog=false; fogBtn.Text="🌫️ Sương mù: TẮT"; fogBtn.BackgroundColor3=C.GRAY; Tween(Lighting,{FogEnd=100000,FogStart=0,FogColor=Color3.new(1,1,1)}) end
 end)
-fogBtn.MouseButton1Click:Connect(function()
+fogBtn.Activated:Connect(function()
     S.fog=not S.fog
     fogBtn.Text=S.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
     fogBtn.BackgroundColor3=S.fog and Color3.fromRGB(70,70,70) or C.GRAY
     TweenL(S.fog and {FogStart=0,FogEnd=80,FogColor=Color3.fromRGB(180,180,180)} or {FogStart=0,FogEnd=100000,FogColor=Color3.new(1,1,1)})
 end)
 
-fullBrightBtn.MouseButton1Click:Connect(function()
+fullBrightBtn.Activated:Connect(function()
     S.fullBright = not S.fullBright
     fullBrightBtn.Text = S.fullBright and "💡 Sáng Đêm: BẬT" or "💡 Sáng Đêm: TẮT"
     fullBrightBtn.BackgroundColor3 = S.fullBright and C.GREEN or C.GRAY
@@ -1606,16 +1598,16 @@ fullBrightBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-resetEnvBtn.MouseButton1Click:Connect(function()
+resetEnvBtn.Activated:Connect(function()
     TweenL(DEFAULT_LIGHTING)
     S.fog=false; fogBtn.Text="🌫️ Sương mù: TẮT"; fogBtn.BackgroundColor3=C.GRAY
     S.fullBright=false; fullBrightBtn.Text="💡 Sáng Đêm: TẮT"; fullBrightBtn.BackgroundColor3=C.GRAY
 end)
-applyBrightBtn.MouseButton1Click:Connect(function()
+applyBrightBtn.Activated:Connect(function()
     local n=tonumber(brightIn.Text)
     if n and n>=0.5 and n<=3 then TweenL({Brightness=n}) else brightIn.Text=string.format("%.1f",Lighting.Brightness) end
 end)
-applyAmbBtn.MouseButton1Click:Connect(function()
+applyAmbBtn.Activated:Connect(function()
     local r=math.clamp(tonumber(aR.Text)or 128,0,255)
     local g=math.clamp(tonumber(aG.Text)or 128,0,255)
     local b=math.clamp(tonumber(aB.Text)or 128,0,255)
@@ -1680,13 +1672,13 @@ New("TextLabel", {
     TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top, BorderSizePixel=0, ZIndex=7,
 }, helpFrame)
 
-ccBtn.MouseButton1Click:Connect(function()
+ccBtn.Activated:Connect(function()
     S.customCam = not S.customCam
     TogCC()
     ccBtn.Text=S.customCam and "📷 Camera tùy chỉnh: BẬT" or "📷 Camera tùy chỉnh: TẮT"
     ccBtn.BackgroundColor3=S.customCam and C.ORANGE or C.GRAY
 end)
-fcBtn.MouseButton1Click:Connect(function()
+fcBtn.Activated:Connect(function()
     S.freeCam = not S.freeCam
     TogFC()
     fcBtn.Text=S.freeCam and "🎥 Camera tự do: BẬT" or "🎥 Camera tự do: TẮT"
@@ -1716,7 +1708,7 @@ local presetBtns = {
 }
 for i,d in ipairs(presetBtns) do
     local btn = Button(gfxTab, d.n, 8+(i-1)*72, gy, 64, 22, d.c)
-    btn.MouseButton1Click:Connect(function()
+    btn.Activated:Connect(function()
         local pr=PRESETS[d.p]
         if not pr then return end
         pcall(function() settings().Rendering.QualityLevel=pr.level end)
@@ -1730,7 +1722,7 @@ end
 gy = gy + 28
 
 local ulBtn = Button(gfxTab, "⚡ Siêu thấp - Tối đa FPS", 8, gy, 220, 22, Color3.fromRGB(100,60,60))
-ulBtn.MouseButton1Click:Connect(function()
+ulBtn.Activated:Connect(function()
     local pr=PRESETS.UltraLow
     pcall(function() settings().Rendering.QualityLevel=pr.level end)
     Lighting.ShadowSoftness=pr.shadow; Lighting.GlobalShadows=pr.shadows
@@ -1744,7 +1736,7 @@ gy = gy + 30
 Label(gfxTab, "🌑 Bóng đổ", gy)
 gy = gy + 14
 local shadowBtn = Button(gfxTab, "🌑 Bóng đổ: BẬT", 8, gy, 160, 22, C.GREEN)
-shadowBtn.MouseButton1Click:Connect(function()
+shadowBtn.Activated:Connect(function()
     S.shadows=not S.shadows
     Lighting.GlobalShadows=S.shadows
     shadowBtn.Text=S.shadows and "🌑 Bóng đổ: BẬT" or "🌑 Bóng đổ: TẮT"
@@ -1772,7 +1764,7 @@ for i,d in ipairs(effects) do
     local yy = gy + (i-1)//2 * 28
     local isOn = not d.t:find("TẮT")
     local btn = Button(gfxTab, d.t, x, yy, 130, 22, isOn and d.on or d.off)
-    btn.MouseButton1Click:Connect(function()
+    btn.Activated:Connect(function()
         S[d.s]=not S[d.s]
         d.e.Enabled=S[d.s]
         if S[d.s] then
@@ -1799,7 +1791,7 @@ local fpsLbl = New("TextLabel", {
 Corner(fpsLbl,UDim.new(0,6))
 
 local fpsBuf={}
-fpsBtn.MouseButton1Click:Connect(function()
+fpsBtn.Activated:Connect(function()
     S.fpsCounter=not S.fpsCounter
     fpsLbl.Visible=S.fpsCounter
     fpsBtn.Text=S.fpsCounter and "📈 Hiện FPS: BẬT" or "📈 Hiện FPS: TẮT"
@@ -1839,9 +1831,9 @@ local function setTextures(mode)
         end
     end
 end
-texHighBtn.MouseButton1Click:Connect(function() setTextures("High") end)
-texLowBtn.MouseButton1Click:Connect(function() setTextures("Low") end)
-texOffBtn.MouseButton1Click:Connect(function() setTextures("Off") end)
+texHighBtn.Activated:Connect(function() setTextures("High") end)
+texLowBtn.Activated:Connect(function() setTextures("Low") end)
+texOffBtn.Activated:Connect(function() setTextures("Off") end)
 
 gy = gy + 30
 Label(gfxTab, "💨 Hiệu ứng hạt & Hình dán", gy)
@@ -1864,13 +1856,13 @@ local function setDecals(enabled)
     end
 end
 
-partBtn.MouseButton1Click:Connect(function()
+partBtn.Activated:Connect(function()
     S.particles=not S.particles
     setParticles(S.particles)
     partBtn.Text=S.particles and "💨 Hạt: BẬT" or "💨 Hạt: TẮT"
     partBtn.BackgroundColor3=S.particles and C.GREEN or C.GRAY
 end)
-decalBtn.MouseButton1Click:Connect(function()
+decalBtn.Activated:Connect(function()
     S.decals=not S.decals
     setDecals(S.decals)
     decalBtn.Text=S.decals and "🖼 Hình dán: BẬT" or "🖼 Hình dán: TẮT"
@@ -1879,7 +1871,7 @@ end)
 
 gy = gy + 32
 local resetGfxBtn = Button(gfxTab, "🔄 Đặt lại đồ họa về mặc định", 8, gy, 240, 24, Color3.fromRGB(150,60,60))
-resetGfxBtn.MouseButton1Click:Connect(function()
+resetGfxBtn.Activated:Connect(function()
     local pr=PRESETS.Ultra
     pcall(function() settings().Rendering.QualityLevel=pr.level end)
     Lighting.ShadowSoftness=pr.shadow; Lighting.GlobalShadows=pr.shadows
@@ -1896,24 +1888,37 @@ end)
 
 gfxTab.CanvasSize=UDim2.new(0,0,0,gy+40)
 
--- ==================== TOGGLE MENU ====================
-closeBtn.MouseButton1Click:Connect(function()
-    main.Visible=false
-    togBtn.Text="🍌"
+-- ==================== TOGGLE MENU LOGIC (FIXED) ====================
+local function ToggleMainFrame()
+    if S.flyRun then
+        S.flyRun = false
+        if StopFlyRun then StopFlyRun() end
+    end
+    main.Visible = not main.Visible
+    togBtn.Text = main.Visible and "✕" or "🍌"
+end
+
+-- Tự động ngắt khi bấm nút Close (✕)
+closeBtn.Activated:Connect(function()
+    main.Visible = false
+    togBtn.Text = "🍌"
 end)
 
-togBtn.MouseButton1Click:Connect(function()
-    if S.flyRun then return end
-    local v=not main.Visible
-    main.Visible=v
-    togBtn.Text=v and "✕" or "🍌"
+-- Bấm nút Chuối 🍌 để mở
+togBtn.Activated:Connect(ToggleMainFrame)
+
+-- Hỗ trợ phím tắt [RightControl] cho PC
+UserInputService.InputBegan:Connect(function(i, gp)
+    if not gp and i.KeyCode == Enum.KeyCode.RightControl then
+        ToggleMainFrame()
+    end
 end)
 
--- MẶC ĐỊNH MỞ MENU LÊN NGAY KHI CHẠY
+-- MẶC ĐỊNH MỞ MENU KHI CHẠY
 main.Visible = true
 togBtn.Text = "✕"
 
--- ==================== CHARACTER RESPAWN & AUTO RESTORE ====================
+-- ==================== RESPAWN HANDLER ====================
 player.CharacterAdded:Connect(function(c)
     task.wait(0.3)
     UpdChar()
@@ -1926,8 +1931,7 @@ player.CharacterAdded:Connect(function(c)
     if S.esp then UpdateESP() end
 end)
 
--- KHỞI TẠO BAN ĐẦU
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Executor Hub đã tải thành công và hiển thị Menu!")
+print("✅ Banana Cat Hub đã sửa triệt để lỗi kẹt nút Toggle Menu!")
