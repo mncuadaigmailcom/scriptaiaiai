@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Tiếng Việt (Đã sửa lỗi)
+-- EXECUTOR MENU - Phiên bản Tiếng Việt (Đã sửa lỗi nhập TextBox)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -206,7 +206,28 @@ local function AddTab(name, icon, order)
         Active = true,
         Selectable = false,
         ScrollingDirection = Enum.ScrollingDirection.Y,
+        ZIndex = 1,
     }, contentArea)
+    
+    -- === THÊM MỚI: Đảm bảo TextBox con có thể nhận input ===
+    sf.ChildAdded:Connect(function(child)
+        if child:IsA("TextBox") or child:IsA("TextButton") then
+            child.ZIndex = 5
+            child.Active = true
+            if child:IsA("TextBox") then
+                child.Selectable = true
+            end
+        end
+        -- Đệ quy cho các phần tử con
+        for _, descendant in ipairs(child:GetDescendants()) do
+            if descendant:IsA("TextBox") then
+                descendant.ZIndex = 5
+                descendant.Active = true
+                descendant.Selectable = true
+            end
+        end
+    end)
+    -- === KẾT THÚC THÊM MỚI ===
     
     btn.MouseButton1Click:Connect(function()
         if activeTab==sf then return end
@@ -699,7 +720,9 @@ local function Input(parent, text, y, w, h, ml)
         TextColor3=Color3.fromRGB(30,30,30), Font=Enum.Font.GothamMedium, TextSize=12,
         BorderSizePixel=0, ClearTextOnFocus=false,
         -- QUAN TRỌNG: Đảm bảo TextBox có thể nhận input
-        ZIndex = 2,
+        ZIndex = 5,
+        Active = true,
+        Selectable = true,
     }, parent)
     if ml then
         inp.MultiLine=true
@@ -707,6 +730,28 @@ local function Input(parent, text, y, w, h, ml)
         inp.TextXAlignment=Enum.TextXAlignment.Left
         inp.TextYAlignment=Enum.TextYAlignment.Top
     end
+    
+    -- === THÊM MỚI: Xử lý focus cho TextBox ===
+    inp.MouseButton1Click:Connect(function()
+        inp:CaptureFocus()
+    end)
+    
+    inp.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or 
+           input.UserInputType == Enum.UserInputType.Touch then
+            inp:CaptureFocus()
+        end
+    end)
+    
+    inp.Focused:Connect(function()
+        inp.BackgroundColor3 = Color3.fromRGB(255, 255, 240)
+    end)
+    
+    inp.FocusLost:Connect(function(enterPressed)
+        inp.BackgroundColor3 = C.BG
+    end)
+    -- === KẾT THÚC THÊM MỚI ===
+    
     Corner(inp, UDim.new(0,5))
     Stroke(inp)
     return inp
