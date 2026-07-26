@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Tích Hợp Save/Load Config Toàn Bộ Menu
+-- EXECUTOR MENU - Thêm Tab "Script Lưu" giữa Code & Di Chuyển
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Save Config)
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
@@ -279,6 +279,7 @@ SetupResizeHandle(handleBR, "BR")
 -- ==================== TAB SYSTEM ====================
 local tabs = {}
 local tabContent = {}
+local tabButtons = {}
 
 local tabBar = New("ScrollingFrame", {
     Size=UDim2.new(0,95,1,-30),
@@ -340,7 +341,7 @@ local function AddTab(name, icon, order)
         ZIndex=4,
     }, contentArea)
 
-    btn.Activated:Connect(function()
+    local function SwitchToThisTab()
         if activeTab==sf then return end
         for _, t in ipairs(tabContent) do t.Visible=false end
         for _, b in ipairs(tabs) do
@@ -351,21 +352,25 @@ local function AddTab(name, icon, order)
         btn.BackgroundColor3=C.BLUE
         btn.BackgroundTransparency=0.2
         activeTab=sf
-    end)
+    end
+
+    btn.Activated:Connect(SwitchToThisTab)
 
     table.insert(tabs, btn)
     table.insert(tabContent, sf)
+    tabButtons[name] = SwitchToThisTab
     tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 34 + 10)
     return sf
 end
 
--- 6 Tab
-local codeTab   = AddTab("Code", "💻", 1)
-local moveTab   = AddTab("Di Chuyển", "🏃", 2)
-local playerTab = AddTab("Người Chơi", "👤", 3)
-local envTab    = AddTab("Môi Trường", "⚙️", 4)
-local camTab    = AddTab("Camera", "📷", 5)
-local gfxTab    = AddTab("Đồ Họa", "🎨", 6)
+-- ===== 7 TAB (ĐẶT TAB "SCRIPT LƯU" Ở GIỮA CODE VÀ DI CHUYỂN) =====
+local codeTab         = AddTab("Code", "💻", 1)
+local savedScriptsTab = AddTab("Script Lưu", "💾", 2) -- TAB MỚI Ở GIỮA!
+local moveTab         = AddTab("Di Chuyển", "🏃", 3)
+local playerTab       = AddTab("Người Chơi", "👤", 4)
+local envTab          = AddTab("Môi Trường", "⚙️", 5)
+local camTab          = AddTab("Camera", "📷", 6)
+local gfxTab          = AddTab("Đồ Họa", "🎨", 7)
 
 tabs[1].BackgroundColor3=C.BLUE
 tabs[1].BackgroundTransparency=0.2
@@ -1147,7 +1152,7 @@ y = y + 82
 local runBtn = Button(codeTab, "▶ Chạy Code", 8, y, 140, 26, Color3.fromRGB(0,160,90))
 local stopBtn = Button(codeTab, "⏹ Dừng", 156, y, 80, 26, C.RED)
 y = y + 32
-local saveBtn = Button(codeTab, "💾 Lưu Script", 8, y, 140, 26, C.BLUE)
+local saveBtn = Button(codeTab, "💾 Lưu Script Vào Tab Mới", 8, y, 160, 26, C.BLUE)
 y = y + 32
 
 local statusLbl = Label(codeTab, "", y)
@@ -1157,81 +1162,43 @@ y = y + 14
 local countLbl = Label(codeTab, "🔄 Tổng số lần đã chạy: 0", y)
 countLbl.TextColor3=C.GREEN; countLbl.TextSize=9; countLbl.ZIndex=6
 
-local RebuildScripts
+codeTab.CanvasSize = UDim2.new(0,0,0,y+40)
 
-stopBtn.Activated:Connect(function() Cancel(); statusLbl.Text="⏹️ Đã dừng" end)
+-- ==================== TAB 2: SCRIPT LƯU (ĐẶT Ở GIỮA CODE VÀ DI CHUYỂN) ====================
+local sy = 8
 
-runBtn.Activated:Connect(function()
-    local t=math.clamp(tonumber(repIn.Text)or 1,1,1000)
-    local d=math.max(tonumber(delIn.Text)or 0,0)
-    if unitBtn.Text:find("Phút") then d=d*60 end
-    local ok,err=RunCode(codeIn.Text,nameIn.Text,nil,t,d)
-    if not ok then
-        statusLbl.Text=err or "❌ Lỗi không xác định"
-    else
-        statusLbl.Text="⏳ Đang thực thi..."
-        task.spawn(function()
-            while curThread do
-                if cancelled then statusLbl.Text="⏹️ Đã dừng"; return end
-                task.wait(0.1)
-            end
-            if not cancelled then statusLbl.Text="✅ Hoàn thành!" end
-            countLbl.Text="🔄 Tổng số lần đã chạy: "..totalRuns
-        end)
-    end
-end)
-
-saveBtn.Activated:Connect(function()
-    local n=nameIn.Text
-    local c=codeIn.Text
-    if #c==0 then statusLbl.Text="⚠️ Vui lòng nhập code!"; return end
-    if #n==0 then n="Script "..(#scripts+1) end
-    local bn=n
-    local cnt=1
-    while true do
-        local ex=false
-        for _,s in ipairs(scripts) do if s.name==n then ex=true; break end end
-        if not ex then break end
-        cnt+=1; n=bn.." ("..cnt..")"
-    end
-    table.insert(scripts,{name=n,code=c})
-    RebuildScripts()
-    statusLbl.Text="✅ Đã lưu: "..n
-end)
-
-y = y + 20
-Label(codeTab, "━━━━━━━━━━━━━━━━━━━━━━", y)
-y = y + 16
-Label(codeTab, "💾 Script Đã Lưu (▶ chạy | ✏ sửa | ✕ xóa)", y)
-y = y + 16
+Label(savedScriptsTab, "💾 Danh Sách Script Đã Lưu (▶ chạy | ✏ sửa | ✕ xóa)", sy)
+sy = sy + 16
 
 local searchIn = New("TextBox", {
-    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,y), Text="",
+    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,sy), Text="",
     PlaceholderText="🔍 Tìm kiếm script theo tên...", PlaceholderColor3=Color3.fromRGB(160,160,160),
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
     Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
-}, codeTab)
+}, savedScriptsTab)
 Corner(searchIn, UDim.new(0,5))
 Stroke(searchIn, Color3.fromRGB(180,180,200), 1.2)
 New("UIPadding", {PaddingLeft=UDim.new(0,6)}, searchIn)
-y = y + 32
+sy = sy + 32
 
 local scriptList = New("Frame", {
-    Size=UDim2.new(1,-16,0,0), Position=UDim2.new(0,8,0,y),
+    Size=UDim2.new(1,-16,0,0), Position=UDim2.new(0,8,0,sy),
     BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
-}, codeTab)
+}, savedScriptsTab)
 New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,3)}, scriptList)
 
--- CÁC BIẾN CONTROL GIAO DIỆN SẼ ĐƯỢC LOAD
+-- Khung cấu hình nằm ở cuối Tab Script Lưu
+local configFrame = New("Frame", {
+    Size=UDim2.new(1,-16,0,100), Position=UDim2.new(0,8,0,sy+40),
+    BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
+}, savedScriptsTab)
+
+-- CÁC BIẾN CONTROL GIAO DIỆN
 local flySpdIn, carpWIn, carpTIn, carpLIn, wsIn, jpIn, fovIn, offXIn, offYIn, fcSpdIn, brightIn
 local flyBtn, carpBtn, flyRunBtn, noclipBtn, infJumpBtn, clickTpBtn, espBtn, antiAfkBtn, fogBtn, fullBrightBtn, ccBtn, fcBtn
 
--- FRAME CẤU HÌNH TẠI CUỐI TAB CODE
-local configFrame = New("Frame", {
-    Size=UDim2.new(1,-16,0,110), Position=UDim2.new(0,8,0,y+40),
-    BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
-}, codeTab)
+local RebuildScripts
 
 RebuildScripts = function()
     for _,c in ipairs(scriptList:GetChildren()) do
@@ -1307,11 +1274,14 @@ RebuildScripts = function()
             RunCode(d.code,d.name,ind,1,0)
             statusLbl.Text="⏳ Đang chạy: "..d.name
         end)
+        
+        -- Bấm Sửa: Tự chuyển về Tab Code để chỉnh sửa
         edit.Activated:Connect(function()
             nameIn.Text=d.name
             codeIn.Text=d.code
-            codeTab.CanvasPosition=Vector2.new(0,0)
+            if tabButtons["Code"] then tabButtons["Code"]() end
         end)
+
         del.Activated:Connect(function()
             if curIndicator==ind then Cancel() end
             table.remove(scripts,idx)
@@ -1325,14 +1295,53 @@ RebuildScripts = function()
     local listH = #disp>0 and #disp*49 or 33
     scriptList.Size=UDim2.new(1,-16,0,listH)
     
-    -- Đặt vị trí cho Phần Cấu Hình nằm ngay dưới ScriptList
-    configFrame.Position = UDim2.new(0,0,0,y+listH+10)
-    codeTab.CanvasSize=UDim2.new(0,0,0,y+listH+130)
+    configFrame.Position = UDim2.new(0,0,0,sy+listH+10)
+    savedScriptsTab.CanvasSize=UDim2.new(0,0,0,sy+listH+120)
 end
 
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 
--- ==================== TAB 2: DI CHUYỂN ====================
+stopBtn.Activated:Connect(function() Cancel(); statusLbl.Text="⏹️ Đã dừng" end)
+
+runBtn.Activated:Connect(function()
+    local t=math.clamp(tonumber(repIn.Text)or 1,1,1000)
+    local d=math.max(tonumber(delIn.Text)or 0,0)
+    if unitBtn.Text:find("Phút") then d=d*60 end
+    local ok,err=RunCode(codeIn.Text,nameIn.Text,nil,t,d)
+    if not ok then
+        statusLbl.Text=err or "❌ Lỗi không xác định"
+    else
+        statusLbl.Text="⏳ Đang thực thi..."
+        task.spawn(function()
+            while curThread do
+                if cancelled then statusLbl.Text="⏹️ Đã dừng"; return end
+                task.wait(0.1)
+            end
+            if not cancelled then statusLbl.Text="✅ Hoàn thành!" end
+            countLbl.Text="🔄 Tổng số lần đã chạy: "..totalRuns
+        end)
+    end
+end)
+
+saveBtn.Activated:Connect(function()
+    local n=nameIn.Text
+    local c=codeIn.Text
+    if #c==0 then statusLbl.Text="⚠️ Vui lòng nhập code!"; return end
+    if #n==0 then n="Script "..(#scripts+1) end
+    local bn=n
+    local cnt=1
+    while true do
+        local ex=false
+        for _,s in ipairs(scripts) do if s.name==n then ex=true; break end end
+        if not ex then break end
+        cnt+=1; n=bn.." ("..cnt..")"
+    end
+    table.insert(scripts,{name=n,code=c})
+    RebuildScripts()
+    statusLbl.Text="✅ Đã lưu vào Tab Script Lưu!"
+end)
+
+-- ==================== TAB 3: DI CHUYỂN ====================
 local my = 8
 
 Label(moveTab, "⚡ Tốc độ bay", my)
@@ -1494,7 +1503,7 @@ end)
 
 moveTab.CanvasSize=UDim2.new(0,0,0,my+40)
 
--- ==================== TAB 3: NGƯỜI CHƠI ====================
+-- ==================== TAB 4: NGƯỜI CHƠI ====================
 local py = 8
 
 Label(playerTab, "👁️ Quan sát & Nhìn xuyên tường", py)
@@ -1556,7 +1565,7 @@ end)
 
 playerTab.CanvasSize = UDim2.new(0, 0, 0, py + 50)
 
--- ==================== TAB 4: MÔI TRƯỜNG ====================
+-- ==================== TAB 5: MÔI TRƯỜNG ====================
 local ey = 8
 
 Label(envTab, "🌤 Điều khiển thời tiết", ey)
@@ -1642,7 +1651,7 @@ end)
 
 envTab.CanvasSize=UDim2.new(0,0,0,ey+50)
 
--- ==================== TAB 5: CAMERA ====================
+-- ==================== TAB 6: CAMERA ====================
 local cy = 8
 
 Label(camTab, "📷 Camera Tùy Chỉnh (Bám nhân vật)", cy)
@@ -1717,7 +1726,7 @@ fcSpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber
 
 camTab.CanvasSize=UDim2.new(0,0,0,cy+80)
 
--- ==================== TAB 6: ĐỒ HỌA ====================
+-- ==================== TAB 7: ĐỒ HỌA ====================
 local gy = 8
 
 Label(gfxTab, "📊 Chất lượng đồ họa", gy)
@@ -1914,7 +1923,7 @@ end)
 
 gfxTab.CanvasSize=UDim2.new(0,0,0,gy+40)
 
--- ==================== CẤU HÌNH HỆ THỐNG (SAVE / LOAD CONFIG) TẠI CUỐI TAB CODE ====================
+-- ==================== CẤU HÌNH HỆ THỐNG (SAVE / LOAD CONFIG) ====================
 Label(configFrame, "━━━━━━━━━━━━━━━━━━━━━━", 0)
 Label(configFrame, "⚙️ Quản Lý Cấu Hình Toàn Bộ Menu", 16)
 
@@ -1927,7 +1936,6 @@ cfgStatusLbl.TextColor3 = C.YELLOW
 cfgStatusLbl.TextSize = 9
 
 local function ApplyAllUIFromState()
-    -- Cập nhật TextBoxes
     flySpdIn.Text = tostring(S.flySpeed)
     carpWIn.Text = tostring(S.carpetWidth)
     carpTIn.Text = tostring(S.carpetThickness)
@@ -1939,7 +1947,6 @@ local function ApplyAllUIFromState()
     offYIn.Text = tostring(S.camOffY)
     fcSpdIn.Text = tostring(S.freeCamSpeed)
     
-    -- Cập nhật Nút Toggles
     noclipBtn.Text = S.noClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
     noclipBtn.BackgroundColor3 = S.noClip and Color3.fromRGB(0,180,100) or C.GRAY
     if S.noClip then EnNC() else DisNC() end
@@ -1994,13 +2001,9 @@ local function LoadConfig()
             local pSuccess, data = pcall(function() return HttpService:JSONDecode(content) end)
             if pSuccess and data then
                 if data.State then
-                    for k, v in pairs(data.State) do
-                        S[k] = v
-                    end
+                    for k, v in pairs(data.State) do S[k] = v end
                 end
-                if data.Scripts then
-                    scripts = data.Scripts
-                end
+                if data.Scripts then scripts = data.Scripts end
                 ApplyAllUIFromState()
                 cfgStatusLbl.Text = "✅ Đã tải cấu hình thành công!"
                 return
@@ -2028,7 +2031,7 @@ cfgResetBtn.Activated:Connect(function()
     cfgStatusLbl.Text = "🔄 Đã reset cấu hình về mặc định!"
 end)
 
--- Tự động Load cấu hình khi vừa bật Menu
+-- Tự động Load khi vừa bật Menu
 task.defer(function()
     RebuildScripts()
     if isfile and isfile(configFile) then
@@ -2079,4 +2082,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Hub đã tích hợp thành công Hệ thống Save/Load Config!")
+print("✅ Banana Cat Hub đã chuyển Tab Script Lưu vào giữa Code và Di Chuyển thành công!")
