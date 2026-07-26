@@ -361,7 +361,7 @@ activeTab=tabContent[1]
 
 -- ==================== STATE ====================
 local S = {
-    flySpeed=50, carpetSize=30, walkSpeed=16, jumpPower=50,
+    flySpeed=50, carpetSize=2, walkSpeed=16, jumpPower=50, -- carpetSize đã thu nhỏ về 2 cực nhỏ
     noClip=false, fog=false, flying=false, carpet=false, flyRun=false,
     customCam=false, fov=70, camOffX=0, camOffY=0,
     freeCam=false, freeCamSpeed=30, carpetY=nil,
@@ -395,10 +395,14 @@ player.Idled:Connect(function()
     end
 end)
 
--- ==================== INFINITE JUMP ====================
+-- ==================== INFINITE JUMP / FLY RUN JUMP ====================
 UserInputService.JumpRequest:Connect(function()
     if S.infJump and char and Hum() then
         Hum():ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+    -- Hỗ trợ nhảy khi dùng Thảm Kính / Bay Chạy Bộ
+    if (S.carpet or S.flyRun) and char and Root() then
+        S.carpetY = Root().Position.Y + 2.5
     end
 end)
 
@@ -497,23 +501,25 @@ local function StopCarpet()
     S.carpetY=nil
 end
 
+-- Cập nhật Thảm Kính: Nhỏ gọn siêu vi dưới chân + Trong suốt gần như không thấy
 local function CreateCarpet(y)
     local r = Root()
     if not r then return end
     cp = New("Part", {
-        Name="Carpet", Size=Vector3.new(S.carpetSize,0.5,S.carpetSize),
-        Transparency=0.7, Color=Color3.fromRGB(200,230,255), Material=Enum.Material.Glass,
-        Anchored=true, CanCollide=true, Position=Vector3.new(r.Position.X,y,r.Position.Z),
+        Name="Carpet", Size=Vector3.new(S.carpetSize, 0.1, S.carpetSize), -- Siêu mỏng & nhỏ
+        Transparency=0.95, -- Gần như tàng hình hoàn toàn không thấy dưới chân
+        Color=Color3.fromRGB(200,230,255), Material=Enum.Material.Glass,
+        Anchored=true, CanCollide=true, Position=Vector3.new(r.Position.X, y, r.Position.Z),
     }, workspace)
-    bp = New("BodyPosition", {
-        MaxForce=Vector3.new(0,50000,0), P=5000, D=500, Position=Vector3.new(r.Position.X,y+3,r.Position.Z),
-    }, r)
-    S.carpetY=y
+    
+    S.carpetY = y
+
     RunService:BindToRenderStep("Carpet", 1, function()
-        if not S.carpet or not cp or not r or not bp then return end
+        if not S.carpet or not cp or not r then return end
         local x, z = r.Position.X, r.Position.Z
-        cp.Position=Vector3.new(x,S.carpetY,z)
-        bp.Position=Vector3.new(x,S.carpetY+3,z)
+        
+        -- Thảm giữ nguyên độ cao tuyệt đối, không tự bay lên ngoại trừ bạn nâng Y hoặc Nhảy
+        cp.Position = Vector3.new(x, S.carpetY or (r.Position.Y - 3.2), z)
     end)
 end
 
@@ -557,7 +563,7 @@ local function TogCarpet()
     if not r then return end
     if S.carpet then
         if S.flying then S.flying=false; StopFly() end
-        CreateCarpet(r.Position.Y-3.5)
+        CreateCarpet(r.Position.Y-3.2)
     else
         StopCarpet()
     end
@@ -597,9 +603,9 @@ local function StartFlyRun()
     if not r then return end
     if S.flying then S.flying=false; StopFly() end
     if not S.carpet then
-        S.carpet=true; CreateCarpet(r.Position.Y-3.5)
+        S.carpet=true; CreateCarpet(r.Position.Y-3.2)
     else
-        S.carpetY=r.Position.Y-3.5
+        S.carpetY=r.Position.Y-3.2
     end
     main.Visible=false; togBtn.Text="⚙"; oLay.Visible=true
 end
@@ -616,10 +622,10 @@ end
 clsOBtn.MouseButton1Click:Connect(function() S.flyRun=false; StopFlyRun() end)
 togCBtn.MouseButton1Click:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
 movUBtn.MouseButton1Click:Connect(function()
-    if S.flyRun then if not S.carpet then S.carpet=true; TogCarpet() end; S.carpetY=(S.carpetY or 0)+5 end
+    if S.flyRun then if not S.carpet then S.carpet=true; TogCarpet() end; S.carpetY=(S.carpetY or 0)+3 end
 end)
 movDBtn.MouseButton1Click:Connect(function()
-    if S.flyRun then if not S.carpet then S.carpet=true; TogCarpet() end; S.carpetY=(S.carpetY or 0)-5 end
+    if S.flyRun then if not S.carpet then S.carpet=true; TogCarpet() end; S.carpetY=(S.carpetY or 0)-3 end
 end)
 
 -- ==================== CUSTOM CAMERA ====================
@@ -756,12 +762,12 @@ UserInputService.InputEnded:Connect(function(i)
     end
 end)
 
--- ==================== ESP SYSTEM (ĐÃ SỬA LỖI ĐỊNH VỊ) ====================
+-- ==================== ESP SYSTEM ====================
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ExMenu_ESP"
-espFolder.Parent = gui -- Gắn vào Gui không bị xóa khi Respawn
+espFolder.Parent = gui
 
-local activeESPs = {} -- Lưu trữ danh sách ESP của từng player
+local activeESPs = {}
 
 local function RemovePlayerESP(p)
     if activeESPs[p] then
@@ -780,7 +786,7 @@ local function ClearAllESP()
 end
 
 local function CreatePlayerESP(p)
-    RemovePlayerESP(p) -- Làm sạch ESP cũ nếu có
+    RemovePlayerESP(p)
 
     if not S.esp or p == player then return end
 
@@ -838,7 +844,6 @@ end
 local function HookPlayer(p)
     if p == player then return end
 
-    -- Tự động bật ESP mỗi khi người chơi đó Respawn
     p.CharacterAdded:Connect(function()
         if S.esp then
             task.wait(0.5)
@@ -865,18 +870,9 @@ local function UpdateESP()
     end
 end
 
--- Lắng nghe người chơi mới vào hoặc thoát Game
-for _, p in ipairs(Players:GetPlayers()) do
-    HookPlayer(p)
-end
-
-Players.PlayerAdded:Connect(function(p)
-    HookPlayer(p)
-end)
-
-Players.PlayerRemoving:Connect(function(p)
-    RemovePlayerESP(p)
-end)
+for _, p in ipairs(Players:GetPlayers()) do HookPlayer(p) end
+Players.PlayerAdded:Connect(function(p) HookPlayer(p) end)
+Players.PlayerRemoving:Connect(function(p) RemovePlayerESP(p) end)
 
 -- ==================== CODE EXECUTION ====================
 local function ExecOnce(code, name)
@@ -1279,7 +1275,7 @@ Label(moveTab, "📏 Kích thước thảm (studs)", my)
 my = my + 14
 
 local carpSzIn = New("TextBox", {
-    Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="30",
+    Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="2", -- Mặc định là 2 siêu nhỏ
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
     Active=true, Selectable=true, ZIndex=8,
@@ -1334,7 +1330,7 @@ jpLbl.TextColor3=C.GREEN; jpLbl.TextSize=9
 
 -- Connect controls
 flySpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flySpdIn.Text); if n and n>=0 then S.flySpeed=n else flySpdIn.Text=tostring(S.flySpeed) end end)
-carpSzIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpSzIn.Text); if n and n>=10 then S.carpetSize=n else carpSzIn.Text=tostring(S.carpetSize) end end)
+carpSzIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpSzIn.Text); if n and n>=0.5 then S.carpetSize=n else carpSzIn.Text=tostring(S.carpetSize) end end)
 wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(wsIn.Text); if n and n>0 then S.walkSpeed=n; UpdChar() else wsIn.Text=tostring(S.walkSpeed) end; wsLbl.Text="Hiện tại: "..S.walkSpeed end)
 jpIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(jpIn.Text); if n and n>0 then S.jumpPower=n; UpdChar() else jpIn.Text=tostring(S.jumpPower) end; jpLbl.Text="Hiện tại: "..S.jumpPower end)
 
@@ -1827,4 +1823,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Executor Hub (Đã Fix ESP Nhìn Xuyên Tường Hoàn Hảo) đã sẵn sàng!")
+print("✅ Banana Cat Executor Hub (Đã Tùy Chỉnh Thảm Kính Tàng Hình & Bay Chạy Bộ) sẵn sàng!")
