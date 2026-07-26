@@ -16,6 +16,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "ExecutorMenu"
 screenGui.IgnoreGuiInset = true
+screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
 -- ==================== HÀM TIỆN ÍCH ====================
@@ -279,7 +280,7 @@ taoNhan("⏱️ Thời gian chờ giữa các lần", viTri)
 local oCho = taoONhap("0", viTri + 14, 22, false)
 oCho.Size = UDim2.new(0, 50, 0, 22)
 
--- Dropdown đơn vị thời gian
+-- Dropdown đơn vị
 local nutDonVi = newObj("TextButton", {
 	Size = UDim2.new(0, 60, 0, 22),
 	Position = UDim2.new(0, 70, 0, viTri + 14),
@@ -301,7 +302,7 @@ local khungDropdown = newObj("Frame", {
 	BackgroundTransparency = 0.2,
 	BorderSizePixel = 0,
 	Visible = false,
-	ZIndex = 5,
+	ZIndex = 10,
 }, khungCuon)
 addCorner(khungDropdown, UDim.new(0, 5))
 addStroke(khungDropdown, Color3.fromRGB(140, 140, 140), 1.2)
@@ -313,7 +314,7 @@ local propDD = {
 	Font = Enum.Font.GothamBold,
 	TextSize = 11,
 	BorderSizePixel = 0,
-	ZIndex = 5,
+	ZIndex = 10,
 }
 local tuyCHonGiay = newObj("TextButton",
 	applyProps({Size = UDim2.new(1,0,0,22), Text = "Giây"}, propDD), khungDropdown)
@@ -359,7 +360,7 @@ local nhanDemSoLan = taoNhan("🔄 Tổng số lần đã chạy: 0", viTri)
 nhanDemSoLan.TextColor3 = Color3.fromRGB(0, 140, 70)
 nhanDemSoLan.TextSize = 10
 
--- ===== PHẦN MÔI TRƯỜNG =====
+-- ===== MÔI TRƯỜNG =====
 viTri = viTri + 25
 taoNhan("━━━━━━━━━━━━━━━━━━━━━━", viTri)
 viTri = viTri + 16
@@ -374,10 +375,10 @@ nutTroiSang.Position = UDim2.new(0, 148, 0, viTri)
 viTri = viTri + 28
 local nutSuongMu = taoNut("🌫️ Sương mù: TẮT", viTri, 130, 22, Color3.fromRGB(100, 100, 100))
 nutSuongMu.Position = UDim2.new(0, 10, 0, viTri)
-local nutResetMoiTruong = taoNut("🔄 Đặt lại mặc định", viTri, 130, 22, Color3.fromRGB(100, 100, 100))
-nutResetMoiTruong.Position = UDim2.new(0, 148, 0, viTri)
+local nutResetMT = taoNut("🔄 Đặt lại", viTri, 130, 22, Color3.fromRGB(100, 100, 100))
+nutResetMT.Position = UDim2.new(0, 148, 0, viTri)
 
--- ===== PHẦN BAY =====
+-- ===== BAY =====
 viTri = viTri + 35
 taoNhan("━━━━━━━━━━━━━━━━━━━━━━", viTri)
 viTri = viTri + 16
@@ -399,7 +400,7 @@ taoNhan("📏 Kích thước thảm (studs)", viTri)
 local oKichThuocTham = taoONhap("30", viTri + 14, 22, false)
 oKichThuocTham.Size = UDim2.new(0, 50, 0, 22)
 
--- ===== PHẦN TỐC ĐỘ NHÂN VẬT =====
+-- ===== TỐC ĐỘ NHÂN VẬT =====
 viTri = viTri + 42
 taoNhan("━━━━━━━━━━━━━━━━━━━━━━", viTri)
 viTri = viTri + 16
@@ -418,7 +419,7 @@ local nhanJumpPower = taoNhan("Hiện tại: 50", viTri + 14)
 nhanJumpPower.Position = UDim2.new(0, 70, 0, viTri + 14)
 nhanJumpPower.Size = UDim2.new(0, 100, 0, 14)
 
--- ===== PHẦN NOCLIP =====
+-- ===== NOCLIP =====
 viTri = viTri + 35
 taoNhan("━━━━━━━━━━━━━━━━━━━━━━", viTri)
 viTri = viTri + 16
@@ -426,31 +427,65 @@ taoNhan("🚪 Đi xuyên tường (NoClip)", viTri)
 local nutNoClip = taoNut("🚶 NoClip: TẮT", viTri + 14, 140, 22, Color3.fromRGB(100, 100, 100))
 nutNoClip.Position = UDim2.new(0, 10, 0, viTri + 14)
 
--- ===== PHẦN CAMERA =====
+-- ===== CAMERA =====
 viTri = viTri + 42
 taoNhan("━━━━━━━━━━━━━━━━━━━━━━", viTri)
 viTri = viTri + 16
-taoNhan("📷 Camera Tùy Chỉnh", viTri)
-local nutCamera = taoNut("📷 Camera: TẮT", viTri + 14, 140, 22, Color3.fromRGB(100, 100, 100))
-nutCamera.Position = UDim2.new(0, 10, 0, viTri + 14)
+taoNhan("📷 Camera Tùy Chỉnh (Bám nhân vật)", viTri)
 
-viTri = viTri + 28
-taoNhan("Góc nhìn FOV (30 - 120)", viTri)
+local nutCamTuyChon = taoNut("📷 Camera tùy chỉnh: TẮT", viTri + 14, 200, 22, Color3.fromRGB(100, 100, 100))
+nutCamTuyChon.Position = UDim2.new(0, 10, 0, viTri + 14)
+
+viTri = viTri + 38
+taoNhan("Góc nhìn FOV (30-120)", viTri)
 local oFOV = taoONhap("70", viTri + 14, 22, false)
-oFOV.Size = UDim2.new(0, 50, 0, 22)
+oFOV.Size = UDim2.new(0, 55, 0, 22)
 
 viTri = viTri + 28
 taoNhan("Độ lệch ngang (Offset X)", viTri)
-local oCamX = taoONhap("0", viTri + 14, 22, false)
-oCamX.Size = UDim2.new(0, 50, 0, 22)
+local oCamOffX = taoONhap("0", viTri + 14, 22, false)
+oCamOffX.Size = UDim2.new(0, 55, 0, 22)
 
 viTri = viTri + 28
 taoNhan("Độ lệch dọc (Offset Y)", viTri)
-local oCamY = taoONhap("0", viTri + 14, 22, false)
-oCamY.Size = UDim2.new(0, 50, 0, 22)
+local oCamOffY = taoONhap("0", viTri + 14, 22, false)
+oCamOffY.Size = UDim2.new(0, 55, 0, 22)
 
--- ===== PHẦN LƯU SCRIPT =====
-viTri = viTri + 42
+-- ===== CAMERA TỰ DO =====
+viTri = viTri + 38
+taoNhan("━━━━━━━━━━━━━━━━━━━━━━", viTri)
+viTri = viTri + 16
+taoNhan("🎥 Camera Tự Do (Xuyên tường - Nhân vật đứng yên)", viTri)
+
+local nutCamTuDo = taoNut("🎥 Camera tự do: TẮT", viTri + 14, 200, 22, Color3.fromRGB(100, 100, 100))
+nutCamTuDo.Position = UDim2.new(0, 10, 0, viTri + 14)
+
+viTri = viTri + 38
+taoNhan("⚡ Tốc độ di chuyển camera", viTri)
+local oCamTocDo = taoONhap("30", viTri + 14, 22, false)
+oCamTocDo.Size = UDim2.new(0, 55, 0, 22)
+
+viTri = viTri + 28
+-- Hướng dẫn sử dụng
+local nhanHuongDan = newObj("TextLabel", {
+	Size = UDim2.new(1, -16, 0, 60),
+	Position = UDim2.new(0, 8, 0, viTri),
+	Text = "📌 WASD: Di chuyển | Q/E: Lên/Xuống\n🖱 Chuột phải giữ: Xoay camera\nF: Tăng tốc | Nhân vật đứng yên",
+	BackgroundColor3 = Color3.fromRGB(230, 245, 255),
+	BackgroundTransparency = 0.3,
+	TextColor3 = Color3.fromRGB(40, 80, 120),
+	Font = Enum.Font.GothamMedium,
+	TextSize = 10,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextYAlignment = Enum.TextYAlignment.Top,
+	BorderSizePixel = 0,
+}, khungCuon)
+addCorner(nhanHuongDan, UDim.new(0, 6))
+addStroke(nhanHuongDan, Color3.fromRGB(100, 160, 220), 1.2)
+
+viTri = viTri + 68
+
+-- ===== LƯU SCRIPT =====
 taoNhan("━━━━━━━━━━━━━━━━━━━━━━", viTri)
 viTri = viTri + 16
 taoNhan("💾 Script đã lưu (nhấn tên để chạy)", viTri)
@@ -471,120 +506,107 @@ newObj("UIListLayout", {
 	Padding = UDim.new(0, 4),
 }, khungDanhSach)
 
--- ===== PHẦN ĐỒ HỌA =====
+-- ===== ĐỒ HỌA =====
 viTri = viTri + 18
 taoNhan("━━━━━━━━━━━━━━━━━━━━━━", viTri)
 viTri = viTri + 16
 taoNhan("🎨 Đồ Họa & Hiệu Suất", viTri)
 
--- Preset chất lượng
 viTri = viTri + 18
 taoNhan("📊 Chất lượng đồ họa", viTri)
 viTri = viTri + 14
 
-local nutUltra  = taoNut("✨ Ultra",  viTri, 58, 22, Color3.fromRGB(180, 50,  50))
-local nutHigh   = taoNut("🔵 Cao",   viTri, 58, 22, Color3.fromRGB(50,  100, 180))
-local nutMed    = taoNut("🟡 Trung", viTri, 58, 22, Color3.fromRGB(180, 140, 30))
-local nutLow    = taoNut("🟢 Thấp",  viTri, 58, 22, Color3.fromRGB(60,  160, 80))
+local nutUltra  = taoNut("✨ Siêu cao", viTri, 68, 22, Color3.fromRGB(180, 50, 50))
+local nutHigh   = taoNut("🔵 Cao",     viTri, 68, 22, Color3.fromRGB(50, 100, 180))
+local nutMed    = taoNut("🟡 Trung",   viTri, 68, 22, Color3.fromRGB(180, 140, 30))
+local nutLow    = taoNut("🟢 Thấp",    viTri, 68, 22, Color3.fromRGB(60, 160, 80))
 nutUltra.Position = UDim2.new(0, 8,   0, viTri)
-nutHigh.Position  = UDim2.new(0, 70,  0, viTri)
-nutMed.Position   = UDim2.new(0, 132, 0, viTri)
-nutLow.Position   = UDim2.new(0, 194, 0, viTri)
+nutHigh.Position  = UDim2.new(0, 80,  0, viTri)
+nutMed.Position   = UDim2.new(0, 152, 0, viTri)
+nutLow.Position   = UDim2.new(0, 224, 0, viTri)
 
 viTri = viTri + 28
 local nutUltraLow = taoNut("⚡ Siêu thấp - Tối đa FPS", viTri, 200, 22, Color3.fromRGB(100, 60, 60))
 nutUltraLow.Position = UDim2.new(0, 8, 0, viTri)
 
 viTri = viTri + 28
-local nhanChatLuong = taoNhan("📊 Chất lượng hiện tại: Tự động", viTri)
+local nhanChatLuong = taoNhan("📊 Chất lượng: Tự động", viTri)
 nhanChatLuong.TextColor3 = Color3.fromRGB(0, 140, 70)
-nhanChatLuong.TextSize   = 10
 
--- Bóng đổ
 viTri = viTri + 20
 taoNhan("🌑 Bóng đổ", viTri)
 local nutBongDo = taoNut("🌑 Bóng đổ: BẬT", viTri + 14, 140, 22, Color3.fromRGB(0, 150, 80))
 nutBongDo.Position = UDim2.new(0, 10, 0, viTri + 14)
 
--- Hiệu ứng hậu kỳ
 viTri = viTri + 42
 taoNhan("✨ Hiệu ứng hậu kỳ", viTri)
 viTri = viTri + 14
 
-local nutBloom  = taoNut("🌸 Bloom: BẬT",    viTri, 130, 22, Color3.fromRGB(0, 150, 80))
-local nutBlur   = taoNut("🌫 Làm mờ: TẮT",   viTri, 130, 22, Color3.fromRGB(100, 100, 100))
+local nutBloom = taoNut("🌸 Bloom: BẬT",   viTri, 130, 22, Color3.fromRGB(0, 150, 80))
+local nutBlur  = taoNut("🌫 Làm mờ: TẮT",  viTri, 130, 22, Color3.fromRGB(100, 100, 100))
 nutBloom.Position = UDim2.new(0, 10,  0, viTri)
 nutBlur.Position  = UDim2.new(0, 148, 0, viTri)
 
 viTri = viTri + 28
-local nutNangMT  = taoNut("☀ Tia nắng: BẬT",  viTri, 130, 22, Color3.fromRGB(0, 150, 80))
-local nutMauSac  = taoNut("🎨 Màu sắc: TẮT",   viTri, 130, 22, Color3.fromRGB(100, 100, 100))
-nutNangMT.Position  = UDim2.new(0, 10,  0, viTri)
-nutMauSac.Position  = UDim2.new(0, 148, 0, viTri)
+local nutNangMT = taoNut("☀ Tia nắng: BẬT",  viTri, 130, 22, Color3.fromRGB(0, 150, 80))
+local nutMauSac = taoNut("🎨 Màu sắc: TẮT",   viTri, 130, 22, Color3.fromRGB(100, 100, 100))
+nutNangMT.Position = UDim2.new(0, 10,  0, viTri)
+nutMauSac.Position = UDim2.new(0, 148, 0, viTri)
 
--- Độ sáng
 viTri = viTri + 42
-taoNhan("💡 Độ sáng màn hình (0.5 - 3)", viTri)
+taoNhan("💡 Độ sáng (0.5 - 3)", viTri)
 local oDoSang = taoONhap("1.2", viTri + 14, 22, false)
 oDoSang.Size = UDim2.new(0, 55, 0, 22)
-local nutApDungSang = taoNut("✔ Áp dụng", viTri + 14, 80, 22, Color3.fromRGB(0, 130, 200))
-nutApDungSang.Position = UDim2.new(0, 70, 0, viTri + 14)
+local nutApSang = taoNut("✔ Áp dụng", viTri + 14, 80, 22, Color3.fromRGB(0, 130, 200))
+nutApSang.Position = UDim2.new(0, 70, 0, viTri + 14)
 
--- Ambient Color
 viTri = viTri + 42
-taoNhan("🎨 Màu môi trường xung quanh (R G B)", viTri)
-local oAmbientR = taoONhap("128", viTri + 14, 22, false)
-local oAmbientG = taoONhap("128", viTri + 14, 22, false)
-local oAmbientB = taoONhap("128", viTri + 14, 22, false)
-oAmbientR.Size = UDim2.new(0, 42, 0, 22); oAmbientR.Position = UDim2.new(0, 8,   0, viTri + 14)
-oAmbientG.Size = UDim2.new(0, 42, 0, 22); oAmbientG.Position = UDim2.new(0, 55,  0, viTri + 14)
-oAmbientB.Size = UDim2.new(0, 42, 0, 22); oAmbientB.Position = UDim2.new(0, 102, 0, viTri + 14)
-local nutApDungAmbient = taoNut("✔ Áp dụng", viTri + 14, 80, 22, Color3.fromRGB(0, 130, 200))
-nutApDungAmbient.Position = UDim2.new(0, 150, 0, viTri + 14)
+taoNhan("🎨 Màu môi trường (R  G  B)", viTri)
+local oAR = taoONhap("128", viTri+14, 22, false); oAR.Size=UDim2.new(0,42,0,22); oAR.Position=UDim2.new(0,8,0,viTri+14)
+local oAG = taoONhap("128", viTri+14, 22, false); oAG.Size=UDim2.new(0,42,0,22); oAG.Position=UDim2.new(0,55,0,viTri+14)
+local oAB = taoONhap("128", viTri+14, 22, false); oAB.Size=UDim2.new(0,42,0,22); oAB.Position=UDim2.new(0,102,0,viTri+14)
+local nutApAmbient = taoNut("✔ Áp dụng", viTri+14, 80, 22, Color3.fromRGB(0,130,200))
+nutApAmbient.Position = UDim2.new(0, 150, 0, viTri+14)
 
--- FPS Counter
 viTri = viTri + 42
 taoNhan("📈 Đếm FPS", viTri)
-local nutFPS = taoNut("📈 Hiện FPS: TẮT", viTri + 14, 160, 22, Color3.fromRGB(100, 100, 100))
-nutFPS.Position = UDim2.new(0, 10, 0, viTri + 14)
+local nutFPS = taoNut("📈 Hiện FPS: TẮT", viTri+14, 160, 22, Color3.fromRGB(100,100,100))
+nutFPS.Position = UDim2.new(0, 10, 0, viTri+14)
 
 local nhanFPS = newObj("TextLabel", {
 	Size = UDim2.new(0, 90, 0, 22),
 	Position = UDim2.new(0, 10, 1, -30),
 	Text = "",
-	BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+	BackgroundColor3 = Color3.fromRGB(0,0,0),
 	BackgroundTransparency = 0.5,
-	TextColor3 = Color3.fromRGB(0, 255, 100),
+	TextColor3 = Color3.fromRGB(0,255,100),
 	Font = Enum.Font.GothamBold,
 	TextSize = 13,
 	Visible = false,
 	BorderSizePixel = 0,
 	ZIndex = 10,
 }, screenGui)
-addCorner(nhanFPS, UDim.new(0, 6))
+addCorner(nhanFPS, UDim.new(0,6))
 
--- Chất lượng Texture
 viTri = viTri + 42
-taoNhan("🖼 Chất lượng hình ảnh (Texture)", viTri)
+taoNhan("🖼 Chất lượng hình ảnh", viTri)
 viTri = viTri + 14
-local nutTextureCao  = taoNut("🔵 Cao",  viTri, 88, 22, Color3.fromRGB(50, 100, 180))
-local nutTextureThap = taoNut("🟢 Thấp", viTri, 88, 22, Color3.fromRGB(60, 160, 80))
-local nutTextureTat  = taoNut("⚫ Tắt",  viTri, 88, 22, Color3.fromRGB(100, 100, 100))
-nutTextureCao.Position  = UDim2.new(0, 8,   0, viTri)
-nutTextureThap.Position = UDim2.new(0, 102, 0, viTri)
-nutTextureTat.Position  = UDim2.new(0, 196, 0, viTri)
+local nutTexCao  = taoNut("🔵 Cao",  viTri, 88, 22, Color3.fromRGB(50,100,180))
+local nutTexThap = taoNut("🟢 Thấp", viTri, 88, 22, Color3.fromRGB(60,160,80))
+local nutTexTat  = taoNut("⚫ Tắt",  viTri, 88, 22, Color3.fromRGB(100,100,100))
+nutTexCao.Position  = UDim2.new(0, 8,   0, viTri)
+nutTexThap.Position = UDim2.new(0, 102, 0, viTri)
+nutTexTat.Position  = UDim2.new(0, 196, 0, viTri)
 
--- Particle & Decal
 viTri = viTri + 32
 taoNhan("💨 Hiệu ứng hạt & Hình dán", viTri)
-local nutParticle = taoNut("💨 Hạt: BẬT",      viTri + 14, 130, 22, Color3.fromRGB(0, 150, 80))
-local nutDecal    = taoNut("🖼 Hình dán: BẬT",  viTri + 14, 130, 22, Color3.fromRGB(0, 150, 80))
-nutParticle.Position = UDim2.new(0, 10,  0, viTri + 14)
-nutDecal.Position    = UDim2.new(0, 148, 0, viTri + 14)
+local nutParticle = taoNut("💨 Hạt: BẬT",     viTri+14, 130, 22, Color3.fromRGB(0,150,80))
+local nutDecal    = taoNut("🖼 Hình dán: BẬT", viTri+14, 130, 22, Color3.fromRGB(0,150,80))
+nutParticle.Position = UDim2.new(0, 10,  0, viTri+14)
+nutDecal.Position    = UDim2.new(0, 148, 0, viTri+14)
 
--- Reset đồ họa
 viTri = viTri + 42
-local nutResetDoHoa = taoNut("🔄 Đặt lại đồ họa về mặc định", viTri, 200, 22, Color3.fromRGB(150, 60, 60))
+local nutResetDoHoa = taoNut("🔄 Đặt lại đồ họa về mặc định", viTri, 200, 22, Color3.fromRGB(150,60,60))
 nutResetDoHoa.Position = UDim2.new(0.5, -100, 0, viTri)
 
 viTri = viTri + 30
@@ -595,7 +617,7 @@ local kichThuocTham  = 30
 local tocDoChay      = 16
 local lucNhay        = 50
 local batNoClip      = false
-local batCamera      = false
+local batCamTuyChon  = false
 local fovTuyChon     = 70
 local offsetCamX     = 0
 local offsetCamY     = 0
@@ -605,10 +627,20 @@ local dangThamKinh   = false
 local dangBayChayBo  = false
 local menuHienThi    = false
 local yThamKinh      = nil
-local gocCamX        = 0
-local gocCamY        = 0
 
--- Trạng thái đồ họa
+-- Camera tự do
+local batCamTuDo     = false
+local tocDoCamTuDo   = 30
+local camTuDoViTri   = Vector3.new(0, 10, 0)
+local camTuDoGocX    = 0  -- yaw (trái/phải)
+local camTuDoGocY    = 0  -- pitch (lên/xuống)
+local chuotPhai      = false
+
+-- Camera tùy chỉnh
+local gocCamX        = 0
+local gocCamY        = 10
+
+-- Đồ họa
 local batBongDo   = true
 local batBloom    = true
 local batBlur     = false
@@ -620,14 +652,24 @@ local batDecal    = true
 
 local bodyVelocityBay, bodyGyroBay, nenBay
 local nenTham, bodyPosTham
-
 local danhSachScript   = {}
 local tongSoLan        = 0
 local daHuy            = false
 local luongHienTai     = nil
 local danhSachHienThi  = nil
-
 local nhanVat = player.Character or player.CharacterAdded:Wait()
+
+local defaultLighting = {
+	ClockTime = 14, Brightness = 1.2,
+	OutdoorAmbient = Color3.fromRGB(180,180,180),
+	Ambient = Color3.fromRGB(128,128,128),
+	FogEnd = 100000, FogStart = 0,
+	FogColor = Color3.new(1,1,1),
+	GlobalShadows = true,
+	EnvironmentDiffuseScale = 1,
+	EnvironmentSpecularScale = 1,
+	ShadowSoftness = 0.5,
+}
 
 -- ==================== HÀM NHÂN VẬT ====================
 local function layHumanoid()
@@ -636,7 +678,6 @@ end
 local function layRootPart()
 	return nhanVat and nhanVat:FindFirstChild("HumanoidRootPart")
 end
-
 local function apDungTocDo()
 	local hum = layHumanoid()
 	if not hum then return end
@@ -655,7 +696,6 @@ local function batNoClipFunc()
 		end
 	end)
 end
-
 local function tatNoClipFunc()
 	RunService:UnbindFromRenderStep("NoClip")
 	if nhanVat then
@@ -664,47 +704,43 @@ local function tatNoClipFunc()
 		end
 	end
 end
-
 local function togNoClip()
 	batNoClip = not batNoClip
 	nutNoClip.Text = batNoClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
 	nutNoClip.BackgroundColor3 = batNoClip
-		and Color3.fromRGB(0, 180, 100) or Color3.fromRGB(100, 100, 100)
+		and Color3.fromRGB(0,180,100) or Color3.fromRGB(100,100,100)
 	if batNoClip then batNoClipFunc() else tatNoClipFunc() end
 end
 nutNoClip.MouseButton1Click:Connect(togNoClip)
 
 -- ==================== BAY ====================
-local khungDieuKhienMobile = newObj("Frame", {
-	Size = UDim2.new(0, 180, 0, 70),
-	Position = UDim2.new(0, 10, 1, -80),
+local khungMobile = newObj("Frame", {
+	Size = UDim2.new(0,180,0,70),
+	Position = UDim2.new(0,10,1,-80),
 	BackgroundTransparency = 1,
 	Visible = false,
 }, screenGui)
 
 local function taoNutMobile(text, pos)
 	local nut = newObj("TextButton", {
-		Size = UDim2.new(0, 38, 0, 38),
-		Position = pos,
-		Text = text,
-		BackgroundColor3 = Color3.fromRGB(255, 255, 255),
+		Size = UDim2.new(0,38,0,38), Position = pos, Text = text,
+		BackgroundColor3 = Color3.fromRGB(255,255,255),
 		BackgroundTransparency = 0.3,
-		TextColor3 = Color3.fromRGB(50, 50, 50),
-		Font = Enum.Font.GothamBold,
-		TextSize = 18,
+		TextColor3 = Color3.fromRGB(50,50,50),
+		Font = Enum.Font.GothamBold, TextSize = 18,
 		BorderSizePixel = 0,
-	}, khungDieuKhienMobile)
-	addCorner(nut, UDim.new(1, 0))
-	addStroke(nut, Color3.fromRGB(140, 140, 140), 1.5)
+	}, khungMobile)
+	addCorner(nut, UDim.new(1,0))
+	addStroke(nut, Color3.fromRGB(140,140,140), 1.5)
 	return nut
 end
 
-local nutBayLen  = taoNutMobile("⏫", UDim2.new(0, 8,   0, 8))
-local nutBayXuong = taoNutMobile("⏬", UDim2.new(0, 134, 0, 8))
+local nutBayLen   = taoNutMobile("⏫", UDim2.new(0,8,0,8))
+local nutBayXuong = taoNutMobile("⏬", UDim2.new(0,134,0,8))
 
-local phimMobile   = {BayLen = false, BayXuong = false}
-local camUng       = {}
-local banDoCamUng  = {{nutBayLen, "BayLen"}, {nutBayXuong, "BayXuong"}}
+local phimMobile = {BayLen=false, BayXuong=false}
+local camUng     = {}
+local banDoCamUng = {{nutBayLen,"BayLen"},{nutBayXuong,"BayXuong"}}
 
 UserInputService.TouchStarted:Connect(function(input, processed)
 	if processed then return end
@@ -712,41 +748,35 @@ UserInputService.TouchStarted:Connect(function(input, processed)
 	for _, entry in ipairs(banDoCamUng) do
 		local nut, key = entry[1], entry[2]
 		local ap, as = nut.AbsolutePosition, nut.AbsoluteSize
-		if pos.X >= ap.X and pos.X <= ap.X + as.X
-			and pos.Y >= ap.Y and pos.Y <= ap.Y + as.Y then
-			phimMobile[key] = true
-			camUng[input] = key
-			break
+		if pos.X>=ap.X and pos.X<=ap.X+as.X and pos.Y>=ap.Y and pos.Y<=ap.Y+as.Y then
+			phimMobile[key] = true; camUng[input] = key; break
 		end
 	end
 end)
 UserInputService.TouchEnded:Connect(function(input)
-	if camUng[input] then
-		phimMobile[camUng[input]] = false
-		camUng[input] = nil
-	end
+	if camUng[input] then phimMobile[camUng[input]] = false; camUng[input] = nil end
 end)
 
-local function layNhapDocThan()
+local function layNhapDoc()
 	return UserInputService:IsKeyDown(Enum.KeyCode.Space) or phimMobile.BayLen,
 		   UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or phimMobile.BayXuong
 end
 
-local function hienDieuKhienMobile()
-	khungDieuKhienMobile.Visible = dangBay and UserInputService.TouchEnabled
+local function hienMobile()
+	khungMobile.Visible = dangBay and UserInputService.TouchEnabled
 end
 
-local function dungBay()
+local function dungBayFunc()
 	if bodyVelocityBay then bodyVelocityBay:Destroy(); bodyVelocityBay = nil end
 	if bodyGyroBay then bodyGyroBay:Destroy(); bodyGyroBay = nil end
 	if nenBay then nenBay:Destroy(); nenBay = nil end
 	local hum = layHumanoid()
 	if hum then hum.AutoRotate = true; hum.PlatformStand = false end
 	RunService:UnbindFromRenderStep("CapNhatBay")
-	hienDieuKhienMobile()
+	hienMobile()
 end
 
-local function dungThamKinh()
+local function dungThamKinhFunc()
 	if nenTham then nenTham:Destroy(); nenTham = nil end
 	if bodyPosTham then bodyPosTham:Destroy(); bodyPosTham = nil end
 	RunService:UnbindFromRenderStep("CapNhatTham")
@@ -760,54 +790,50 @@ local function taoThamKinh(yOffset)
 		Name = "ThamKinhPhep",
 		Size = Vector3.new(kichThuocTham, 0.5, kichThuocTham),
 		Transparency = 0.7,
-		Color = Color3.fromRGB(200, 230, 255),
+		Color = Color3.fromRGB(200,230,255),
 		Material = Enum.Material.Glass,
-		Anchored = true,
-		CanCollide = true,
+		Anchored = true, CanCollide = true,
 		Position = Vector3.new(root.Position.X, yOffset, root.Position.Z),
 	}, workspace)
 	bodyPosTham = newObj("BodyPosition", {
-		MaxForce = Vector3.new(0, 50000, 0),
+		MaxForce = Vector3.new(0,50000,0),
 		P = 5000, D = 500,
-		Position = Vector3.new(root.Position.X, yOffset + 3, root.Position.Z),
+		Position = Vector3.new(root.Position.X, yOffset+3, root.Position.Z),
 	}, root)
 	yThamKinh = yOffset
 	RunService:BindToRenderStep("CapNhatTham", 1, function()
 		if not dangThamKinh or not nenTham or not root or not bodyPosTham then return end
 		local x, z = root.Position.X, root.Position.Z
 		nenTham.Position     = Vector3.new(x, yThamKinh, z)
-		bodyPosTham.Position = Vector3.new(x, yThamKinh + 3, z)
+		bodyPosTham.Position = Vector3.new(x, yThamKinh+3, z)
 	end)
 end
 
-local dungBayChayBoFunc -- khai báo trước
+local dungBayChayBoFunc
 
 local function togBay()
 	dangBay = not dangBay
 	nutBay.Text = dangBay and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
 	nutBay.BackgroundColor3 = dangBay
-		and Color3.fromRGB(70, 130, 180) or Color3.fromRGB(100, 100, 100)
-	local root = layRootPart()
-	local hum  = layHumanoid()
+		and Color3.fromRGB(70,130,180) or Color3.fromRGB(100,100,100)
+	local root = layRootPart(); local hum = layHumanoid()
 	if not root then return end
 	if dangBay then
 		if dangThamKinh then
-			dungThamKinh(); dangThamKinh = false
+			dungThamKinhFunc(); dangThamKinh = false
 			nutThamKinh.Text = "🪩 Thảm kính: TẮT"
-			nutThamKinh.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+			nutThamKinh.BackgroundColor3 = Color3.fromRGB(100,100,100)
 		end
 		if dangBayChayBo and dungBayChayBoFunc then dungBayChayBoFunc() end
-		bodyVelocityBay = newObj("BodyVelocity", {MaxForce = Vector3.new(4000,4000,4000)}, root)
-		bodyGyroBay     = newObj("BodyGyro", {MaxTorque = Vector3.new(4000,4000,4000)}, root)
+		bodyVelocityBay = newObj("BodyVelocity", {MaxForce=Vector3.new(4000,4000,4000)}, root)
+		bodyGyroBay = newObj("BodyGyro", {MaxTorque=Vector3.new(4000,4000,4000)}, root)
 		if hum then hum.AutoRotate = false; hum.PlatformStand = true end
 		if not nenBay then
 			nenBay = newObj("Part", {
-				Name = "NenBay",
-				Size = Vector3.new(6, 0.2, 6),
-				Transparency = 0.7,
-				Color = Color3.fromRGB(200, 230, 255),
-				Material = Enum.Material.Glass,
-				Anchored = true, CanCollide = false,
+				Name="NenBay", Size=Vector3.new(6,0.2,6),
+				Transparency=0.7, Color=Color3.fromRGB(200,230,255),
+				Material=Enum.Material.Glass,
+				Anchored=true, CanCollide=false,
 			}, workspace)
 		end
 		RunService:BindToRenderStep("CapNhatBay", 1, function()
@@ -815,101 +841,94 @@ local function togBay()
 			local huong = hum and hum.MoveDirection or Vector3.zero
 			local dich  = root.CFrame:VectorToWorldSpace(huong)
 			if dich.Magnitude > 0 then dich = dich.Unit end
-			local len, xuong = layNhapDocThan()
+			local len, xuong = layNhapDoc()
 			local doc = (len and 1 or 0) - (xuong and 1 or 0)
-			bodyVelocityBay.Velocity = (dich + Vector3.new(0, doc, 0)) * tocDoBay
+			bodyVelocityBay.Velocity = (dich + Vector3.new(0,doc,0)) * tocDoBay
 			bodyGyroBay.CFrame = CFrame.new(root.Position,
 				root.Position + workspace.CurrentCamera.CFrame.LookVector)
-			if nenBay then nenBay.Position = root.Position - Vector3.new(0, 3.5, 0) end
+			if nenBay then nenBay.Position = root.Position - Vector3.new(0,3.5,0) end
 		end)
 	else
-		dungBay()
+		dungBayFunc()
 	end
-	hienDieuKhienMobile()
+	hienMobile()
 end
 
 local function togThamKinh()
 	dangThamKinh = not dangThamKinh
 	nutThamKinh.Text = dangThamKinh and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
 	nutThamKinh.BackgroundColor3 = dangThamKinh
-		and Color3.fromRGB(160, 100, 200) or Color3.fromRGB(100, 100, 100)
+		and Color3.fromRGB(160,100,200) or Color3.fromRGB(100,100,100)
 	local root = layRootPart()
 	if not root then return end
 	if dangThamKinh then
 		if dangBay then togBay() end
 		taoThamKinh(root.Position.Y - 3.5)
 	else
-		dungThamKinh()
+		dungThamKinhFunc()
 	end
 end
 
--- ===== OVERLAY BAY CHẠY BỘ =====
+-- Overlay bay chạy bộ
 local khungOverlay = newObj("Frame", {
-	Size = UDim2.new(0, 180, 0, 160),
-	Position = UDim2.new(1, -190, 0.5, -80),
-	BackgroundTransparency = 1,
-	Visible = false,
+	Size = UDim2.new(0,180,0,160),
+	Position = UDim2.new(1,-190,0.5,-80),
+	BackgroundTransparency = 1, Visible = false,
 }, screenGui)
 
-local function taoNutOverlay(text, y, size, mau)
+local function taoNutOL(text, y, size, mau)
 	local nut = newObj("TextButton", {
-		Size = UDim2.new(0, size, 0, size),
-		Position = UDim2.new(0.5, -size/2, 0, y),
+		Size = UDim2.new(0,size,0,size),
+		Position = UDim2.new(0.5,-size/2,0,y),
 		Text = text,
-		BackgroundColor3 = mau or Color3.fromRGB(0, 120, 200),
+		BackgroundColor3 = mau or Color3.fromRGB(0,120,200),
 		BackgroundTransparency = 0.3,
-		TextColor3 = Color3.fromRGB(255, 255, 255),
-		Font = Enum.Font.GothamBold,
-		TextSize = 20,
+		TextColor3 = Color3.fromRGB(255,255,255),
+		Font = Enum.Font.GothamBold, TextSize = 20,
 		BorderSizePixel = 0,
 	}, khungOverlay)
-	addCorner(nut, UDim.new(1, 0))
-	addStroke(nut, Color3.fromRGB(255, 255, 255), 2)
+	addCorner(nut, UDim.new(1,0))
+	addStroke(nut, Color3.fromRGB(255,255,255), 2)
 	return nut
 end
 
-local nutTogTham = taoNutOverlay("🪩", 0,   50, Color3.fromRGB(100, 100, 100))
-local nutLen     = taoNutOverlay("⬆",  60,  50, Color3.fromRGB(0, 150, 0))
-local nutXuong   = taoNutOverlay("⬇",  120, 50, Color3.fromRGB(150, 0, 0))
+local nutTogTham  = taoNutOL("🪩", 0,   50, Color3.fromRGB(100,100,100))
+local nutLen      = taoNutOL("⬆",  60,  50, Color3.fromRGB(0,150,0))
+local nutXuong    = taoNutOL("⬇",  120, 50, Color3.fromRGB(150,0,0))
 
-local nutDongOverlay = newObj("TextButton", {
-	Size = UDim2.new(0, 34, 0, 34),
-	Position = UDim2.new(1, -44, 0, 10),
+local nutDongOL = newObj("TextButton", {
+	Size = UDim2.new(0,34,0,34),
+	Position = UDim2.new(1,-44,0,10),
 	Text = "✕",
-	BackgroundColor3 = Color3.fromRGB(200, 60, 60),
+	BackgroundColor3 = Color3.fromRGB(200,60,60),
 	BackgroundTransparency = 0.3,
-	TextColor3 = Color3.fromRGB(255, 255, 255),
-	Font = Enum.Font.GothamBold,
-	TextSize = 18,
+	TextColor3 = Color3.fromRGB(255,255,255),
+	Font = Enum.Font.GothamBold, TextSize = 18,
 	BorderSizePixel = 0,
 }, khungOverlay)
-addCorner(nutDongOverlay, UDim.new(1, 0))
-addStroke(nutDongOverlay, Color3.fromRGB(255, 255, 255), 2)
+addCorner(nutDongOL, UDim.new(1,0))
+addStroke(nutDongOL, Color3.fromRGB(255,255,255), 2)
 
 local function batBayChayBoFunc()
-	local root = layRootPart()
-	if not root then return end
+	local root = layRootPart(); if not root then return end
 	if dangBay then togBay() end
 	if not dangThamKinh then
 		dangThamKinh = true
 		nutThamKinh.Text = "🪩 Thảm kính: BẬT"
-		nutThamKinh.BackgroundColor3 = Color3.fromRGB(160, 100, 200)
+		nutThamKinh.BackgroundColor3 = Color3.fromRGB(160,100,200)
 		taoThamKinh(root.Position.Y - 3.5)
 	else
 		yThamKinh = root.Position.Y - 3.5
 	end
-	khungChinh.Visible = false
-	nutMoMenu.Text = "⚙"
-	menuHienThi = false
+	khungChinh.Visible = false; nutMoMenu.Text = "⚙"; menuHienThi = false
 	khungOverlay.Visible = true
 end
 
 dungBayChayBoFunc = function()
 	if dangThamKinh then
-		dungThamKinh()
-		dangThamKinh = false
+		dungThamKinhFunc(); dangThamKinh = false
 		nutThamKinh.Text = "🪩 Thảm kính: TẮT"
-		nutThamKinh.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+		nutThamKinh.BackgroundColor3 = Color3.fromRGB(100,100,100)
 	end
 	khungOverlay.Visible = false
 end
@@ -918,18 +937,16 @@ local function togBayChayBo()
 	dangBayChayBo = not dangBayChayBo
 	nutBayChayBo.Text = dangBayChayBo and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
 	nutBayChayBo.BackgroundColor3 = dangBayChayBo
-		and Color3.fromRGB(200, 150, 50) or Color3.fromRGB(100, 100, 100)
+		and Color3.fromRGB(200,150,50) or Color3.fromRGB(100,100,100)
 	if dangBayChayBo then batBayChayBoFunc() else dungBayChayBoFunc() end
 end
 
 nutBayChayBo.MouseButton1Click:Connect(togBayChayBo)
 nutThamKinh.MouseButton1Click:Connect(togThamKinh)
 nutBay.MouseButton1Click:Connect(togBay)
-nutDongOverlay.MouseButton1Click:Connect(function() togBayChayBo() end)
-
+nutDongOL.MouseButton1Click:Connect(togBayChayBo)
 nutTogTham.MouseButton1Click:Connect(function()
-	if not dangBayChayBo then return end
-	togThamKinh()
+	if not dangBayChayBo then return end; togThamKinh()
 end)
 nutLen.MouseButton1Click:Connect(function()
 	if not dangBayChayBo then return end
@@ -943,120 +960,333 @@ nutXuong.MouseButton1Click:Connect(function()
 end)
 
 -- ==================== MÔI TRƯỜNG ====================
--- Lưu giá trị mặc định
-local defaultLighting = {
-	ClockTime              = 14,
-	Brightness             = 1.2,
-	OutdoorAmbient         = Color3.fromRGB(180, 180, 180),
-	Ambient                = Color3.fromRGB(128, 128, 128),
-	FogEnd                 = 100000,
-	FogStart               = 0,
-	FogColor               = Color3.new(1, 1, 1),
-	GlobalShadows          = true,
-	EnvironmentDiffuseScale  = 1,
-	EnvironmentSpecularScale = 1,
-	ShadowSoftness         = 0.5,
-}
-
 nutTroiToi.MouseButton1Click:Connect(function()
 	tweenLight({
-		ClockTime      = 0,
-		Brightness     = 0.3,
-		OutdoorAmbient = Color3.fromRGB(20, 20, 40),
-		Ambient        = Color3.fromRGB(20, 20, 40),
+		ClockTime = 0, Brightness = 0.3,
+		OutdoorAmbient = Color3.fromRGB(20,20,40),
+		Ambient = Color3.fromRGB(20,20,40),
 	})
 end)
 
--- ✅ FIX: Trời sáng xóa hoàn toàn độ tối
 nutTroiSang.MouseButton1Click:Connect(function()
 	tweenLight({
-		ClockTime                = 14,
-		Brightness               = 2.5,
-		OutdoorAmbient           = Color3.fromRGB(255, 255, 255),
-		Ambient                  = Color3.fromRGB(255, 255, 255),
-		EnvironmentDiffuseScale  = 1,
+		ClockTime = 14, Brightness = 2.5,
+		OutdoorAmbient = Color3.fromRGB(255,255,255),
+		Ambient = Color3.fromRGB(255,255,255),
+		EnvironmentDiffuseScale = 1,
 		EnvironmentSpecularScale = 1,
 	})
-	-- Tắt fog nếu đang bật
 	if batSuongMu then
 		batSuongMu = false
 		nutSuongMu.Text = "🌫️ Sương mù: TẮT"
-		nutSuongMu.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+		nutSuongMu.BackgroundColor3 = Color3.fromRGB(100,100,100)
 	end
-	tween(Lighting, TweenInfo.new(1.5, Enum.EasingStyle.Quad), {
-		FogEnd = 100000, FogStart = 0, FogColor = Color3.new(1,1,1)
-	})
+	tween(Lighting, TweenInfo.new(1.5, Enum.EasingStyle.Quad),
+		{FogEnd=100000, FogStart=0, FogColor=Color3.new(1,1,1)})
 end)
 
 nutSuongMu.MouseButton1Click:Connect(function()
 	batSuongMu = not batSuongMu
 	nutSuongMu.Text = batSuongMu and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
 	nutSuongMu.BackgroundColor3 = batSuongMu
-		and Color3.fromRGB(70, 70, 70) or Color3.fromRGB(100, 100, 100)
+		and Color3.fromRGB(70,70,70) or Color3.fromRGB(100,100,100)
 	tweenLight(batSuongMu
-		and {FogStart = 0, FogEnd = 80,     FogColor = Color3.fromRGB(180, 180, 180)}
-		or  {FogStart = 0, FogEnd = 100000, FogColor = Color3.new(1, 1, 1)})
+		and {FogStart=0, FogEnd=80, FogColor=Color3.fromRGB(180,180,180)}
+		or  {FogStart=0, FogEnd=100000, FogColor=Color3.new(1,1,1)})
 end)
 
-nutResetMoiTruong.MouseButton1Click:Connect(function()
+nutResetMT.MouseButton1Click:Connect(function()
 	tweenLight(defaultLighting)
 	batSuongMu = false
 	nutSuongMu.Text = "🌫️ Sương mù: TẮT"
-	nutSuongMu.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+	nutSuongMu.BackgroundColor3 = Color3.fromRGB(100,100,100)
 end)
 
--- ==================== CAMERA ====================
-local TEN_CAM = "CameraTuyChon"
+-- ==================== CAMERA TÙY CHỈNH (FIX) ====================
+local TEN_CAM_TC = "CamTuyChon"
 
-local function batCamera()
+local function tatCamTuyChon()
+	RunService:UnbindFromRenderStep(TEN_CAM_TC)
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam.CameraType = Enum.CameraType.Custom
+		cam.FieldOfView = 70
+	end
+	-- KHÔNG lock chuột ở đây để tránh xung đột
+end
+
+local function batCamTuyChonFunc()
 	local cam = workspace.CurrentCamera
 	if not cam then return end
+	gocCamX = 0
+	gocCamY = 10
 	cam.CameraType = Enum.CameraType.Scriptable
 	cam.FieldOfView = fovTuyChon
-	gocCamX, gocCamY = 0, 0
-	UserInputService.MouseBehavior    = Enum.MouseBehavior.LockCenter
-	UserInputService.MouseIconEnabled = false
-	RunService:BindToRenderStep(TEN_CAM, Enum.RenderPriority.Camera.Value, function()
-		if not batCamera or not nhanVat then return end
+
+	RunService:BindToRenderStep(TEN_CAM_TC, Enum.RenderPriority.Camera.Value, function()
+		if not batCamTuyChon then return end
 		local root = layRootPart()
 		if not root then return end
-		local dau    = nhanVat:FindFirstChild("Head")
-		local viTriNen = (dau and dau.Position or root.Position) + Vector3.new(0, 2, 0)
-		local huongNhin = (
-			CFrame.Angles(0, math.rad(gocCamX), 0)
+
+		local dau = nhanVat and nhanVat:FindFirstChild("Head")
+		local goc = dau and dau.Position or root.Position
+
+		-- Tính vị trí camera dựa theo góc
+		local cf = CFrame.new(goc)
+			* CFrame.Angles(0, math.rad(gocCamX), 0)
 			* CFrame.Angles(math.rad(gocCamY), 0, 0)
-		).LookVector
-		local lech = root.CFrame.RightVector * offsetCamX + Vector3.new(0, offsetCamY, 0)
-		cam.CFrame = CFrame.new(viTriNen + lech - huongNhin * 5, viTriNen + huongNhin * 10)
+
+		local lech = cf.RightVector * offsetCamX + cf.UpVector * offsetCamY
+		local viTriCam = goc + cf.LookVector * (-8) + lech + Vector3.new(0, 1.5, 0)
+
+		cam.CFrame = CFrame.new(viTriCam, goc + Vector3.new(0, 1.5, 0))
+		cam.FieldOfView = fovTuyChon
 	end)
 end
 
-local function tatCamera()
-	RunService:UnbindFromRenderStep(TEN_CAM)
-	local cam = workspace.CurrentCamera
-	if cam then cam.CameraType = Enum.CameraType.Custom; cam.FieldOfView = 70 end
-	UserInputService.MouseBehavior    = Enum.MouseBehavior.Default
-	UserInputService.MouseIconEnabled = true
-end
+local function togCamTuyChon()
+	-- Không cho bật đồng thời với camera tự do
+	if batCamTuDo then return end
 
-local function togCamera()
-	batCamera = not batCamera
-	nutCamera.Text = batCamera and "📷 Camera: BẬT" or "📷 Camera: TẮT"
-	nutCamera.BackgroundColor3 = batCamera
-		and Color3.fromRGB(200, 120, 50) or Color3.fromRGB(100, 100, 100)
-	if batCamera then batCamera() else tatCamera() end
-end
-nutCamera.MouseButton1Click:Connect(togCamera)
+	batCamTuyChon = not batCamTuyChon
+	nutCamTuyChon.Text = batCamTuyChon
+		and "📷 Camera tùy chỉnh: BẬT" or "📷 Camera tùy chỉnh: TẮT"
+	nutCamTuyChon.BackgroundColor3 = batCamTuyChon
+		and Color3.fromRGB(200,120,50) or Color3.fromRGB(100,100,100)
 
+	if batCamTuyChon then
+		batCamTuyChonFunc()
+	else
+		tatCamTuyChon()
+	end
+end
+nutCamTuyChon.MouseButton1Click:Connect(togCamTuyChon)
+
+-- Xoay camera tùy chỉnh bằng giữ chuột phải
 UserInputService.InputChanged:Connect(function(input)
-	if not batCamera then return end
-	if input.UserInputType == Enum.UserInputType.MouseMovement then
-		gocCamX = (gocCamX - input.Delta.X * 0.1) % 360
-		gocCamY = math.clamp(gocCamY - input.Delta.Y * 0.1, -80, 80)
+	if batCamTuyChon and chuotPhai then
+		if input.UserInputType == Enum.UserInputType.MouseMovement then
+			gocCamX = (gocCamX - input.Delta.X * 0.35) % 360
+			gocCamY = math.clamp(gocCamY - input.Delta.Y * 0.35, -75, 75)
+		end
+	end
+end)
+
+-- ==================== CAMERA TỰ DO ====================
+local TEN_CAM_TD   = "CamTuDo"
+-- Lưu humanoid state
+local humRootSaved = nil
+local humAnchored  = false
+
+-- HUD camera tự do
+local khungHUDCamTD = newObj("Frame", {
+	Size = UDim2.new(0, 220, 0, 36),
+	Position = UDim2.new(0.5, -110, 0, 10),
+	BackgroundColor3 = Color3.fromRGB(0,0,0),
+	BackgroundTransparency = 0.5,
+	Visible = false,
+	BorderSizePixel = 0,
+	ZIndex = 10,
+}, screenGui)
+addCorner(khungHUDCamTD, UDim.new(0, 8))
+addStroke(khungHUDCamTD, Color3.fromRGB(0,200,255), 1.5)
+
+local nhanHUDCamTD = newObj("TextLabel", {
+	Size = UDim2.new(1, -10, 1, 0),
+	Position = UDim2.new(0, 8, 0, 0),
+	Text = "🎥 Camera Tự Do | [F] Nhấn để thoát",
+	BackgroundTransparency = 1,
+	TextColor3 = Color3.fromRGB(0,220,255),
+	Font = Enum.Font.GothamBold,
+	TextSize = 11,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	ZIndex = 10,
+}, khungHUDCamTD)
+
+-- Crosshair
+local dotCross = newObj("Frame", {
+	Size = UDim2.new(0,6,0,6),
+	Position = UDim2.new(0.5,-3,0.5,-3),
+	BackgroundColor3 = Color3.fromRGB(255,255,255),
+	BackgroundTransparency = 0.3,
+	BorderSizePixel = 0,
+	Visible = false,
+	ZIndex = 10,
+}, screenGui)
+addCorner(dotCross, UDim.new(1,0))
+
+local function tatCamTuDo()
+	RunService:UnbindFromRenderStep(TEN_CAM_TD)
+	local cam = workspace.CurrentCamera
+	if cam then
+		cam.CameraType = Enum.CameraType.Custom
+		cam.FieldOfView = 70
+	end
+	UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+	UserInputService.MouseIconEnabled = true
+
+	-- Bỏ ghim nhân vật
+	local root = layRootPart()
+	if root then
+		root.Anchored = false
+	end
+	local hum = layHumanoid()
+	if hum then
+		hum.AutoRotate = true
+		hum.WalkSpeed  = tocDoChay
+		hum.JumpPower  = lucNhay
+	end
+
+	khungHUDCamTD.Visible = false
+	dotCross.Visible       = false
+end
+
+local function batCamTuDoFunc()
+	local cam = workspace.CurrentCamera
+	if not cam then return end
+
+	-- Ghim nhân vật đứng yên
+	local root = layRootPart()
+	local hum  = layHumanoid()
+	if root then
+		camTuDoViTri = root.Position + Vector3.new(0, 5, 0)
+		root.Anchored = true
+	end
+	if hum then
+		hum.AutoRotate = false
+		hum.WalkSpeed  = 0
+		hum.JumpPower  = 0
+	end
+
+	cam.CameraType  = Enum.CameraType.Scriptable
+	cam.FieldOfView = 90
+	camTuDoGocX     = 0
+	camTuDoGocY     = 0
+
+	UserInputService.MouseBehavior    = Enum.MouseBehavior.LockCenter
+	UserInputService.MouseIconEnabled = false
+
+	khungHUDCamTD.Visible = true
+	dotCross.Visible       = true
+
+	RunService:BindToRenderStep(TEN_CAM_TD, Enum.RenderPriority.Camera.Value, function(dt)
+		if not batCamTuDo then return end
+
+		-- Xoay camera theo chuột
+		local delta = UserInputService:GetMouseDelta()
+		camTuDoGocX = (camTuDoGocX - delta.X * 0.3) % 360
+		camTuDoGocY = math.clamp(camTuDoGocY - delta.Y * 0.3, -89, 89)
+
+		-- Tính CFrame camera
+		local cfCam = CFrame.new(camTuDoViTri)
+			* CFrame.Angles(0, math.rad(camTuDoGocX), 0)
+			* CFrame.Angles(math.rad(camTuDoGocY), 0, 0)
+
+		-- Di chuyển camera bằng phím
+		local toc = tocDoCamTuDo * dt
+		if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+			toc = toc * 3 -- Tăng tốc với Shift
+		end
+
+		local dichChuyen = Vector3.new(0,0,0)
+		if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+			dichChuyen = dichChuyen + cfCam.LookVector * toc
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+			dichChuyen = dichChuyen - cfCam.LookVector * toc
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+			dichChuyen = dichChuyen - cfCam.RightVector * toc
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+			dichChuyen = dichChuyen + cfCam.RightVector * toc
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.E) then
+			dichChuyen = dichChuyen + Vector3.new(0,1,0) * toc
+		end
+		if UserInputService:IsKeyDown(Enum.KeyCode.Q) then
+			dichChuyen = dichChuyen - Vector3.new(0,1,0) * toc
+		end
+
+		camTuDoViTri = camTuDoViTri + dichChuyen
+
+		-- Áp dụng CFrame
+		cam.CFrame = CFrame.new(camTuDoViTri)
+			* CFrame.Angles(0, math.rad(camTuDoGocX), 0)
+			* CFrame.Angles(math.rad(camTuDoGocY), 0, 0)
+	end)
+end
+
+local function togCamTuDo()
+	-- Không cho bật đồng thời với camera tùy chỉnh
+	if batCamTuyChon then
+		batCamTuyChon = false
+		nutCamTuyChon.Text = "📷 Camera tùy chỉnh: TẮT"
+		nutCamTuyChon.BackgroundColor3 = Color3.fromRGB(100,100,100)
+		tatCamTuyChon()
+	end
+
+	batCamTuDo = not batCamTuDo
+	nutCamTuDo.Text = batCamTuDo
+		and "🎥 Camera tự do: BẬT" or "🎥 Camera tự do: TẮT"
+	nutCamTuDo.BackgroundColor3 = batCamTuDo
+		and Color3.fromRGB(0,160,200) or Color3.fromRGB(100,100,100)
+
+	if batCamTuDo then
+		batCamTuDoFunc()
+	else
+		tatCamTuDo()
+	end
+end
+nutCamTuDo.MouseButton1Click:Connect(togCamTuDo)
+
+-- Phím F để thoát camera tự do nhanh
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.F and batCamTuDo then
+		togCamTuDo()
+	end
+	-- Chuột phải cho camera tùy chỉnh
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		chuotPhai = true
+		if batCamTuyChon then
+			UserInputService.MouseBehavior = Enum.MouseBehavior.LockCurrentPosition
+		end
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		chuotPhai = false
+		if batCamTuyChon then
+			UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		end
 	end
 end)
 
 -- ==================== Ô NHẬP SỐ ====================
+oFOV.FocusLost:Connect(function(ep)
+	if not ep then return end
+	local n = tonumber(oFOV.Text)
+	if n and n >= 30 and n <= 120 then fovTuyChon = n
+	else oFOV.Text = tostring(fovTuyChon) end
+end)
+oCamOffX.FocusLost:Connect(function(ep)
+	if not ep then return end
+	local n = tonumber(oCamOffX.Text)
+	if n then offsetCamX = n else oCamOffX.Text = tostring(offsetCamX) end
+end)
+oCamOffY.FocusLost:Connect(function(ep)
+	if not ep then return end
+	local n = tonumber(oCamOffY.Text)
+	if n then offsetCamY = n else oCamOffY.Text = tostring(offsetCamY) end
+end)
+oCamTocDo.FocusLost:Connect(function(ep)
+	if not ep then return end
+	local n = tonumber(oCamTocDo.Text)
+	if n and n > 0 then tocDoCamTuDo = n
+	else oCamTocDo.Text = tostring(tocDoCamTuDo) end
+end)
 oWalkSpeed.FocusLost:Connect(function(ep)
 	if not ep then return end
 	local n = tonumber(oWalkSpeed.Text)
@@ -1072,7 +1302,7 @@ end)
 oTocDoBay.FocusLost:Connect(function(ep)
 	if not ep then return end
 	local n = tonumber(oTocDoBay.Text)
-	if n and n >= 0 then tocDoBay = n; nhanTocDoBay.Text = "⚡ Tốc độ bay: " .. n
+	if n and n >= 0 then tocDoBay = n; nhanTocDoBay.Text = "⚡ Tốc độ bay: "..n
 	else oTocDoBay.Text = tostring(tocDoBay) end
 end)
 oKichThuocTham.FocusLost:Connect(function(ep)
@@ -1080,26 +1310,6 @@ oKichThuocTham.FocusLost:Connect(function(ep)
 	local n = tonumber(oKichThuocTham.Text)
 	if n and n >= 10 then kichThuocTham = n
 	else oKichThuocTham.Text = tostring(kichThuocTham) end
-end)
-oFOV.FocusLost:Connect(function(ep)
-	if not ep then return end
-	local n = tonumber(oFOV.Text)
-	if n and n >= 30 and n <= 120 then
-		fovTuyChon = n
-		if batCamera and workspace.CurrentCamera then
-			workspace.CurrentCamera.FieldOfView = n
-		end
-	else oFOV.Text = tostring(fovTuyChon) end
-end)
-oCamX.FocusLost:Connect(function(ep)
-	if not ep then return end
-	local n = tonumber(oCamX.Text)
-	if n then offsetCamX = n else oCamX.Text = tostring(offsetCamX) end
-end)
-oCamY.FocusLost:Connect(function(ep)
-	if not ep then return end
-	local n = tonumber(oCamY.Text)
-	if n then offsetCamY = n else oCamY.Text = tostring(offsetCamY) end
 end)
 
 -- ==================== THỰC THI CODE ====================
@@ -1123,7 +1333,7 @@ local function dungThucThi()
 	daHuy = true
 	if luongHienTai then task.cancel(luongHienTai); luongHienTai = nil end
 	if danhSachHienThi then
-		danhSachHienThi.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+		danhSachHienThi.BackgroundColor3 = Color3.fromRGB(0,150,255)
 		danhSachHienThi = nil
 	end
 	nhanTrangThai.Text = "⏹️ Đã dừng"
@@ -1135,10 +1345,7 @@ local function chayCodeAsync(code, ten, chiSo)
 	local soLan, giaycho = layThamSo()
 	nhanTrangThai.Text = "⏳ Đang thực thi..."
 	daHuy = false
-	if chiSo then
-		danhSachHienThi = chiSo
-		chiSo.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-	end
+	if chiSo then danhSachHienThi = chiSo; chiSo.BackgroundColor3 = Color3.fromRGB(255,0,0) end
 	luongHienTai = task.spawn(function()
 		local ok_c, fail_c = 0, 0
 		for i = 1, soLan do
@@ -1153,16 +1360,16 @@ local function chayCodeAsync(code, ten, chiSo)
 			end
 			local ok, err = thucThiMot(code, ten)
 			if ok then ok_c += 1 else fail_c += 1; warn("❌ Lần", i, err) end
-			nhanTrangThai.Text = string.format("⏳ %d/%d đang chạy...", i, soLan)
+			nhanTrangThai.Text = string.format("⏳ %d/%d...", i, soLan)
 		end
 		tongSoLan += ok_c + fail_c
 		nhanDemSoLan.Text  = "🔄 Tổng số lần đã chạy: " .. tongSoLan
 		nhanTrangThai.Text = daHuy and "⏹️ Đã dừng"
 			or (fail_c == 0
 				and string.format("✅ Thành công %d lần!", ok_c)
-				or  string.format("⚠️ %d thành công, %d thất bại", ok_c, fail_c))
+				or  string.format("⚠️ %d ok, %d lỗi", ok_c, fail_c))
 		if chiSo then
-			chiSo.BackgroundColor3 = Color3.fromRGB(0, 150, 255)
+			chiSo.BackgroundColor3 = Color3.fromRGB(0,150,255)
 			if danhSachHienThi == chiSo then danhSachHienThi = nil end
 		end
 		luongHienTai = nil
@@ -1175,9 +1382,8 @@ end)
 
 -- ==================== DANH SÁCH SCRIPT ====================
 local function capNhatCanvas()
-	local soScript = #danhSachScript
 	khungCuon.CanvasSize = UDim2.new(0, 0, 0,
-		math.max(viTri + soScript * 30 + 60, 600))
+		math.max(viTri + #danhSachScript * 30 + 60, 700))
 end
 
 local function xayDungDanhSach()
@@ -1186,53 +1392,52 @@ local function xayDungDanhSach()
 	end
 	for i, data in ipairs(danhSachScript) do
 		local hang = newObj("Frame", {
-			Size = UDim2.new(1, 0, 0, 26),
-			BackgroundColor3 = Color3.fromRGB(245, 245, 245),
+			Size = UDim2.new(1,0,0,26),
+			BackgroundColor3 = Color3.fromRGB(245,245,245),
 			BackgroundTransparency = 0.3,
 			BorderSizePixel = 0,
 		}, khungDanhSach)
-		addCorner(hang, UDim.new(0, 5))
-		addStroke(hang, Color3.fromRGB(140, 140, 140), 1)
+		addCorner(hang, UDim.new(0,5))
+		addStroke(hang, Color3.fromRGB(140,140,140), 1)
 
 		local nutChayScript = newObj("TextButton", {
-			Size = UDim2.new(1, -46, 1, 0),
+			Size = UDim2.new(1,-46,1,0),
 			Text = data.ten,
 			BackgroundTransparency = 1,
-			TextColor3 = Color3.fromRGB(50, 50, 50),
+			TextColor3 = Color3.fromRGB(50,50,50),
 			Font = Enum.Font.GothamMedium,
 			TextSize = 11,
 			TextXAlignment = Enum.TextXAlignment.Left,
 		}, hang)
 
 		local chiSo = newObj("TextButton", {
-			Size = UDim2.new(0, 14, 0, 14),
-			Position = UDim2.new(1, -40, 0.5, -7),
+			Size = UDim2.new(0,14,0,14),
+			Position = UDim2.new(1,-40,0.5,-7),
 			Text = "",
-			BackgroundColor3 = Color3.fromRGB(0, 150, 255),
+			BackgroundColor3 = Color3.fromRGB(0,150,255),
 			BorderSizePixel = 0,
 		}, hang)
-		addCorner(chiSo, UDim.new(1, 0))
+		addCorner(chiSo, UDim.new(1,0))
 
 		local nutXoa = newObj("TextButton", {
-			Size = UDim2.new(0, 20, 0, 20),
-			Position = UDim2.new(1, -22, 0.5, -10),
+			Size = UDim2.new(0,20,0,20),
+			Position = UDim2.new(1,-22,0.5,-10),
 			Text = "✕",
-			BackgroundColor3 = Color3.fromRGB(200, 60, 60),
+			BackgroundColor3 = Color3.fromRGB(200,60,60),
 			BackgroundTransparency = 0.2,
-			TextColor3 = Color3.fromRGB(255, 255, 255),
+			TextColor3 = Color3.fromRGB(255,255,255),
 			Font = Enum.Font.GothamBold,
 			TextSize = 12,
 			BorderSizePixel = 0,
 		}, hang)
-		addCorner(nutXoa, UDim.new(1, 0))
+		addCorner(nutXoa, UDim.new(1,0))
 
 		local idx = i
 		chiSo.MouseButton1Click:Connect(function()
 			if danhSachHienThi == chiSo then dungThucThi() end
 		end)
 		nutChayScript.MouseButton1Click:Connect(function()
-			oTen.Text  = data.ten
-			oCode.Text = data.code
+			oTen.Text = data.ten; oCode.Text = data.code
 			chayCodeAsync(data.code, data.ten, chiSo)
 		end)
 		nutXoa.MouseButton1Click:Connect(function()
@@ -1263,30 +1468,29 @@ nutLuu.MouseButton1Click:Connect(function()
 	khungCuon.CanvasPosition = Vector2.new(0, khungCuon.CanvasSize.Y.Offset)
 end)
 
--- ==================== ĐỒ HỌA LOGIC ====================
-local PRESET_CHAT_LUONG = {
-	Ultra    = {level=21, shadow=0.2, diffuse=1,   specular=1,   shadow_on=true,  ten="✨ Siêu cao"},
-	High     = {level=17, shadow=0.5, diffuse=1,   specular=1,   shadow_on=true,  ten="🔵 Cao"},
-	Medium   = {level=10, shadow=1,   diffuse=0.8, specular=0.6, shadow_on=true,  ten="🟡 Trung bình"},
-	Low      = {level=5,  shadow=1,   diffuse=0.5, specular=0.3, shadow_on=false, ten="🟢 Thấp"},
-	UltraLow = {level=1,  shadow=1,   diffuse=0,   specular=0,   shadow_on=false, ten="⚡ Siêu thấp"},
+-- ==================== ĐỒ HỌA ====================
+local PRESET = {
+	Ultra    = {level=21,shadow=0.2,diffuse=1,  specular=1,  bong=true,  ten="✨ Siêu cao"},
+	High     = {level=17,shadow=0.5,diffuse=1,  specular=1,  bong=true,  ten="🔵 Cao"},
+	Medium   = {level=10,shadow=1,  diffuse=0.8,specular=0.6,bong=true,  ten="🟡 Trung bình"},
+	Low      = {level=5, shadow=1,  diffuse=0.5,specular=0.3,bong=false, ten="🟢 Thấp"},
+	UltraLow = {level=1, shadow=1,  diffuse=0,  specular=0,  bong=false, ten="⚡ Siêu thấp"},
 }
 
 local function apDungChatLuong(key)
-	local p = PRESET_CHAT_LUONG[key]
-	if not p then return end
+	local p = PRESET[key]; if not p then return end
 	pcall(function() settings().Rendering.QualityLevel = p.level end)
-	Lighting.ShadowSoftness              = p.shadow
-	Lighting.GlobalShadows               = p.shadow_on
-	Lighting.EnvironmentDiffuseScale     = p.diffuse
-	Lighting.EnvironmentSpecularScale    = p.specular
-	nhanChatLuong.Text       = "📊 Chất lượng: " .. p.ten
-	nhanChatLuong.TextColor3 = (key == "Ultra")
-		and Color3.fromRGB(220, 80, 80) or Color3.fromRGB(0, 140, 70)
-	batBongDo = p.shadow_on
+	Lighting.ShadowSoftness           = p.shadow
+	Lighting.GlobalShadows            = p.bong
+	Lighting.EnvironmentDiffuseScale  = p.diffuse
+	Lighting.EnvironmentSpecularScale = p.specular
+	nhanChatLuong.Text = "📊 Chất lượng: " .. p.ten
+	nhanChatLuong.TextColor3 = (key=="Ultra")
+		and Color3.fromRGB(220,80,80) or Color3.fromRGB(0,140,70)
+	batBongDo = p.bong
 	nutBongDo.Text = batBongDo and "🌑 Bóng đổ: BẬT" or "🌑 Bóng đổ: TẮT"
 	nutBongDo.BackgroundColor3 = batBongDo
-		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+		and Color3.fromRGB(0,150,80) or Color3.fromRGB(100,100,100)
 end
 
 nutUltra.MouseButton1Click:Connect(function()    apDungChatLuong("Ultra")    end)
@@ -1295,204 +1499,166 @@ nutMed.MouseButton1Click:Connect(function()      apDungChatLuong("Medium")   end
 nutLow.MouseButton1Click:Connect(function()      apDungChatLuong("Low")      end)
 nutUltraLow.MouseButton1Click:Connect(function() apDungChatLuong("UltraLow") end)
 
--- Bóng đổ
 nutBongDo.MouseButton1Click:Connect(function()
 	batBongDo = not batBongDo
 	Lighting.GlobalShadows = batBongDo
 	nutBongDo.Text = batBongDo and "🌑 Bóng đổ: BẬT" or "🌑 Bóng đổ: TẮT"
 	nutBongDo.BackgroundColor3 = batBongDo
-		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+		and Color3.fromRGB(0,150,80) or Color3.fromRGB(100,100,100)
 end)
 
--- Post FX
 local function timHoacTao(cls, parent, ten)
 	local obj = parent:FindFirstChild(ten)
-	if not obj then
-		obj = Instance.new(cls)
-		obj.Name   = ten
-		obj.Parent = parent
-	end
+	if not obj then obj = Instance.new(cls); obj.Name = ten; obj.Parent = parent end
 	return obj
 end
 
-local hqBloom  = timHoacTao("BloomEffect",           Lighting, "HQ_Bloom")
-local hqBlur   = timHoacTao("BlurEffect",            Lighting, "HQ_Blur")
-local hqNang   = timHoacTao("SunRaysEffect",         Lighting, "HQ_SunRays")
-local hqMau    = timHoacTao("ColorCorrectionEffect", Lighting, "HQ_ColorFix")
+local hqBloom = timHoacTao("BloomEffect",           Lighting, "HQ_Bloom")
+local hqBlur  = timHoacTao("BlurEffect",            Lighting, "HQ_Blur")
+local hqNang  = timHoacTao("SunRaysEffect",         Lighting, "HQ_SunRays")
+local hqMau   = timHoacTao("ColorCorrectionEffect", Lighting, "HQ_ColorFix")
 
-hqBloom.Enabled  = true;  hqBloom.Intensity  = 0.5
-hqBlur.Enabled   = false; hqBlur.Size        = 12
-hqNang.Enabled   = true;  hqNang.Intensity   = 0.25
-hqMau.Enabled    = false; hqMau.Contrast     = 0.15; hqMau.Saturation = 0.2
+hqBloom.Enabled=true;  hqBloom.Intensity=0.5
+hqBlur.Enabled=false;  hqBlur.Size=12
+hqNang.Enabled=true;   hqNang.Intensity=0.25
+hqMau.Enabled=false;   hqMau.Contrast=0.15; hqMau.Saturation=0.2
 
 nutBloom.MouseButton1Click:Connect(function()
-	batBloom = not batBloom
-	hqBloom.Enabled = batBloom
+	batBloom = not batBloom; hqBloom.Enabled = batBloom
 	nutBloom.Text = batBloom and "🌸 Bloom: BẬT" or "🌸 Bloom: TẮT"
-	nutBloom.BackgroundColor3 = batBloom
-		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+	nutBloom.BackgroundColor3 = batBloom and Color3.fromRGB(0,150,80) or Color3.fromRGB(100,100,100)
 end)
 nutBlur.MouseButton1Click:Connect(function()
-	batBlur = not batBlur
-	hqBlur.Enabled = batBlur
+	batBlur = not batBlur; hqBlur.Enabled = batBlur
 	nutBlur.Text = batBlur and "🌫 Làm mờ: BẬT" or "🌫 Làm mờ: TẮT"
-	nutBlur.BackgroundColor3 = batBlur
-		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+	nutBlur.BackgroundColor3 = batBlur and Color3.fromRGB(0,150,80) or Color3.fromRGB(100,100,100)
 end)
 nutNangMT.MouseButton1Click:Connect(function()
-	batNangMT = not batNangMT
-	hqNang.Enabled = batNangMT
+	batNangMT = not batNangMT; hqNang.Enabled = batNangMT
 	nutNangMT.Text = batNangMT and "☀ Tia nắng: BẬT" or "☀ Tia nắng: TẮT"
-	nutNangMT.BackgroundColor3 = batNangMT
-		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+	nutNangMT.BackgroundColor3 = batNangMT and Color3.fromRGB(0,150,80) or Color3.fromRGB(100,100,100)
 end)
 nutMauSac.MouseButton1Click:Connect(function()
-	batMauSac = not batMauSac
-	hqMau.Enabled = batMauSac
+	batMauSac = not batMauSac; hqMau.Enabled = batMauSac
 	nutMauSac.Text = batMauSac and "🎨 Màu sắc: BẬT" or "🎨 Màu sắc: TẮT"
-	nutMauSac.BackgroundColor3 = batMauSac
-		and Color3.fromRGB(200, 120, 50) or Color3.fromRGB(100, 100, 100)
+	nutMauSac.BackgroundColor3 = batMauSac and Color3.fromRGB(200,120,50) or Color3.fromRGB(100,100,100)
 end)
 
--- Độ sáng
-nutApDungSang.MouseButton1Click:Connect(function()
+nutApSang.MouseButton1Click:Connect(function()
 	local n = tonumber(oDoSang.Text)
-	if n and n >= 0.5 and n <= 3 then
-		tweenLight({Brightness = n})
-	else
-		oDoSang.Text = string.format("%.1f", Lighting.Brightness)
-	end
+	if n and n >= 0.5 and n <= 3 then tweenLight({Brightness = n})
+	else oDoSang.Text = string.format("%.1f", Lighting.Brightness) end
 end)
 
--- Ambient
-nutApDungAmbient.MouseButton1Click:Connect(function()
-	local r = math.clamp(tonumber(oAmbientR.Text) or 128, 0, 255)
-	local g = math.clamp(tonumber(oAmbientG.Text) or 128, 0, 255)
-	local b = math.clamp(tonumber(oAmbientB.Text) or 128, 0, 255)
-	tweenLight({Ambient = Color3.fromRGB(r, g, b)})
+nutApAmbient.MouseButton1Click:Connect(function()
+	local r = math.clamp(tonumber(oAR.Text) or 128, 0, 255)
+	local g = math.clamp(tonumber(oAG.Text) or 128, 0, 255)
+	local b = math.clamp(tonumber(oAB.Text) or 128, 0, 255)
+	tweenLight({Ambient = Color3.fromRGB(r,g,b)})
 end)
 
--- FPS Counter
-local bufferFPS = {}
-local MAU_FPS   = 30
+local bufFPS = {}
 nutFPS.MouseButton1Click:Connect(function()
-	batFPS           = not batFPS
-	nhanFPS.Visible  = batFPS
-	nutFPS.Text      = batFPS and "📈 Hiện FPS: BẬT" or "📈 Hiện FPS: TẮT"
-	nutFPS.BackgroundColor3 = batFPS
-		and Color3.fromRGB(0, 180, 80) or Color3.fromRGB(100, 100, 100)
+	batFPS = not batFPS
+	nhanFPS.Visible = batFPS
+	nutFPS.Text = batFPS and "📈 Hiện FPS: BẬT" or "📈 Hiện FPS: TẮT"
+	nutFPS.BackgroundColor3 = batFPS and Color3.fromRGB(0,180,80) or Color3.fromRGB(100,100,100)
 	if batFPS then
 		RunService:BindToRenderStep("DemFPS", Enum.RenderPriority.Last.Value, function(dt)
-			table.insert(bufferFPS, dt)
-			if #bufferFPS > MAU_FPS then table.remove(bufferFPS, 1) end
-			if #bufferFPS > 0 then
+			table.insert(bufFPS, dt)
+			if #bufFPS > 30 then table.remove(bufFPS, 1) end
+			if #bufFPS > 0 then
 				local tong = 0
-				for _, v in ipairs(bufferFPS) do tong = tong + v end
-				local fps = math.round(#bufferFPS / tong)
-				nhanFPS.TextColor3 = fps >= 55 and Color3.fromRGB(0, 255, 100)
-					or fps >= 30 and Color3.fromRGB(255, 200, 0)
-					or Color3.fromRGB(255, 60, 60)
-				nhanFPS.Text = string.format("FPS: %d", fps)
+				for _, v in ipairs(bufFPS) do tong = tong + v end
+				local fps = math.round(#bufFPS / tong)
+				nhanFPS.TextColor3 = fps>=55 and Color3.fromRGB(0,255,100)
+					or fps>=30 and Color3.fromRGB(255,200,0)
+					or Color3.fromRGB(255,60,60)
+				nhanFPS.Text = "FPS: "..fps
 			end
 		end)
 	else
 		RunService:UnbindFromRenderStep("DemFPS")
-		bufferFPS = {}
-		nhanFPS.Text = ""
+		bufFPS = {}; nhanFPS.Text = ""
 	end
 end)
 
--- Texture
-local function datChatLuongTexture(mode)
+local function datTexture(mode)
 	for _, obj in ipairs(workspace:GetDescendants()) do
 		if obj:IsA("Texture") or obj:IsA("Decal") then
-			obj.Transparency = (mode == "Tat") and 1 or 0
+			obj.Transparency = (mode=="Tat") and 1 or 0
 		end
 	end
-	pcall(function()
-		settings().Rendering.EagerBulkExecution = (mode == "Cao")
-	end)
 end
 
-nutTextureCao.MouseButton1Click:Connect(function()
-	datChatLuongTexture("Cao")
-	nutTextureCao.BackgroundColor3  = Color3.fromRGB(0, 120, 200)
-	nutTextureThap.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	nutTextureTat.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+nutTexCao.MouseButton1Click:Connect(function()
+	datTexture("Cao")
+	nutTexCao.BackgroundColor3=Color3.fromRGB(0,120,200)
+	nutTexThap.BackgroundColor3=Color3.fromRGB(100,100,100)
+	nutTexTat.BackgroundColor3=Color3.fromRGB(100,100,100)
 end)
-nutTextureThap.MouseButton1Click:Connect(function()
-	datChatLuongTexture("Thap")
-	nutTextureCao.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
-	nutTextureThap.BackgroundColor3 = Color3.fromRGB(0, 160, 60)
-	nutTextureTat.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+nutTexThap.MouseButton1Click:Connect(function()
+	datTexture("Thap")
+	nutTexCao.BackgroundColor3=Color3.fromRGB(100,100,100)
+	nutTexThap.BackgroundColor3=Color3.fromRGB(0,160,60)
+	nutTexTat.BackgroundColor3=Color3.fromRGB(100,100,100)
 end)
-nutTextureTat.MouseButton1Click:Connect(function()
-	datChatLuongTexture("Tat")
-	nutTextureCao.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
-	nutTextureThap.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	nutTextureTat.BackgroundColor3  = Color3.fromRGB(60, 60, 60)
+nutTexTat.MouseButton1Click:Connect(function()
+	datTexture("Tat")
+	nutTexCao.BackgroundColor3=Color3.fromRGB(100,100,100)
+	nutTexThap.BackgroundColor3=Color3.fromRGB(100,100,100)
+	nutTexTat.BackgroundColor3=Color3.fromRGB(60,60,60)
 end)
 
--- Particle & Decal
-local function datHieuUngHat(state)
+local function datHat(state)
 	for _, obj in ipairs(workspace:GetDescendants()) do
 		if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
 			obj.Enabled = state
 		end
 	end
 end
-local function datHinhDan(state)
+local function datDecal(state)
 	for _, obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("Decal") then
-			obj.Transparency = state and 0 or 1
-		end
+		if obj:IsA("Decal") then obj.Transparency = state and 0 or 1 end
 	end
 end
 
 nutParticle.MouseButton1Click:Connect(function()
-	batParticle = not batParticle
-	datHieuUngHat(batParticle)
+	batParticle = not batParticle; datHat(batParticle)
 	nutParticle.Text = batParticle and "💨 Hạt: BẬT" or "💨 Hạt: TẮT"
-	nutParticle.BackgroundColor3 = batParticle
-		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+	nutParticle.BackgroundColor3 = batParticle and Color3.fromRGB(0,150,80) or Color3.fromRGB(100,100,100)
 end)
 nutDecal.MouseButton1Click:Connect(function()
-	batDecal = not batDecal
-	datHinhDan(batDecal)
+	batDecal = not batDecal; datDecal(batDecal)
 	nutDecal.Text = batDecal and "🖼 Hình dán: BẬT" or "🖼 Hình dán: TẮT"
-	nutDecal.BackgroundColor3 = batDecal
-		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+	nutDecal.BackgroundColor3 = batDecal and Color3.fromRGB(0,150,80) or Color3.fromRGB(100,100,100)
 end)
 
--- Reset đồ họa
 nutResetDoHoa.MouseButton1Click:Connect(function()
 	apDungChatLuong("Ultra")
-	batBongDo = true; Lighting.GlobalShadows = true
-	batBloom  = true;  hqBloom.Enabled = true
-	batBlur   = false; hqBlur.Enabled  = false
-	batNangMT = true;  hqNang.Enabled  = true
-	batMauSac = false; hqMau.Enabled   = false
-	nutBloom.Text  = "🌸 Bloom: BẬT";   nutBloom.BackgroundColor3  = Color3.fromRGB(0, 150, 80)
-	nutBlur.Text   = "🌫 Làm mờ: TẮT";  nutBlur.BackgroundColor3   = Color3.fromRGB(100, 100, 100)
-	nutNangMT.Text = "☀ Tia nắng: BẬT"; nutNangMT.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
-	nutMauSac.Text = "🎨 Màu sắc: TẮT"; nutMauSac.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	batParticle = true; datHieuUngHat(true)
-	batDecal    = true; datHinhDan(true)
-	nutParticle.Text = "💨 Hạt: BẬT";      nutParticle.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
-	nutDecal.Text    = "🖼 Hình dán: BẬT"; nutDecal.BackgroundColor3    = Color3.fromRGB(0, 150, 80)
+	batBloom=true;  hqBloom.Enabled=true
+	batBlur=false;  hqBlur.Enabled=false
+	batNangMT=true; hqNang.Enabled=true
+	batMauSac=false;hqMau.Enabled=false
+	nutBloom.Text="🌸 Bloom: BẬT";   nutBloom.BackgroundColor3=Color3.fromRGB(0,150,80)
+	nutBlur.Text="🌫 Làm mờ: TẮT";  nutBlur.BackgroundColor3=Color3.fromRGB(100,100,100)
+	nutNangMT.Text="☀ Tia nắng: BẬT";nutNangMT.BackgroundColor3=Color3.fromRGB(0,150,80)
+	nutMauSac.Text="🎨 Màu sắc: TẮT";nutMauSac.BackgroundColor3=Color3.fromRGB(100,100,100)
+	batParticle=true; datHat(true)
+	batDecal=true;    datDecal(true)
+	nutParticle.Text="💨 Hạt: BẬT";     nutParticle.BackgroundColor3=Color3.fromRGB(0,150,80)
+	nutDecal.Text="🖼 Hình dán: BẬT";   nutDecal.BackgroundColor3=Color3.fromRGB(0,150,80)
 	tweenLight(defaultLighting)
 	oDoSang.Text = "1.2"
-	datChatLuongTexture("Cao")
-	nutTextureCao.BackgroundColor3  = Color3.fromRGB(0, 120, 200)
-	nutTextureThap.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	nutTextureTat.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+	datTexture("Cao")
+	nutTexCao.BackgroundColor3=Color3.fromRGB(0,120,200)
+	nutTexThap.BackgroundColor3=Color3.fromRGB(100,100,100)
+	nutTexTat.BackgroundColor3=Color3.fromRGB(100,100,100)
 end)
 
 -- ==================== TOGGLE MENU ====================
 nutDong.MouseButton1Click:Connect(function()
-	khungChinh.Visible = false
-	nutMoMenu.Text = "⚙"
-	menuHienThi = false
+	khungChinh.Visible = false; nutMoMenu.Text = "⚙"; menuHienThi = false
 end)
 nutMoMenu.MouseButton1Click:Connect(function()
 	if dangBayChayBo then return end
@@ -1501,23 +1667,35 @@ nutMoMenu.MouseButton1Click:Connect(function()
 	nutMoMenu.Text = menuHienThi and "✕" or "⚙"
 end)
 
--- ==================== HỒI SINH NHÂN VẬT ====================
+-- ==================== HỒI SINH ====================
 player.CharacterAdded:Connect(function(char)
 	nhanVat = char
+	task.wait(0.1)
 	local hum = char:FindFirstChild("Humanoid")
 	if hum then apDungTocDo() end
-	if dangBay then dungBay(); dangBay = false end
-	if dangThamKinh then dungThamKinh(); dangThamKinh = false end
+	if dangBay then dungBayFunc(); dangBay = false end
+	if dangThamKinh then dungThamKinhFunc(); dangThamKinh = false end
 	if batNoClip then batNoClipFunc() end
-	if dangBayChayBo then dungBayChayBoFunc() end
-	if batCamera then tatCamera(); task.wait(0.1); batCamera() end
-	-- Reset nút
-	nutBay.Text      = "🕊️ Bay: TẮT";          nutBay.BackgroundColor3      = Color3.fromRGB(100, 100, 100)
-	nutThamKinh.Text = "🪩 Thảm kính: TẮT";    nutThamKinh.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	nutBayChayBo.Text = "🕹️ Bay chạy bộ: TẮT"; nutBayChayBo.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
-	khungOverlay.Visible          = false
-	khungDieuKhienMobile.Visible  = false
-	dangBayChayBo = false
+	if dangBayChayBo then dungBayChayBoFunc(); dangBayChayBo = false end
+	-- Tắt camera tự do khi hồi sinh
+	if batCamTuDo then
+		batCamTuDo = false
+		nutCamTuDo.Text = "🎥 Camera tự do: TẮT"
+		nutCamTuDo.BackgroundColor3 = Color3.fromRGB(100,100,100)
+		tatCamTuDo()
+	end
+	if batCamTuyChon then
+		batCamTuyChon = false
+		nutCamTuyChon.Text = "📷 Camera tùy chỉnh: TẮT"
+		nutCamTuyChon.BackgroundColor3 = Color3.fromRGB(100,100,100)
+		tatCamTuyChon()
+	end
+	-- Reset UI
+	nutBay.Text="🕊️ Bay: TẮT"; nutBay.BackgroundColor3=Color3.fromRGB(100,100,100)
+	nutThamKinh.Text="🪩 Thảm kính: TẮT"; nutThamKinh.BackgroundColor3=Color3.fromRGB(100,100,100)
+	nutBayChayBo.Text="🕹️ Bay chạy bộ: TẮT"; nutBayChayBo.BackgroundColor3=Color3.fromRGB(100,100,100)
+	khungOverlay.Visible=false; khungMobile.Visible=false
+	dangBayChayBo=false; dangBay=false; dangThamKinh=false
 end)
 
 -- ==================== KHỞI TẠO ====================
