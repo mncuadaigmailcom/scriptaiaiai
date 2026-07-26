@@ -1,5 +1,6 @@
 -- ============================================
 -- EXECUTOR MENU - Phiên bản Tiếng Việt Full Tính Năng
+-- (Đã thêm: Chỉnh kích thước 4 góc & Khôi phục tính năng khi hồi sinh)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -125,7 +126,7 @@ Corner(titleBar, UDim.new(0,12))
 New("TextLabel", {
     Size=UDim2.new(1,-40,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="⚡ Executor Pro v2.0",
+    Text="⚡ Executor Pro v2.5",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -167,40 +168,67 @@ UserInputService.InputEnded:Connect(function(i)
     end
 end)
 
--- ===== RESIZE =====
-local resizeBtn = New("TextButton", {
-    Size=UDim2.new(0,16,0,16),
-    Position=UDim2.new(1,-18,1,-18),
-    Text="↘",
-    BackgroundColor3=Color3.fromRGB(200,200,200),
-    BackgroundTransparency=0.5,
-    TextColor3=C.DARK,
-    Font=Enum.Font.GothamBold,
-    TextSize=12,
-    BorderSizePixel=0,
-    ZIndex=5,
-}, main)
-Corner(resizeBtn, UDim.new(0,4))
+-- ===== RESIZE TẠI 4 GÓC (4-CORNER RESIZING) =====
+local minW, minH = 340, 280
 
-local resizing, sizeStart, resizeStartPos
-resizeBtn.InputBegan:Connect(function(i)
-    if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
-        resizing=true
-        sizeStart=main.Size
-        resizeStartPos=i.Position
-    end
-end)
-UserInputService.InputChanged:Connect(function(i)
-    if resizing and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
-        local d=i.Position-resizeStartPos
-        main.Size=UDim2.new(0, math.max(340, sizeStart.X.Offset+d.X), 0, math.max(300, sizeStart.Y.Offset+d.Y))
-    end
-end)
-UserInputService.InputEnded:Connect(function(i)
-    if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
-        resizing=false
-    end
-end)
+local function SetupResizeHandle(btn, cornerType)
+    local resizing, sizeStart, posStart, inputStart
+    btn.InputBegan:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+            resizing=true
+            sizeStart=main.Size
+            posStart=main.Position
+            inputStart=i.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(i)
+        if resizing and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+            local d = i.Position - inputStart
+            local w, h = sizeStart.X.Offset, sizeStart.Y.Offset
+            local posX, posY = posStart.X.Offset, posStart.Y.Offset
+
+            local newW, newH = w, h
+            local newX, newY = posX, posY
+
+            if cornerType == "BR" then
+                newW = math.max(minW, w + d.X)
+                newH = math.max(minH, h + d.Y)
+            elseif cornerType == "BL" then
+                newW = math.max(minW, w - d.X)
+                newH = math.max(minH, h + d.Y)
+                newX = posX + (w - newW)
+            elseif cornerType == "TR" then
+                newW = math.max(minW, w + d.X)
+                newH = math.max(minH, h - d.Y)
+                newY = posY + (h - newH)
+            elseif cornerType == "TL" then
+                newW = math.max(minW, w - d.X)
+                newH = math.max(minH, h - d.Y)
+                newX = posX + (w - newW)
+                newY = posY + (h - newH)
+            end
+
+            main.Size = UDim2.new(sizeStart.X.Scale, newW, sizeStart.Y.Scale, newH)
+            main.Position = UDim2.new(posStart.X.Scale, newX, posStart.Y.Scale, newY)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(i)
+        if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+            resizing=false
+        end
+    end)
+end
+
+-- Tạo 4 nút kéo ở 4 góc
+local handleTL = New("TextButton", {Size=UDim2.new(0,14,0,14), Position=UDim2.new(0,2,0,2), Text="↖", BackgroundColor3=Color3.fromRGB(200,200,200), BackgroundTransparency=0.5, TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=15}, main)
+local handleTR = New("TextButton", {Size=UDim2.new(0,14,0,14), Position=UDim2.new(1,-16,0,2), Text="↗", BackgroundColor3=Color3.fromRGB(200,200,200), BackgroundTransparency=0.5, TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=15}, main)
+local handleBL = New("TextButton", {Size=UDim2.new(0,14,0,14), Position=UDim2.new(0,2,1,-16), Text="↙", BackgroundColor3=Color3.fromRGB(200,200,200), BackgroundTransparency=0.5, TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=15}, main)
+local handleBR = New("TextButton", {Size=UDim2.new(0,14,0,14), Position=UDim2.new(1,-16,1,-16), Text="↘", BackgroundColor3=Color3.fromRGB(200,200,200), BackgroundTransparency=0.5, TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=15}, main)
+
+Corner(handleTL, UDim.new(0,4)); SetupResizeHandle(handleTL, "TL")
+Corner(handleTR, UDim.new(0,4)); SetupResizeHandle(handleTR, "TR")
+Corner(handleBL, UDim.new(0,4)); SetupResizeHandle(handleBL, "BL")
+Corner(handleBR, UDim.new(0,4)); SetupResizeHandle(handleBR, "BR")
 
 -- ==================== TAB SYSTEM ====================
 local tabs = {}
@@ -457,7 +485,6 @@ local function CreateCarpet(y)
 end
 
 local function TogFly()
-    S.flying=not S.flying
     local r=Root()
     local h=Hum()
     if not r then return end
@@ -493,11 +520,10 @@ local function TogFly()
 end
 
 local function TogCarpet()
-    S.carpet=not S.carpet
     local r=Root()
     if not r then return end
     if S.carpet then
-        if S.flying then TogFly() end
+        if S.flying then S.flying=false; StopFly() end
         CreateCarpet(r.Position.Y-3.5)
     else
         StopCarpet()
@@ -536,7 +562,7 @@ Stroke(clsOBtn,C.WHITE,2)
 local function StartFlyRun()
     local r=Root()
     if not r then return end
-    if S.flying then TogFly() end
+    if S.flying then S.flying=false; StopFly() end
     if not S.carpet then
         S.carpet=true; CreateCarpet(r.Position.Y-3.5)
     else
@@ -551,17 +577,16 @@ StopFlyRun = function()
 end
 
 TogFlyRun = function()
-    S.flyRun=not S.flyRun
     if S.flyRun then StartFlyRun() else StopFlyRun() end
 end
 
 clsOBtn.MouseButton1Click:Connect(function() S.flyRun=false; StopFlyRun() end)
-togCBtn.MouseButton1Click:Connect(function() if S.flyRun then TogCarpet() end end)
+togCBtn.MouseButton1Click:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
 movUBtn.MouseButton1Click:Connect(function()
-    if S.flyRun then if not S.carpet then TogCarpet() end; S.carpetY=(S.carpetY or 0)+5 end
+    if S.flyRun then if not S.carpet then S.carpet=true; TogCarpet() end; S.carpetY=(S.carpetY or 0)+5 end
 end)
 movDBtn.MouseButton1Click:Connect(function()
-    if S.flyRun then if not S.carpet then TogCarpet() end; S.carpetY=(S.carpetY or 0)-5 end
+    if S.flyRun then if not S.carpet then S.carpet=true; TogCarpet() end; S.carpetY=(S.carpetY or 0)-5 end
 end)
 
 -- ==================== CUSTOM CAMERA ====================
@@ -596,7 +621,6 @@ end
 
 local function TogCC()
     if S.freeCam then return end
-    S.customCam=not S.customCam
     if S.customCam then EnCC() else DisCC() end
 end
 
@@ -680,13 +704,12 @@ end
 
 local function TogFC()
     if S.customCam then S.customCam=false; DisCC() end
-    S.freeCam=not S.freeCam
     if S.freeCam then EnFC() else DisFC() end
 end
 
 UserInputService.InputBegan:Connect(function(i,gp)
     if gp then return end
-    if i.KeyCode==Enum.KeyCode.F and S.freeCam then TogFC() end
+    if i.KeyCode==Enum.KeyCode.F and S.freeCam then S.freeCam=false; TogFC() end
     if i.UserInputType==Enum.UserInputType.MouseButton2 then
         rMouse=true
         if S.customCam then UserInputService.MouseBehavior=Enum.MouseBehavior.LockCurrentPosition end
@@ -718,7 +741,6 @@ local function UpdateESP()
             local rPart = pChar.HumanoidRootPart
             local hum = pChar:FindFirstChildOfClass("Humanoid")
 
-            -- Highlight Box
             local hl = Instance.new("Highlight")
             hl.Name = p.Name .. "_HL"
             hl.Adornee = pChar
@@ -728,7 +750,6 @@ local function UpdateESP()
             hl.OutlineTransparency = 0
             hl.Parent = espFolder
 
-            -- Name & Info Billboard
             local bb = Instance.new("BillboardGui")
             bb.Name = p.Name .. "_BB"
             bb.Adornee = rPart
@@ -1223,16 +1244,19 @@ wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(ws
 jpIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(jpIn.Text); if n and n>0 then S.jumpPower=n; UpdChar() else jpIn.Text=tostring(S.jumpPower) end; jpLbl.Text="Hiện tại: "..S.jumpPower end)
 
 flyBtn.MouseButton1Click:Connect(function()
+    S.flying = not S.flying
     TogFly()
     flyBtn.Text=S.flying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
     flyBtn.BackgroundColor3=S.flying and Color3.fromRGB(70,130,180) or C.GRAY
 end)
 carpBtn.MouseButton1Click:Connect(function()
+    S.carpet = not S.carpet
     TogCarpet()
     carpBtn.Text=S.carpet and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
     carpBtn.BackgroundColor3=S.carpet and Color3.fromRGB(160,100,200) or C.GRAY
 end)
 flyRunBtn.MouseButton1Click:Connect(function()
+    S.flyRun = not S.flyRun
     TogFlyRun()
     flyRunBtn.Text=S.flyRun and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
     flyRunBtn.BackgroundColor3=S.flyRun and C.ORANGE or C.GRAY
@@ -1256,7 +1280,7 @@ end)
 
 moveTab.CanvasSize=UDim2.new(0,0,0,my+40)
 
--- ==================== TAB 3: NGƯỜI CHƠI (TÍNH NĂNG MỚI) ====================
+-- ==================== TAB 3: NGƯỜI CHƠI ====================
 local py = 8
 
 Label(playerTab, "👁️ Quan sát & Nhìn xuyên tường", py)
@@ -1461,11 +1485,13 @@ New("TextLabel", {
 }, helpFrame)
 
 ccBtn.MouseButton1Click:Connect(function()
+    S.customCam = not S.customCam
     TogCC()
     ccBtn.Text=S.customCam and "📷 Camera tùy chỉnh: BẬT" or "📷 Camera tùy chỉnh: TẮT"
     ccBtn.BackgroundColor3=S.customCam and C.ORANGE or C.GRAY
 end)
 fcBtn.MouseButton1Click:Connect(function()
+    S.freeCam = not S.freeCam
     TogFC()
     fcBtn.Text=S.freeCam and "🎥 Camera tự do: BẬT" or "🎥 Camera tự do: TẮT"
     fcBtn.BackgroundColor3=S.freeCam and Color3.fromRGB(0,160,200) or C.GRAY
@@ -1687,25 +1713,37 @@ togBtn.MouseButton1Click:Connect(function()
     togBtn.Text=v and "✕" or "⚙"
 end)
 
--- ==================== CHARACTER RESPAWN ====================
+-- ==================== CHARACTER RESPAWN & AUTO RESTORE STATE ====================
+-- Tự động kích hoạt lại toàn bộ tính năng đang bật khi Hồi sinh
 player.CharacterAdded:Connect(function(c)
-    char=c
-    task.wait(0.1)
-    local h=Hum()
-    if h then UpdChar() end
-    if S.flying then StopFly(); S.flying=false end
-    if S.carpet then StopCarpet(); S.carpet=false end
-    if S.flyRun then StopFlyRun() end
-    if S.freeCam then S.freeCam=false; DisFC() end
-    if S.customCam then S.customCam=false; DisCC() end
+    char = c
+    task.wait(0.2)
+
+    -- 1. Cập nhật WalkSpeed & JumpPower
+    UpdChar()
+
+    -- 2. Khôi phục NoClip
     if S.noClip then EnNC() end
-    oLay.Visible=false
-    mobile.Visible=false
-    if S.esp then task.wait(0.5); UpdateESP() end
+
+    -- 3. Khôi phục Fly
+    if S.flying then StopFly(); TogFly() end
+
+    -- 4. Khôi phục Thảm kính
+    if S.carpet then StopCarpet(); TogCarpet() end
+
+    -- 5. Khôi phục FlyRun
+    if S.flyRun then TogFlyRun() end
+
+    -- 6. Khôi phục Camera
+    if S.customCam then EnCC() end
+    if S.freeCam then EnFC() end
+
+    -- 7. Khôi phục ESP
+    if S.esp then UpdateESP() end
 end)
 
 -- ==================== INITIALIZATION ====================
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Executor Menu v2.0 đã sẵn sàng! Đã sửa hết lỗi và bổ sung tính năng mới.")
+print("✅ Executor Menu v2.5 đã sẵn sàng! Đã thêm nút kéo 4 góc & Khôi phục tính năng khi hồi sinh.")
