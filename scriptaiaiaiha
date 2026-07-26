@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Fix Lỗi Click/Kẹt Menu
+-- EXECUTOR MENU - Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
@@ -435,23 +435,33 @@ UserInputService.InputBegan:Connect(function(i, gp)
     end
 end)
 
--- ==================== NOCLIP ====================
+-- ==================== NOCLIP (FIXED: CHẠY TRÊN STEPPED MƯỢT 100%) ====================
+local ncConn = nil
+
 local function EnNC()
-    RunService:BindToRenderStep("NC", 1, function()
+    if ncConn then ncConn:Disconnect() end
+    ncConn = RunService.Stepped:Connect(function()
+        if not S.noClip then return end
         local c = GetChar()
-        if not S.noClip or not c then return end
-        for _, p in ipairs(c:GetDescendants()) do
-            if p:IsA("BasePart") then p.CanCollide=false end
+        if c then
+            for _, p in ipairs(c:GetDescendants()) do
+                if p:IsA("BasePart") then 
+                    p.CanCollide = false 
+                end
+            end
         end
     end)
 end
 
 local function DisNC()
-    RunService:UnbindFromRenderStep("NC")
+    if ncConn then 
+        ncConn:Disconnect() 
+        ncConn = nil 
+    end
     local c = GetChar()
     if c then
         for _, p in ipairs(c:GetDescendants()) do
-            if p:IsA("BasePart") then p.CanCollide=true end
+            if p:IsA("BasePart") then p.CanCollide = true end
         end
     end
 end
@@ -556,6 +566,17 @@ local function CreateCarpet(y)
         end
         
         cp.CFrame = CFrame.new(curR.Position.X, S.carpetY, curR.Position.Z)
+
+        -- FIX NOCLIP KHÔNG BỊ RƠI XUYÊN QUA THẢM KÍNH
+        if S.noClip then
+            local standingY = S.carpetY + (curT / 2) + 3.0
+            if curR.Position.Y < standingY then
+                curR.CFrame = CFrame.new(curR.Position.X, standingY, curR.Position.Z)
+                if curR.AssemblyLinearVelocity.Y < 0 then
+                    curR.AssemblyLinearVelocity = Vector3.new(curR.AssemblyLinearVelocity.X, 0, curR.AssemblyLinearVelocity.Z)
+                end
+            end
+        end
     end)
 end
 
@@ -1888,7 +1909,7 @@ end)
 
 gfxTab.CanvasSize=UDim2.new(0,0,0,gy+40)
 
--- ==================== TOGGLE MENU LOGIC (FIXED) ====================
+-- ==================== TOGGLE MENU LOGIC ====================
 local function ToggleMainFrame()
     if S.flyRun then
         S.flyRun = false
@@ -1898,16 +1919,13 @@ local function ToggleMainFrame()
     togBtn.Text = main.Visible and "✕" or "🍌"
 end
 
--- Tự động ngắt khi bấm nút Close (✕)
 closeBtn.Activated:Connect(function()
     main.Visible = false
     togBtn.Text = "🍌"
 end)
 
--- Bấm nút Chuối 🍌 để mở
 togBtn.Activated:Connect(ToggleMainFrame)
 
--- Hỗ trợ phím tắt [RightControl] cho PC
 UserInputService.InputBegan:Connect(function(i, gp)
     if not gp and i.KeyCode == Enum.KeyCode.RightControl then
         ToggleMainFrame()
@@ -1934,4 +1952,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Hub đã sửa triệt để lỗi kẹt nút Toggle Menu!")
+print("✅ Banana Cat Hub đã sửa triệt để lỗi NoClip xuyên thảm và chập chờn!")
