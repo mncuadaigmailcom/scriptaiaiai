@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Tiếng Việt (Đã sửa lỗi TextBox)
+-- EXECUTOR MENU - Phiên bản Tiếng Việt (Đã cập nhật SimpleSpy + Fix TextBox)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -426,7 +426,6 @@ local function StopCarpet()
     S.carpetY=nil
 end
 
--- ✅ KHAI BÁO StopFlyRun TRƯỚC TogFly để tránh lỗi
 local StopFlyRun
 local TogFlyRun
 
@@ -465,7 +464,6 @@ local function TogFly()
 
     if S.flying then
         if S.carpet then StopCarpet(); S.carpet=false end
-        -- ✅ Dùng biến đã khai báo trước
         if S.flyRun and StopFlyRun then StopFlyRun() end
         bv=New("BodyVelocity",{MaxForce=Vector3.new(4000,4000,4000)},r)
         bg=New("BodyGyro",{MaxTorque=Vector3.new(4000,4000,4000)},r)
@@ -571,14 +569,12 @@ local function StartFlyRun()
     oLay.Visible=true
 end
 
--- ✅ Định nghĩa StopFlyRun đầy đủ
 StopFlyRun = function()
     if S.carpet then StopCarpet(); S.carpet=false end
     oLay.Visible=false
     S.flyRun=false
 end
 
--- ✅ Định nghĩa TogFlyRun đầy đủ
 TogFlyRun = function()
     S.flyRun=not S.flyRun
     if S.flyRun then StartFlyRun() else StopFlyRun() end
@@ -815,7 +811,6 @@ local function Label(parent, text, y)
     }, parent)
 end
 
--- ✅ Hàm Input đã sửa hoàn toàn
 local function Input(parent, text, y, w, h, ml)
     local inp = New("TextBox", {
         Size=UDim2.new(0, w or 200, 0, h or 24),
@@ -867,18 +862,43 @@ end
 -- ==================== TAB 1: CODE ====================
 local y = 8
 
+-- Khai báo trước biến statusLbl để Quick Scripts sử dụng được
+local statusLbl
+
 Label(codeTab, "⚡ Code Nhanh - Nhấn để chạy ngay", y)
 y = y + 16
 
+-- ✅ ĐÃ THÊM SIMPLESPY & SIMPLESPY V2 VÀO ĐÂY
 local quickScripts = {
-    {n="Dex Explorer", d="Mở Dex Explorer", c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()]], cl=Color3.fromRGB(50,120,200)},
-    {n="Infinite Yield", d="Admin Commands", c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()]], cl=C.PURPLE},
-    {n="Remote Spy", d="Theo dõi RemoteEvent", c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/78n/SimpleSpy/main/SimpleSpy.lua"))()]], cl=Color3.fromRGB(0,150,80)},
+    {
+        n="Dex Explorer",
+        d="Khám phá game objects",
+        c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()]],
+        cl=Color3.fromRGB(50,120,200)
+    },
+    {
+        n="Infinite Yield",
+        d="Admin Commands mạnh nhất",
+        c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()]],
+        cl=C.PURPLE
+    },
+    {
+        n="SimpleSpy",
+        d="Theo dõi Remote Events/Functions",
+        c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/78n/SimpleSpy/main/SimpleSpy.lua"))()]],
+        cl=Color3.fromRGB(0,150,80)
+    },
+    {
+        n="SimpleSpy V2",
+        d="Phiên bản mới nhất của SimpleSpy",
+        c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/exxtremestuffs/SimpleSpySource/master/SimpleSpy.lua"))()]],
+        cl=Color3.fromRGB(0,180,100)
+    },
 }
 
 for _, s in ipairs(quickScripts) do
     local btn = New("TextButton", {
-        Size=UDim2.new(1,-16,0,28),
+        Size=UDim2.new(1,-16,0,32),
         Position=UDim2.new(0,8,0,y),
         Text="",
         BackgroundColor3=s.cl,
@@ -888,9 +908,20 @@ for _, s in ipairs(quickScripts) do
     }, codeTab)
     Corner(btn, UDim.new(0,5))
     Stroke(btn, s.cl, 1.2)
+
+    -- Icon chấm tròn bên trái
+    New("Frame", {
+        Size=UDim2.new(0,8,0,8),
+        Position=UDim2.new(0,8,0.5,-4),
+        BackgroundColor3=Color3.fromRGB(255,255,255),
+        BackgroundTransparency=0.2,
+        BorderSizePixel=0,
+        ZIndex=7,
+    }, btn)
+
     New("TextLabel", {
-        Size=UDim2.new(1,-10,1,0),
-        Position=UDim2.new(0,10,0,0),
+        Size=UDim2.new(1,-46,1,0),
+        Position=UDim2.new(0,22,0,0),
         Text=s.n.."\n"..s.d,
         BackgroundTransparency=1,
         TextColor3=C.WHITE,
@@ -900,10 +931,48 @@ for _, s in ipairs(quickScripts) do
         TextYAlignment=Enum.TextYAlignment.Center,
         ZIndex=7,
     }, btn)
-    btn.MouseButton1Click:Connect(function()
-        RunCode(s.c, s.n, nil, 1, 0)
+
+    -- Nút chạy bên phải
+    local runQuickBtn = New("TextButton", {
+        Size=UDim2.new(0,28,0,22),
+        Position=UDim2.new(1,-34,0.5,-11),
+        Text="▶",
+        BackgroundColor3=Color3.fromRGB(255,255,255),
+        BackgroundTransparency=0.7,
+        TextColor3=C.WHITE,
+        Font=Enum.Font.GothamBold,
+        TextSize=12,
+        BorderSizePixel=0,
+        ZIndex=8,
+    }, btn)
+    Corner(runQuickBtn, UDim.new(0,5))
+
+    -- Hover effect
+    btn.MouseEnter:Connect(function()
+        Tween(btn, {BackgroundTransparency=0.1}, 0.15)
     end)
-    y = y + 32
+    btn.MouseLeave:Connect(function()
+        Tween(btn, {BackgroundTransparency=0.3}, 0.15)
+    end)
+
+    -- Click vào btn hoặc nút run đều chạy
+    local function doRun()
+        if statusLbl then
+            statusLbl.Text="⏳ Đang tải: "..s.n..."..."
+        end
+        RunCode(s.c, s.n, nil, 1, 0)
+        task.spawn(function()
+            task.wait(0.5)
+            if not cancelled and statusLbl then
+                statusLbl.Text="✅ Đã tải và chạy: "..s.n
+            end
+        end)
+    end
+
+    btn.MouseButton1Click:Connect(doRun)
+    runQuickBtn.MouseButton1Click:Connect(doRun)
+
+    y = y + 36
 end
 
 y = y + 6
@@ -915,7 +984,7 @@ y = y + 14
 Label(codeTab, "👤 Tên Script", y)
 y = y + 14
 
--- ✅ nameIn - Tạo trực tiếp không qua hàm Input để kiểm soát hoàn toàn
+-- TextBox nhập Tên Script
 local nameIn = New("TextBox", {
     Size=UDim2.new(1,-16,0,26),
     Position=UDim2.new(0,8,0,y),
@@ -943,34 +1012,12 @@ y = y + 32
 Label(codeTab, "💻 Code (Lua)", y)
 y = y + 14
 
--- ✅ codeIn - Tạo trực tiếp không qua hàm Input để kiểm soát hoàn toàn
+-- TextBox nhập Code Lua
 local codeIn = New("TextBox", {
     Size=UDim2.new(1,-16,0,80),
     Position=UDim2.new(0,8,0,y),
     Text="",
-    PlaceholderText='-- Nhập code Lua tại đây...\n-- Ví dụ: print("Hello World")',
-    PlaceholderColor3=Color3.fromRGB(160,160,160),
-    BackgroundColor3=Color3.fromRGB(245,245,255),
-    BackgroundTransparency=0,
-    TextColor3=Color3.fromRGB(20,20,20),
-    Font=Enum.Font.Code,
-    TextSize=11,
-    BorderSizePixel=0,
-    ClearTextOnFocus=false,
-    MultiLine=true,
-    TextWrapped=true,
-    TextXAlignment=Enum.TextXAlignment.Left,
-    TextYAlignment=Enum.TextYAlignment.Top,
-    Active=true,
-    Selectable=true,
-    ZIndex=10,
-}, codeIn or codeTab)
--- Tạo lại đúng parent
-codeIn = New("TextBox", {
-    Size=UDim2.new(1,-16,0,80),
-    Position=UDim2.new(0,8,0,y),
-    Text="",
-    PlaceholderText="-- Nhập code Lua tại đây...",
+    PlaceholderText="-- Nhập code Lua tại đây...\n-- Ví dụ: print(\"Hello World\")",
     PlaceholderColor3=Color3.fromRGB(160,160,160),
     BackgroundColor3=Color3.fromRGB(245,245,255),
     BackgroundTransparency=0,
@@ -1128,7 +1175,8 @@ y = y + 32
 local saveBtn = Button(codeTab, "💾 Lưu Script", 8, y, 140, 26, C.BLUE)
 y = y + 32
 
-local statusLbl = Label(codeTab, "", y)
+-- Gán UI cho statusLbl đã khai báo bên trên
+statusLbl = Label(codeTab, "", y)
 statusLbl.TextColor3=Color3.fromRGB(220,170,0)
 statusLbl.TextSize=9
 statusLbl.ZIndex=6
@@ -1139,7 +1187,6 @@ countLbl.TextColor3=C.GREEN
 countLbl.TextSize=9
 countLbl.ZIndex=6
 
--- ✅ Khai báo trước để dùng trong saveBtn
 local RebuildScripts
 
 stopBtn.MouseButton1Click:Connect(function()
@@ -1230,7 +1277,6 @@ New("UIListLayout", {
     Padding=UDim.new(0,3),
 }, scriptList)
 
--- ✅ Định nghĩa RebuildScripts đầy đủ
 RebuildScripts = function()
     for _,c in ipairs(scriptList:GetChildren()) do
         if not c:IsA("UIListLayout") then c:Destroy() end
@@ -1358,7 +1404,6 @@ RebuildScripts = function()
         edit.MouseButton1Click:Connect(function()
             nameIn.Text=d.name
             codeIn.Text=d.code
-            -- Scroll lên đầu để thấy textbox
             codeTab.CanvasPosition=Vector2.new(0,0)
         end)
         del.MouseButton1Click:Connect(function()
@@ -1371,7 +1416,6 @@ RebuildScripts = function()
         rn.MouseLeave:Connect(function() Tween(row,{BackgroundTransparency=0.1},0.15) end)
     end
 
-    -- Cập nhật CanvasSize
     local listH = #disp>0 and #disp*49 or 33
     scriptList.Size=UDim2.new(1,-16,0,listH)
     codeTab.CanvasSize=UDim2.new(0,0,0,y+listH+20)
@@ -1500,7 +1544,6 @@ jpLbl.Size=UDim2.new(0,120,0,14)
 jpLbl.TextColor3=C.GREEN
 jpLbl.TextSize=9
 
--- Kết nối controls
 flySpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flySpdIn.Text); if n and n>=0 then S.flySpeed=n else flySpdIn.Text=tostring(S.flySpeed) end end)
 carpSzIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpSzIn.Text); if n and n>=10 then S.carpetSize=n else carpSzIn.Text=tostring(S.carpetSize) end end)
 wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(wsIn.Text); if n and n>0 then S.walkSpeed=n; UpdChar() else wsIn.Text=tostring(S.walkSpeed) end; wsLbl.Text="Hiện tại: "..S.walkSpeed end)
@@ -1817,7 +1860,6 @@ fpsBtn.MouseButton1Click:Connect(function()
             if #fpsBuf>0 then
                 local t=0
                 for _,v in ipairs(fpsBuf) do t+=v end
-                -- ✅ Sửa lỗi chia cho 0
                 if t>0 then
                     local fps=math.round(#fpsBuf/t)
                     fpsLbl.TextColor3=fps>=55 and Color3.fromRGB(0,255,100) or fps>=30 and Color3.fromRGB(255,200,0) or Color3.fromRGB(255,60,60)
