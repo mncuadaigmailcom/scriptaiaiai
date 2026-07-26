@@ -756,65 +756,127 @@ UserInputService.InputEnded:Connect(function(i)
     end
 end)
 
--- ==================== ESP SYSTEM ====================
+-- ==================== ESP SYSTEM (ĐÃ SỬA LỖI ĐỊNH VỊ) ====================
 local espFolder = Instance.new("Folder")
 espFolder.Name = "ExMenu_ESP"
-espFolder.Parent = playerGui
+espFolder.Parent = gui -- Gắn vào Gui không bị xóa khi Respawn
 
-local function ClearESP()
+local activeESPs = {} -- Lưu trữ danh sách ESP của từng player
+
+local function RemovePlayerESP(p)
+    if activeESPs[p] then
+        if activeESPs[p].HL then activeESPs[p].HL:Destroy() end
+        if activeESPs[p].BB then activeESPs[p].BB:Destroy() end
+        if activeESPs[p].Thread then task.cancel(activeESPs[p].Thread) end
+        activeESPs[p] = nil
+    end
+end
+
+local function ClearAllESP()
+    for p, _ in pairs(activeESPs) do
+        RemovePlayerESP(p)
+    end
     espFolder:ClearAllChildren()
 end
 
+local function CreatePlayerESP(p)
+    RemovePlayerESP(p) -- Làm sạch ESP cũ nếu có
+
+    if not S.esp or p == player then return end
+
+    local pChar = p.Character
+    if not pChar then return end
+
+    local rPart = pChar:WaitForChild("HumanoidRootPart", 5)
+    local hum = pChar:WaitForChild("Humanoid", 5)
+
+    if not rPart or not hum or hum.Health <= 0 then return end
+
+    local hl = Instance.new("Highlight")
+    hl.Name = p.Name .. "_HL"
+    hl.Adornee = pChar
+    hl.FillColor = Color3.fromRGB(255, 50, 50)
+    hl.FillTransparency = 0.5
+    hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+    hl.OutlineTransparency = 0
+    hl.Parent = espFolder
+
+    local bb = Instance.new("BillboardGui")
+    bb.Name = p.Name .. "_BB"
+    bb.Adornee = rPart
+    bb.Size = UDim2.new(0, 150, 0, 40)
+    bb.StudsOffset = Vector3.new(0, 3.5, 0)
+    bb.AlwaysOnTop = true
+    bb.Parent = espFolder
+
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(1, 0, 1, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+    lbl.Font = Enum.Font.GothamBold
+    lbl.TextSize = 11
+    lbl.TextStrokeTransparency = 0.2
+    lbl.Parent = bb
+
+    local thread = task.spawn(function()
+        while S.esp and pChar and pChar.Parent and hum and hum.Health > 0 do
+            local r = Root()
+            if r then
+                local dist = math.round((r.Position - rPart.Position).Magnitude)
+                lbl.Text = string.format("%s\n❤️ %d/%d | 📏 %dm", p.Name, math.round(hum.Health), math.round(hum.MaxHealth), dist)
+            else
+                lbl.Text = string.format("%s\n❤️ %d/%d | 📏 --m", p.Name, math.round(hum.Health), math.round(hum.MaxHealth))
+            end
+            task.wait(0.15)
+        end
+        RemovePlayerESP(p)
+    end)
+
+    activeESPs[p] = {HL = hl, BB = bb, Thread = thread}
+end
+
+local function HookPlayer(p)
+    if p == player then return end
+
+    -- Tự động bật ESP mỗi khi người chơi đó Respawn
+    p.CharacterAdded:Connect(function()
+        if S.esp then
+            task.wait(0.5)
+            CreatePlayerESP(p)
+        end
+    end)
+
+    p.CharacterRemoving:Connect(function()
+        RemovePlayerESP(p)
+    end)
+
+    if p.Character and S.esp then
+        CreatePlayerESP(p)
+    end
+end
+
 local function UpdateESP()
-    ClearESP()
+    ClearAllESP()
     if not S.esp then return end
     for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= player and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildOfClass("Humanoid") then
-            local pChar = p.Character
-            local rPart = pChar.HumanoidRootPart
-            local hum = pChar:FindFirstChildOfClass("Humanoid")
-
-            local hl = Instance.new("Highlight")
-            hl.Name = p.Name .. "_HL"
-            hl.Adornee = pChar
-            hl.FillColor = Color3.fromRGB(255, 50, 50)
-            hl.FillTransparency = 0.5
-            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
-            hl.OutlineTransparency = 0
-            hl.Parent = espFolder
-
-            local bb = Instance.new("BillboardGui")
-            bb.Name = p.Name .. "_BB"
-            bb.Adornee = rPart
-            bb.Size = UDim2.new(0, 150, 0, 40)
-            bb.StudsOffset = Vector3.new(0, 3.5, 0)
-            bb.AlwaysOnTop = true
-            bb.Parent = espFolder
-
-            local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(1, 0, 1, 0)
-            lbl.BackgroundTransparency = 1
-            lbl.TextColor3 = Color3.fromRGB(255, 255, 255)
-            lbl.Font = Enum.Font.GothamBold
-            lbl.TextSize = 11
-            lbl.TextStrokeTransparency = 0.2
-            lbl.Parent = bb
-
-            task.spawn(function()
-                while S.esp and pChar and pChar.Parent and hum and hum.Health > 0 and Root() do
-                    local dist = math.round((Root().Position - rPart.Position).Magnitude)
-                    lbl.Text = string.format("%s\n❤️ %d/%d | 📏 %dm", p.Name, math.round(hum.Health), math.round(hum.MaxHealth), dist)
-                    task.wait(0.2)
-                end
-                bb:Destroy()
-                hl:Destroy()
-            end)
+        if p ~= player then
+            CreatePlayerESP(p)
         end
     end
 end
 
-Players.PlayerAdded:Connect(function() if S.esp then task.wait(1); UpdateESP() end end)
-Players.PlayerRemoving:Connect(function() if S.esp then task.wait(0.2); UpdateESP() end end)
+-- Lắng nghe người chơi mới vào hoặc thoát Game
+for _, p in ipairs(Players:GetPlayers()) do
+    HookPlayer(p)
+end
+
+Players.PlayerAdded:Connect(function(p)
+    HookPlayer(p)
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    RemovePlayerESP(p)
+end)
 
 -- ==================== CODE EXECUTION ====================
 local function ExecOnce(code, name)
@@ -1765,4 +1827,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Executor Hub (Nền Xám Trắng Trong Suốt Caro) đã sẵn sàng!")
+print("✅ Banana Cat Executor Hub (Đã Fix ESP Nhìn Xuyên Tường Hoàn Hảo) đã sẵn sàng!")
