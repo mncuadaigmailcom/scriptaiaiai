@@ -1,7 +1,7 @@
 -- ============================================
 -- EXECUTOR MENU - Phiên bản Nền Xám Trắng Trong Suốt Sắn Kẻ (Caro)
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc)
--- StarterGui -> LocalScript
+-- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -15,6 +15,14 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- Xác định Parent an toàn cho UI (Hỗ trợ cả Executor lẫn LocalScript)
+local targetGui = playerGui
+if gethui then
+    targetGui = gethui()
+elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
+    targetGui = game:GetService("CoreGui")
+end
 
 -- ==================== CONSTANTS ====================
 local C = {
@@ -76,28 +84,33 @@ local function TweenL(p)
 end
 
 -- ==================== SCREEN GUI ====================
+-- Xóa GUI cũ nếu đã tồn tại trước đó
+if targetGui:FindFirstChild("ExMenu") then
+    targetGui.ExMenu:Destroy()
+end
+
 local gui = New("ScreenGui", {
     Name="ExMenu",
     IgnoreGuiInset=true,
     ResetOnSpawn=false,
     ZIndexBehavior=Enum.ZIndexBehavior.Sibling,
-}, playerGui)
+}, targetGui)
 
--- Toggle Button
+-- Toggle Button (Nút Chuối Mở Menu)
 local togBtn = New("TextButton", {
-    Size=UDim2.new(0,44,0,44),
-    Position=UDim2.new(1,-56,1,-56),
+    Size=UDim2.new(0,48,0,48),
+    Position=UDim2.new(1,-60,1,-60),
     Text="🍌",
     BackgroundColor3=C.WHITE,
-    BackgroundTransparency=0.2,
+    BackgroundTransparency=0.1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
-    TextSize=22,
+    TextSize=24,
     BorderSizePixel=0,
-    ZIndex=10,
+    ZIndex=1000,
 }, gui)
 Corner(togBtn, UDim.new(1,0))
-Stroke(togBtn, C.BLUE, 1.5)
+Stroke(togBtn, C.BLUE, 2)
 
 -- Main Frame (Nền Xám Trắng Trong Suốt: 540x340)
 local main = New("Frame", {
@@ -162,7 +175,7 @@ local closeBtn = New("TextButton", {
     ZIndex=4,
 }, titleBar)
 
--- ===== DRAG =====
+-- ===== DRAG MENU =====
 local dragging, dragStart, startPos
 titleBar.InputBegan:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
@@ -171,12 +184,14 @@ titleBar.InputBegan:Connect(function(i)
         startPos=main.Position
     end
 end)
+
 UserInputService.InputChanged:Connect(function(i)
-    if dragging and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+    if dragging and startPos and dragStart and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
         local d=i.Position-dragStart
         main.Position=UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X, startPos.Y.Scale, startPos.Y.Offset+d.Y)
     end
 end)
+
 UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
         dragging=false
@@ -197,7 +212,7 @@ local function SetupResizeHandle(btn, cornerType)
         end
     end)
     UserInputService.InputChanged:Connect(function(i)
-        if resizing and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+        if resizing and sizeStart and posStart and inputStart and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
             local d = i.Position - inputStart
             local w, h = sizeStart.X.Offset, sizeStart.Y.Offset
             local posX, posY = posStart.X.Offset, posStart.Y.Offset
@@ -372,11 +387,17 @@ local S = {
 local scripts = {}
 local totalRuns, cancelled = 0, false
 local curThread, curIndicator = nil, nil
-local char = player.Character or player.CharacterAdded:Wait()
 
--- ==================== HELPERS ====================
-local function Hum() return char and char:FindFirstChildOfClass("Humanoid") end
-local function Root() return char and char:FindFirstChild("HumanoidRootPart") end
+-- ==================== HELPERS (AN TOÀN KHI RE-SPAWN) ====================
+local function GetChar() return player.Character end
+local function Hum() 
+    local c = GetChar()
+    return c and c:FindFirstChildOfClass("Humanoid")
+end
+local function Root() 
+    local c = GetChar()
+    return c and c:FindFirstChild("HumanoidRootPart")
+end
 
 local function UpdChar()
     local h = Hum()
@@ -396,11 +417,9 @@ end)
 
 -- ==================== INFINITE JUMP ====================
 UserInputService.JumpRequest:Connect(function()
-    if S.infJump and char and Hum() then
+    if S.infJump and Hum() then
         Hum():ChangeState(Enum.HumanoidStateType.Jumping)
     end
-    -- LƯU Ý: Đã xóa phần tự động đẩy S.carpetY khi nhảy.
-    -- Bây giờ khi bạn bấm nhảy, thảm kính vẫn ở NGUYÊN vị trí Y cũ!
 end)
 
 -- ==================== CLICK TELEPORT ====================
@@ -418,8 +437,9 @@ end)
 -- ==================== NOCLIP ====================
 local function EnNC()
     RunService:BindToRenderStep("NC", 1, function()
-        if not S.noClip or not char then return end
-        for _, p in ipairs(char:GetDescendants()) do
+        local c = GetChar()
+        if not S.noClip or not c then return end
+        for _, p in ipairs(c:GetDescendants()) do
             if p:IsA("BasePart") then p.CanCollide=false end
         end
     end)
@@ -427,8 +447,9 @@ end
 
 local function DisNC()
     RunService:UnbindFromRenderStep("NC")
-    if char then
-        for _, p in ipairs(char:GetDescendants()) do
+    local c = GetChar()
+    if c then
+        for _, p in ipairs(c:GetDescendants()) do
             if p:IsA("BasePart") then p.CanCollide=true end
         end
     end
@@ -498,7 +519,6 @@ local function StopCarpet()
     S.carpetY=nil
 end
 
--- Tạo Thảm Kính: Bề mặt nhỏ gọn, giữ Y cố định khi nhảy
 local function CreateCarpet(y)
     local r = Root()
     if not r then return end
@@ -520,16 +540,15 @@ local function CreateCarpet(y)
         Position=Vector3.new(r.Position.X, S.carpetY, r.Position.Z),
     }, workspace)
 
-    -- Cập nhật X, Z đi theo nhân vật, độ cao Y ĐỨNG YÊN TẠI S.carpetY
     RunService:BindToRenderStep("Carpet", Enum.RenderPriority.Camera.Value - 1, function()
-        if not S.carpet or not cp or not r then return end
+        local curR = Root()
+        if not S.carpet or not cp or not curR then return end
         local curSz = S.carpetSize or 1.5
         if cp.Size.X ~= curSz or cp.Size.Z ~= curSz then
             cp.Size = Vector3.new(curSz, 0.2, curSz)
         end
         
-        -- Dùng S.carpetY cố định. Chỉ di chuyển X và Z theo nhân vật.
-        cp.CFrame = CFrame.new(r.Position.X, S.carpetY, r.Position.Z)
+        cp.CFrame = CFrame.new(curR.Position.X, S.carpetY, curR.Position.Z)
     end)
 end
 
@@ -552,15 +571,17 @@ local function TogFly()
             }, workspace)
         end
         RunService:BindToRenderStep("Fly",1,function()
-            if not S.flying or not r or not bv then return end
-            local d=h and h.MoveDirection or Vector3.zero
-            local t=r.CFrame:VectorToWorldSpace(d)
+            local curR = Root()
+            local curH = Hum()
+            if not S.flying or not curR or not bv then return end
+            local d=curH and curH.MoveDirection or Vector3.zero
+            local t=curR.CFrame:VectorToWorldSpace(d)
             if t.Magnitude>0 then t=t.Unit end
             local u,dn=VInput()
             local vv=(u and 1 or 0)-(dn and 1 or 0)
             bv.Velocity=(t+Vector3.new(0,vv,0))*S.flySpeed
-            bg.CFrame=CFrame.new(r.Position,r.Position+workspace.CurrentCamera.CFrame.LookVector)
-            fp.Position=r.Position-Vector3.new(0,3.5,0)
+            bg.CFrame=CFrame.new(curR.Position,curR.Position+workspace.CurrentCamera.CFrame.LookVector)
+            fp.Position=curR.Position-Vector3.new(0,3.5,0)
         end)
     else
         StopFly()
@@ -573,10 +594,8 @@ local function TogCarpet()
     if not r then return end
     if S.carpet then
         if S.flying then S.flying=false; StopFly() end
-        -- Bật thảm kính: Đặt thảm kính tại vị trí Y dưới chân hiện tại
         CreateCarpet(r.Position.Y - 3.1)
     else
-        -- Tắt thảm kính
         StopCarpet()
     end
 end
@@ -637,7 +656,6 @@ end
 clsOBtn.MouseButton1Click:Connect(function() S.flyRun=false; StopFlyRun() end)
 togCBtn.MouseButton1Click:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
 
--- Nút Bay Lên (⬆): Thay đổi trực tiếp S.carpetY của Thảm Kính cũ hiện tại
 movUBtn.MouseButton1Click:Connect(function()
     if S.flyRun then 
         if not S.carpet then 
@@ -650,7 +668,6 @@ movUBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Nút Bay Xuống (⬇): Thay đổi trực tiếp S.carpetY của Thảm Kính cũ hiện tại
 movDBtn.MouseButton1Click:Connect(function()
     if S.flyRun then 
         if not S.carpet then 
@@ -682,8 +699,9 @@ local function EnCC()
     RunService:BindToRenderStep("CC", Enum.RenderPriority.Camera.Value, function()
         if not S.customCam then return end
         local r=Root()
+        local c=GetChar()
         if not r then return end
-        local h=char and char:FindFirstChild("Head")
+        local h=c and c:FindFirstChild("Head")
         local bp2=h and h.Position or r.Position
         local cf=CFrame.new(bp2) * CFrame.Angles(0,math.rad(ccX),0) * CFrame.Angles(math.rad(ccY),0,0)
         local off=cf.RightVector * S.camOffX + cf.UpVector * S.camOffY
@@ -828,8 +846,8 @@ local function CreatePlayerESP(p)
     local pChar = p.Character
     if not pChar then return end
 
-    local rPart = pChar:WaitForChild("HumanoidRootPart", 5)
-    local hum = pChar:WaitForChild("Humanoid", 5)
+    local rPart = pChar:WaitForChild("HumanoidRootPart", 3)
+    local hum = pChar:WaitForChild("Humanoid", 3)
 
     if not rPart or not hum or hum.Health <= 0 then return end
 
@@ -868,7 +886,7 @@ local function CreatePlayerESP(p)
             else
                 lbl.Text = string.format("%s\n❤️ %d/%d | 📏 --m", p.Name, math.round(hum.Health), math.round(hum.MaxHealth))
             end
-            task.wait(0.15)
+            task.wait(0.2)
         end
         RemovePlayerESP(p)
     end)
@@ -1096,7 +1114,7 @@ minOpt.MouseButton1Click:Connect(function() unitBtn.Text="Phút ▾"; ddFrame.Vi
 UserInputService.InputBegan:Connect(function(i,gp)
     if gp then return end
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
-        local objs=gui:GetGuiObjectsAtPosition(i.Position.X,i.Position.Y)
+        local objs = playerGui:GetGuiObjectsAtPosition(i.Position.X, i.Position.Y)
         local f=false
         for _,o in ipairs(objs) do
             if o==unitBtn or o:IsDescendantOf(ddFrame) then f=true; break end
@@ -1839,11 +1857,13 @@ togBtn.MouseButton1Click:Connect(function()
     togBtn.Text=v and "✕" or "🍌"
 end)
 
--- ==================== CHARACTER RESPAWN & AUTO RESTORE STATE ====================
-player.CharacterAdded:Connect(function(c)
-    char = c
-    task.wait(0.2)
+-- MẶC ĐỊNH MỞ MENU LÊN NGAY KHI CHẠY
+main.Visible = true
+togBtn.Text = "✕"
 
+-- ==================== CHARACTER RESPAWN & AUTO RESTORE ====================
+player.CharacterAdded:Connect(function(c)
+    task.wait(0.3)
     UpdChar()
     if S.noClip then EnNC() end
     if S.flying then StopFly(); TogFly() end
@@ -1854,8 +1874,8 @@ player.CharacterAdded:Connect(function(c)
     if S.esp then UpdateESP() end
 end)
 
--- ==================== INITIALIZATION ====================
+-- KHỞI TẠO BAN ĐẦU
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Executor Hub (Đã Tùy Chỉnh Cố Định Vị Trí Thảm Kính Khi Nhảy) sẵn sàng!")
+print("✅ Banana Cat Executor Hub đã tải thành công và hiển thị Menu!")
