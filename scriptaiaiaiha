@@ -1,5 +1,5 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Tiếng Việt (Đã thêm SimpleSpy)
+-- EXECUTOR MENU - Phiên bản Tiếng Việt (Đã sửa lỗi gõ chữ TextBox)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -164,7 +164,6 @@ end)
 local tabs = {}
 local tabContent = {}
 
--- Tạo tab bar dọc bên phải
 local tabBar = New("Frame", {
     Size=UDim2.new(0,80,1,-28), Position=UDim2.new(1,-80,0,28),
     BackgroundColor3=Color3.fromRGB(230,230,230), BackgroundTransparency=0.3, BorderSizePixel=0,
@@ -178,7 +177,6 @@ New("UIListLayout", {
 
 New("UIPadding", {PaddingTop=UDim.new(0,8)}, tabBar)
 
--- Content area - chiếm phần còn lại bên trái
 local contentArea = New("Frame", {
     Size=UDim2.new(1,-80,1,-28), Position=UDim2.new(0,0,0,28),
     BackgroundTransparency=1, BorderSizePixel=0,
@@ -227,7 +225,6 @@ local envTab = AddTab("Môi Trường", "⚙️", 3)
 local camTab = AddTab("Camera", "📷", 4)
 local gfxTab = AddTab("Đồ Họa", "🎨", 5)
 
--- Activate first tab
 tabs[1].BackgroundColor3=C.BLUE
 tabs[1].BackgroundTransparency=0.2
 tabContent[1].Visible=true
@@ -337,7 +334,6 @@ local function VInput()
            UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or mInput.down
 end
 
--- Fly physics objects
 local bv, bg, fp, cp, bp
 
 local function StopFly()
@@ -688,21 +684,33 @@ local function Label(parent, text, y)
     }, parent)
 end
 
+-- HÀM INPUT ĐÃ ĐƯỢC SỬA LỖI SỐ ĐO KÍCH THƯỚC (UDim2)
 local function Input(parent, text, y, w, h, ml)
-    local inp = New("TextBox", {
-        Size=UDim2.new(0,w or 1,-16,0,h or 22), Position=UDim2.new(0,8,0,y or 0),
-        Text=text or "", PlaceholderColor3=Color3.fromRGB(160,160,160),
-        BackgroundColor3=C.BG, BackgroundTransparency=0.3,
-        TextColor3=Color3.fromRGB(30,30,30), Font=Enum.Font.GothamMedium, TextSize=12,
-        BorderSizePixel=0, ClearTextOnFocus=false,
-        ZIndex = 2,
-    }, parent)
-    if ml then
-        inp.MultiLine=true
-        inp.TextWrapped=true
-        inp.TextXAlignment=Enum.TextXAlignment.Left
-        inp.TextYAlignment=Enum.TextYAlignment.Top
+    local sz = UDim2.new(1, -16, 0, h or 22)
+    if type(w) == "number" then
+        if w <= 1 then
+            sz = UDim2.new(w, -16, 0, h or 22)
+        else
+            sz = UDim2.new(0, w, 0, h or 22)
+        end
     end
+
+    local inp = New("TextBox", {
+        Size = sz, Position = UDim2.new(0, 8, 0, y or 0),
+        Text = text or "", PlaceholderColor3 = Color3.fromRGB(160,160,160),
+        BackgroundColor3 = C.BG, BackgroundTransparency = 0.3,
+        TextColor3 = Color3.fromRGB(30,30,30), Font = Enum.Font.GothamMedium, TextSize = 12,
+        BorderSizePixel = 0, ClearTextOnFocus = false,
+        Active = true, Selectable = true, ZIndex = 5,
+    }, parent)
+
+    if ml then
+        inp.MultiLine = true
+        inp.TextWrapped = true
+        inp.TextXAlignment = Enum.TextXAlignment.Left
+        inp.TextYAlignment = Enum.TextYAlignment.Top
+    end
+
     Corner(inp, UDim.new(0,5))
     Stroke(inp)
     return inp
@@ -713,7 +721,7 @@ local function Button(parent, text, x, y, w, h, color)
         Size=UDim2.new(0,w or 100,0,h or 24), Position=UDim2.new(0,x or 8,0,y or 0),
         Text=text, BackgroundColor3=color or C.GRAY, BackgroundTransparency=0.2,
         TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0,
-        ZIndex = 2,
+        ZIndex = 3,
     }, parent)
     Corner(btn, UDim.new(0,5))
     Stroke(btn, color and color:Lerp(Color3.new(0,0,0),0.4) or nil, 1)
@@ -725,7 +733,7 @@ end
 -- ==================== TAB 1: CODE ====================
 local y = 8
 
--- Quick Scripts (ĐÃ CẬP NHẬT SIMPLESPY V3 VÀO ĐÂY)
+-- Quick Scripts
 Label(codeTab, "⚡ Code Nhanh - Nhấn để chạy ngay", y)
 y = y + 16
 
@@ -767,37 +775,39 @@ Label(codeTab, "💻 Nhập Code Tùy Chỉnh", y)
 y = y + 14
 Label(codeTab, "👤 Tên Script", y)
 y = y + 12
-local nameIn = Input(codeTab, "", y)
+local nameIn = Input(codeTab, "", y, nil, 24)
 nameIn.PlaceholderText="Nhập tên script..."
-y = y + 26
+y = y + 28
 Label(codeTab, "💻 Code (Lua)", y)
 y = y + 12
-local codeIn = Input(codeTab, "", y, nil, 60, true)
+local codeIn = Input(codeTab, "", y, nil, 70, true)
 codeIn.PlaceholderText=[[loadstring(game:HttpGet("..."))()]]
-y = y + 64
+y = y + 76
 
 -- Loop settings
 Label(codeTab, "🔁 Cài đặt lặp", y)
 y = y + 14
 Label(codeTab, "Số lần lặp:", y)
 Label(codeTab, "Thời gian chờ:", y+24)
-local repIn = Input(codeTab, "1", y, 0.4, 50)
-repIn.Position=UDim2.new(0,8,0,y)
-local delIn = Input(codeTab, "0", y+24, 0.4, 50)
-delIn.Position=UDim2.new(0,8,0,y+24)
+
+local repIn = Input(codeTab, "1", y, 50, 20)
+repIn.Position=UDim2.new(0,80,0,y-2)
+
+local delIn = Input(codeTab, "0", y+24, 50, 20)
+delIn.Position=UDim2.new(0,80,0,y+22)
 
 -- Unit dropdown
 local unitBtn = New("TextButton", {
-    Size=UDim2.new(0,55,0,22), Position=UDim2.new(0,75,0,y+24),
+    Size=UDim2.new(0,55,0,20), Position=UDim2.new(0,135,0,y+22),
     Text="Giây", BackgroundColor3=C.BG, BackgroundTransparency=0.3,
     TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0,
-    ZIndex = 2,
+    ZIndex = 5,
 }, codeTab)
 Corner(unitBtn,UDim.new(0,4))
 Stroke(unitBtn)
 
 local ddFrame = New("Frame", {
-    Size=UDim2.new(0,55,0,44), Position=UDim2.new(0,75,0,y+46),
+    Size=UDim2.new(0,55,0,44), Position=UDim2.new(0,135,0,y+44),
     BackgroundColor3=C.WHITE, BackgroundTransparency=0.2,
     BorderSizePixel=0, Visible=false, ZIndex=10,
 }, codeTab)
@@ -920,7 +930,7 @@ Label(codeTab, "💾 Script Đã Lưu (nhấn tên để chạy, ✏ để sửa
 y = y + 16
 
 -- Search
-local searchIn = Input(codeTab, "", y)
+local searchIn = Input(codeTab, "", y, nil, 24)
 searchIn.PlaceholderText="🔍 Tìm kiếm script theo tên..."
 y = y + 28
 
@@ -969,7 +979,6 @@ function RebuildScripts()
         Corner(row,UDim.new(0,5))
         Stroke(row)
         
-        -- Info
         local infoFrame = New("Frame", {
             Size=UDim2.new(1,-50,0,30),
             Position=UDim2.new(0,6,0,4),
@@ -996,7 +1005,6 @@ function RebuildScripts()
             TextXAlignment=Enum.TextXAlignment.Left,
         }, infoFrame)
         
-        -- Action buttons
         local ind = New("TextButton", {
             Size=UDim2.new(0,18,0,18), Position=UDim2.new(1,-44,0,4),
             Text="▶", BackgroundColor3=C.GREEN, BackgroundTransparency=0.2,
@@ -1052,8 +1060,7 @@ local my = 8
 
 Label(moveTab, "⚡ Tốc độ bay", my)
 my = my + 14
-local flySpdIn = Input(moveTab, "50", my, 1, 50)
-flySpdIn.Size=UDim2.new(0,50,0,22)
+local flySpdIn = Input(moveTab, "50", my, 50, 22)
 local flyBtn = Button(moveTab, "🕊️ Bay: TẮT", 70, my, 130, 24, C.GRAY)
 my = my + 28
 
@@ -1065,8 +1072,7 @@ my = my + 28
 
 Label(moveTab, "📏 Kích thước thảm (studs)", my)
 my = my + 14
-local carpSzIn = Input(moveTab, "30", my, 1, 50)
-carpSzIn.Size=UDim2.new(0,50,0,22)
+local carpSzIn = Input(moveTab, "30", my, 50, 22)
 my = my + 26
 
 Label(moveTab, "🚪 Đi xuyên tường (NoClip)", my)
@@ -1079,8 +1085,7 @@ my = my + 16
 
 Label(moveTab, "🏃 Tốc độ chạy (WalkSpeed)", my)
 my = my + 14
-local wsIn = Input(moveTab, "16", my, 1, 50)
-wsIn.Size=UDim2.new(0,50,0,22)
+local wsIn = Input(moveTab, "16", my, 50, 22)
 local wsLbl = Label(moveTab, "Hiện tại: 16", my)
 wsLbl.Position=UDim2.new(0,70,0,my)
 wsLbl.Size=UDim2.new(0,100,0,14)
@@ -1090,8 +1095,7 @@ my = my + 26
 
 Label(moveTab, "📦 Lực nhảy (JumpPower)", my)
 my = my + 14
-local jpIn = Input(moveTab, "50", my, 1, 50)
-jpIn.Size=UDim2.new(0,50,0,22)
+local jpIn = Input(moveTab, "50", my, 50, 22)
 local jpLbl = Label(moveTab, "Hiện tại: 50", my)
 jpLbl.Position=UDim2.new(0,70,0,my)
 jpLbl.Size=UDim2.new(0,100,0,14)
@@ -1143,18 +1147,17 @@ ey = ey + 34
 
 Label(envTab, "💡 Độ sáng (0.5 - 3.0)", ey)
 ey = ey + 14
-local brightIn = Input(envTab, "1.2", ey, 1, 50)
-brightIn.Size=UDim2.new(0,55,0,22)
+local brightIn = Input(envTab, "1.2", ey, 55, 22)
 local applyBrightBtn = Button(envTab, "✔ Áp dụng", 75, ey, 80, 24, C.BLUE)
 ey = ey + 28
 
 Label(envTab, "🎨 Màu môi trường (R  G  B)", ey)
 ey = ey + 14
-local aR = Input(envTab, "128", ey, 0.4, 42)
+local aR = Input(envTab, "128", ey, 42, 22)
 aR.Position=UDim2.new(0,8,0,ey)
-local aG = Input(envTab, "128", ey, 0.4, 42)
+local aG = Input(envTab, "128", ey, 42, 22)
 aG.Position=UDim2.new(0,55,0,ey)
-local aB = Input(envTab, "128", ey, 0.4, 42)
+local aB = Input(envTab, "128", ey, 42, 22)
 aB.Position=UDim2.new(0,102,0,ey)
 local applyAmbBtn = Button(envTab, "✔ Áp dụng", 155, ey, 80, 24, C.BLUE)
 
@@ -1200,20 +1203,17 @@ cy = cy + 28
 
 Label(camTab, "Góc nhìn FOV (30-120)", cy)
 cy = cy + 14
-local fovIn = Input(camTab, "70", cy, 1, 50)
-fovIn.Size=UDim2.new(0,55,0,22)
+local fovIn = Input(camTab, "70", cy, 55, 22)
 cy = cy + 26
 
 Label(camTab, "Độ lệch ngang (Offset X)", cy)
 cy = cy + 14
-local offXIn = Input(camTab, "0", cy, 1, 50)
-offXIn.Size=UDim2.new(0,55,0,22)
+local offXIn = Input(camTab, "0", cy, 55, 22)
 cy = cy + 26
 
 Label(camTab, "Độ lệch dọc (Offset Y)", cy)
 cy = cy + 14
-local offYIn = Input(camTab, "0", cy, 1, 50)
-offYIn.Size=UDim2.new(0,55,0,22)
+local offYIn = Input(camTab, "0", cy, 55, 22)
 cy = cy + 32
 
 Label(camTab, "━━━━━━━━━━━━━━━━━━━━━━", cy)
@@ -1226,8 +1226,7 @@ cy = cy + 28
 
 Label(camTab, "⚡ Tốc độ di chuyển camera", cy)
 cy = cy + 14
-local fcSpdIn = Input(camTab, "30", cy, 1, 50)
-fcSpdIn.Size=UDim2.new(0,55,0,22)
+local fcSpdIn = Input(camTab, "30", cy, 55, 22)
 cy = cy + 28
 
 -- Help frame
@@ -1325,7 +1324,6 @@ gy = gy + 28
 Label(gfxTab, "✨ Hiệu ứng hậu kỳ", gy)
 gy = gy + 14
 
--- Setup effects
 local be=Lighting:FindFirstChild("HQ_Bloom") or New("BloomEffect",{Name="HQ_Bloom",Enabled=true,Intensity=0.5},Lighting)
 local ble=Lighting:FindFirstChild("HQ_Blur") or New("BlurEffect",{Name="HQ_Blur",Enabled=false,Size=12},Lighting)
 local sre=Lighting:FindFirstChild("HQ_SunRays") or New("SunRaysEffect",{Name="HQ_SunRays",Enabled=true,Intensity=0.25},Lighting)
@@ -1512,4 +1510,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Executor Menu đã sẵn sàng! Nhấn nút ⚙ ở góc phải để mở.")
+print("✅ Executor Menu đã sửa hoàn tất! Giờ bạn có thể bấm gõ chữ bình thường.")
