@@ -465,33 +465,162 @@ local scriptListLayout = createInstance("UIListLayout", {
 	Padding = UDim.new(0, 4),
 }, scriptListFrame)
 
+-- ==================== ĐỒ HỌA ====================
+yPos = yPos + 18
+createLabel("━━━━━━━━━━━━━━━━━━━━━━━━", yPos)
+
+yPos = yPos + 16
+createLabel("🎨 Đồ Họa & Hiệu Suất", yPos)
+
+-- Preset chất lượng
+yPos = yPos + 18
+createLabel("📊 Preset chất lượng", yPos)
+
+yPos = yPos + 14
+local ultraBtn = createButton("✨ Ultra",    yPos, 58, 22, Color3.fromRGB(180, 50,  50))
+local highBtn  = createButton("🔵 High",     yPos, 58, 22, Color3.fromRGB(50, 100, 180))
+local medBtn   = createButton("🟡 Med",      yPos, 58, 22, Color3.fromRGB(180, 140, 30))
+local lowBtn   = createButton("🟢 Low",      yPos, 58, 22, Color3.fromRGB(60, 160,  80))
+ultraBtn.Position    = UDim2.new(0, 8,   0, yPos)
+highBtn.Position     = UDim2.new(0, 70,  0, yPos)
+medBtn.Position      = UDim2.new(0, 132, 0, yPos)
+lowBtn.Position      = UDim2.new(0, 194, 0, yPos)
+
+yPos = yPos + 28
+local ultraLowBtn = createButton("⚡ UltraLow (Tối đa FPS)", yPos, 200, 22, Color3.fromRGB(100, 60, 60))
+ultraLowBtn.Position = UDim2.new(0, 8, 0, yPos)
+
+yPos = yPos + 28
+local qualityLabel = createLabel("📊 Chất lượng hiện tại: Auto", yPos)
+qualityLabel.TextColor3 = Color3.fromRGB(0, 140, 70)
+qualityLabel.TextSize   = 10
+
+-- Shadow
+yPos = yPos + 20
+createLabel("🌑 Bóng đổ (Shadow)", yPos)
+local shadowToggle = createButton("🌑 Bóng đổ: BẬT", yPos + 14, 140, 22, Color3.fromRGB(0, 150, 80))
+shadowToggle.Position = UDim2.new(0, 10, 0, yPos + 14)
+
+-- Post FX
+yPos = yPos + 42
+createLabel("✨ Hiệu ứng hậu kỳ (Post FX)", yPos)
+
+yPos = yPos + 14
+local bloomToggle = createButton("🌸 Bloom: BẬT",    yPos, 130, 22, Color3.fromRGB(0, 150, 80))
+local blurToggle  = createButton("🌫 Blur: TẮT",     yPos, 130, 22, Color3.fromRGB(100, 100, 100))
+bloomToggle.Position = UDim2.new(0, 10,  0, yPos)
+blurToggle.Position  = UDim2.new(0, 148, 0, yPos)
+
+yPos = yPos + 28
+local sunToggle   = createButton("☀ Sun Rays: BẬT",  yPos, 130, 22, Color3.fromRGB(0, 150, 80))
+local colorToggle = createButton("🎨 Color Fix: TẮT", yPos, 130, 22, Color3.fromRGB(100, 100, 100))
+sunToggle.Position   = UDim2.new(0, 10,  0, yPos)
+colorToggle.Position = UDim2.new(0, 148, 0, yPos)
+
+-- Brightness
+yPos = yPos + 42
+createLabel("💡 Độ sáng (0.5 - 3)", yPos)
+local brightnessBox = createTextBox("1.2", yPos + 14, 22, false)
+brightnessBox.Size = UDim2.new(0, 55, 0, 22)
+local applyBrightnessBtn = createButton("✔ Áp dụng", yPos + 14, 80, 22, Color3.fromRGB(0, 130, 200))
+applyBrightnessBtn.Position = UDim2.new(0, 70, 0, yPos + 14)
+
+-- Ambient Color
+yPos = yPos + 42
+createLabel("🎨 Ambient Color (R G B)", yPos)
+local ambientRBox = createTextBox("128", yPos + 14, 22, false)
+local ambientGBox = createTextBox("128", yPos + 14, 22, false)
+local ambientBBox = createTextBox("128", yPos + 14, 22, false)
+ambientRBox.Size     = UDim2.new(0, 42, 0, 22); ambientRBox.Position  = UDim2.new(0, 8,   0, yPos + 14)
+ambientGBox.Size     = UDim2.new(0, 42, 0, 22); ambientGBox.Position  = UDim2.new(0, 55,  0, yPos + 14)
+ambientBBox.Size     = UDim2.new(0, 42, 0, 22); ambientBBox.Position  = UDim2.new(0, 102, 0, yPos + 14)
+local applyAmbientBtn = createButton("✔ Áp dụng", yPos + 14, 80, 22, Color3.fromRGB(0, 130, 200))
+applyAmbientBtn.Position = UDim2.new(0, 150, 0, yPos + 14)
+
+-- FPS Counter
+yPos = yPos + 42
+createLabel("📈 Hiển thị FPS", yPos)
+local fpsToggle = createButton("📈 FPS Counter: TẮT", yPos + 14, 160, 22, Color3.fromRGB(100, 100, 100))
+fpsToggle.Position = UDim2.new(0, 10, 0, yPos + 14)
+
+local fpsLabel = createInstance("TextLabel", {
+	Size = UDim2.new(0, 90, 0, 22),
+	Position = UDim2.new(0, 10, 1, -30),
+	Text = "",
+	BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+	BackgroundTransparency = 0.5,
+	TextColor3 = Color3.fromRGB(0, 255, 100),
+	Font = Enum.Font.GothamBold,
+	TextSize = 13,
+	Visible = false,
+	BorderSizePixel = 0,
+	ZIndex = 10,
+}, screenGui)
+addCorner(fpsLabel, UDim.new(0, 6))
+
+-- Texture Quality
+yPos = yPos + 42
+createLabel("🖼 Chất lượng Texture", yPos)
+yPos = yPos + 14
+local texHighBtn = createButton("🔵 Cao",  yPos, 88, 22, Color3.fromRGB(50, 100, 180))
+local texLowBtn  = createButton("🟢 Thấp", yPos, 88, 22, Color3.fromRGB(60, 160,  80))
+local texOffBtn  = createButton("⚫ Tắt",  yPos, 88, 22, Color3.fromRGB(100, 100, 100))
+texHighBtn.Position = UDim2.new(0, 8,   0, yPos)
+texLowBtn.Position  = UDim2.new(0, 102, 0, yPos)
+texOffBtn.Position  = UDim2.new(0, 196, 0, yPos)
+
+-- Particle & Decal
+yPos = yPos + 32
+createLabel("💨 Particle & Decal", yPos)
+local particleToggle = createButton("💨 Particle: BẬT", yPos + 14, 130, 22, Color3.fromRGB(0, 150, 80))
+local decalToggle    = createButton("🖼 Decal: BẬT",    yPos + 14, 130, 22, Color3.fromRGB(0, 150, 80))
+particleToggle.Position = UDim2.new(0, 10,  0, yPos + 14)
+decalToggle.Position    = UDim2.new(0, 148, 0, yPos + 14)
+
+-- Reset đồ họa
+yPos = yPos + 42
+local resetGfxBtn = createButton("🔄 Reset đồ họa về mặc định", yPos, 200, 22, Color3.fromRGB(150, 60, 60))
+resetGfxBtn.Position = UDim2.new(0.5, -100, 0, yPos)
+
+yPos = yPos + 30
+
 -- ==================== STATE ====================
-local flySpeed       = 50
-local carpetSize     = 30
-local walkSpeed      = 16
-local jumpPower      = 50
-local isNoClipOn     = false
-local isCustomCamera = false
-local customFov      = 70
-local customOffsetX  = 0
-local customOffsetY  = 0
-local isFogOn        = false
-local isFlying       = false
+local flySpeed        = 50
+local carpetSize      = 30
+local walkSpeed       = 16
+local jumpPower       = 50
+local isNoClipOn      = false
+local isCustomCamera  = false
+local customFov       = 70
+local customOffsetX   = 0
+local customOffsetY   = 0
+local isFogOn         = false
+local isFlying        = false
 local isStandingOnAir = false
-local isFlyWalkMode  = false
-local menuVisible    = false
-local carpetTargetY  = nil
-local camAngleX      = 0
-local camAngleY      = 0
+local isFlyWalkMode   = false
+local menuVisible     = false
+local carpetTargetY   = nil
+local camAngleX       = 0
+local camAngleY       = 0
+
+-- Graphic state
+local isShadowOn    = true
+local isBloomOn     = true
+local isBlurOn      = false
+local isSunRaysOn   = true
+local isColorFixOn  = false
+local isFpsShown    = false
+local isParticleOn  = true
+local isDecalOn     = true
 
 local flyBodyVelocity, flyBodyGyro, flyPlatform
 local standPlatform, standBodyPosition
 
-local savedScripts    = {}
-local totalExecutions = 0
+local savedScripts       = {}
+local totalExecutions    = 0
 local executionCancelled = false
-local currentThread   = nil
-local currentIndicator = nil
+local currentThread      = nil
+local currentIndicator   = nil
 
 local character = player.Character or player.CharacterAdded:Wait()
 
@@ -506,8 +635,8 @@ end
 local function applyCharacterSpeed()
 	local hum = getHumanoid()
 	if not hum then return end
-	hum.WalkSpeed  = walkSpeed
-	hum.JumpPower  = jumpPower
+	hum.WalkSpeed = walkSpeed
+	hum.JumpPower = jumpPower
 	walkSpeedLabel.Text = "Hiện tại: " .. walkSpeed
 	jumpPowerLabel.Text = "Hiện tại: " .. jumpPower
 end
@@ -565,7 +694,7 @@ local function createMobileBtn(text, pos)
 	return btn
 end
 
-local btnFlyUp   = createMobileBtn("⏫", UDim2.new(0, 8, 0, 8))
+local btnFlyUp   = createMobileBtn("⏫", UDim2.new(0, 8,   0, 8))
 local btnFlyDown = createMobileBtn("⏬", UDim2.new(0, 134, 0, 8))
 
 local mobileKeys    = {FlyUp = false, FlyDown = false}
@@ -595,7 +724,7 @@ end)
 
 local function getVerticalInput()
 	return UserInputService:IsKeyDown(Enum.KeyCode.Space) or mobileKeys.FlyUp,
-		   UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or mobileKeys.FlyDown
+		UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) or mobileKeys.FlyDown
 end
 
 local function showMobileControls()
@@ -646,6 +775,8 @@ local function createCarpet(yOffset)
 	end)
 end
 
+local stopFlyWalkMode -- forward declare
+
 local function toggleFly()
 	isFlying = not isFlying
 	flyButton.Text = isFlying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
@@ -656,14 +787,11 @@ local function toggleFly()
 	if not root then return end
 	if isFlying then
 		if isStandingOnAir then
-			-- stopStandOnAir inline via toggleStandOnAir later declared
 			stopStandOnAir(); isStandingOnAir = false
 			standAirButton.Text = "🪩 Thảm kính: TẮT"
 			standAirButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 		end
-		if isFlyWalkMode then
-			stopFlyWalkMode() -- forward declared
-		end
+		if isFlyWalkMode and stopFlyWalkMode then stopFlyWalkMode() end
 		flyBodyVelocity = createInstance("BodyVelocity", {
 			MaxForce = Vector3.new(4000, 4000, 4000)}, root)
 		flyBodyGyro = createInstance("BodyGyro", {
@@ -777,7 +905,7 @@ local function startFlyWalkMode()
 	flyWalkOverlay.Visible = true
 end
 
-function stopFlyWalkMode()
+stopFlyWalkMode = function()
 	if isStandingOnAir then
 		stopStandOnAir()
 		isStandingOnAir = false
@@ -893,18 +1021,6 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- ==================== TEXTBOX LISTENERS ====================
-local function numericFocusLost(box, minVal, maxVal, callback)
-	box.FocusLost:Connect(function(ep)
-		if not ep then return end
-		local n = tonumber(box.Text)
-		if n and n >= minVal and (not maxVal or n <= maxVal) then
-			callback(n)
-		else
-			box.Text = tostring(callback())
-		end
-	end)
-end
-
 walkSpeedBox.FocusLost:Connect(function(ep)
 	if not ep then return end
 	local n = tonumber(walkSpeedBox.Text)
@@ -1025,7 +1141,7 @@ end)
 local function updateCanvas()
 	local count = #savedScripts
 	scrollFrame.CanvasSize = UDim2.new(0, 0, 0,
-		math.max(yPos + 30 + count * 30, 500))
+		math.max(yPos + count * 30 + 60, 600))
 end
 
 local function rebuildList()
@@ -1074,7 +1190,7 @@ local function rebuildList()
 		}, row)
 		addCorner(del, UDim.new(1, 0))
 
-		local idx = i -- capture
+		local idx = i
 		indicator.MouseButton1Click:Connect(function()
 			if currentIndicator == indicator then stopExecution() end
 		end)
@@ -1111,6 +1227,234 @@ saveButton.MouseButton1Click:Connect(function()
 	scrollFrame.CanvasPosition = Vector2.new(0, scrollFrame.CanvasSize.Y.Offset)
 end)
 
+-- ==================== ĐỒ HỌA LOGIC ====================
+local QUALITY_PRESETS = {
+	Ultra    = {level = 21, shadow = 0.2, diffuse = 1,   specular = 1,   globalShadow = true,  label = "✨ Ultra"},
+	High     = {level = 17, shadow = 0.5, diffuse = 1,   specular = 1,   globalShadow = true,  label = "🔵 High"},
+	Medium   = {level = 10, shadow = 1,   diffuse = 0.8, specular = 0.6, globalShadow = true,  label = "🟡 Medium"},
+	Low      = {level = 5,  shadow = 1,   diffuse = 0.5, specular = 0.3, globalShadow = false, label = "🟢 Low"},
+	UltraLow = {level = 1,  shadow = 1,   diffuse = 0,   specular = 0,   globalShadow = false, label = "⚡ UltraLow"},
+}
+
+local function applyQualityPreset(key)
+	local p = QUALITY_PRESETS[key]
+	if not p then return end
+	pcall(function() settings().Rendering.QualityLevel = p.level end)
+	Lighting.ShadowSoftness              = p.shadow
+	Lighting.GlobalShadows               = p.globalShadow
+	Lighting.EnvironmentDiffuseScale     = p.diffuse
+	Lighting.EnvironmentSpecularScale    = p.specular
+	qualityLabel.Text       = "📊 Chất lượng: " .. p.label
+	qualityLabel.TextColor3 = (key == "Ultra")
+		and Color3.fromRGB(220, 80, 80) or Color3.fromRGB(0, 140, 70)
+	-- Cập nhật shadow button
+	isShadowOn = p.globalShadow
+	shadowToggle.Text = isShadowOn and "🌑 Bóng đổ: BẬT" or "🌑 Bóng đổ: TẮT"
+	shadowToggle.BackgroundColor3 = isShadowOn
+		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+end
+
+ultraBtn.MouseButton1Click:Connect(function()    applyQualityPreset("Ultra")    end)
+highBtn.MouseButton1Click:Connect(function()     applyQualityPreset("High")     end)
+medBtn.MouseButton1Click:Connect(function()      applyQualityPreset("Medium")   end)
+lowBtn.MouseButton1Click:Connect(function()      applyQualityPreset("Low")      end)
+ultraLowBtn.MouseButton1Click:Connect(function() applyQualityPreset("UltraLow") end)
+
+-- Shadow toggle
+shadowToggle.MouseButton1Click:Connect(function()
+	isShadowOn = not isShadowOn
+	Lighting.GlobalShadows = isShadowOn
+	shadowToggle.Text = isShadowOn and "🌑 Bóng đổ: BẬT" or "🌑 Bóng đổ: TẮT"
+	shadowToggle.BackgroundColor3 = isShadowOn
+		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+end)
+
+-- Post FX
+local function findOrCreate(cls, parent, name)
+	local obj = parent:FindFirstChild(name)
+	if not obj then
+		obj = Instance.new(cls)
+		obj.Name   = name
+		obj.Parent = parent
+	end
+	return obj
+end
+
+local bloomEffect = findOrCreate("BloomEffect",           Lighting, "GfxBloom")
+local blurEffect  = findOrCreate("BlurEffect",            Lighting, "GfxBlur")
+local sunEffect   = findOrCreate("SunRaysEffect",         Lighting, "GfxSunRays")
+local colorEffect = findOrCreate("ColorCorrectionEffect", Lighting, "GfxColorFix")
+
+bloomEffect.Enabled  = true;  bloomEffect.Intensity  = 0.5
+blurEffect.Enabled   = false; blurEffect.Size        = 12
+sunEffect.Enabled    = true;  sunEffect.Intensity    = 0.25
+colorEffect.Enabled  = false; colorEffect.Contrast   = 0.1; colorEffect.Saturation = 0.2
+
+bloomToggle.MouseButton1Click:Connect(function()
+	isBloomOn = not isBloomOn
+	bloomEffect.Enabled = isBloomOn
+	bloomToggle.Text = isBloomOn and "🌸 Bloom: BẬT" or "🌸 Bloom: TẮT"
+	bloomToggle.BackgroundColor3 = isBloomOn
+		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+end)
+blurToggle.MouseButton1Click:Connect(function()
+	isBlurOn = not isBlurOn
+	blurEffect.Enabled = isBlurOn
+	blurToggle.Text = isBlurOn and "🌫 Blur: BẬT" or "🌫 Blur: TẮT"
+	blurToggle.BackgroundColor3 = isBlurOn
+		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+end)
+sunToggle.MouseButton1Click:Connect(function()
+	isSunRaysOn = not isSunRaysOn
+	sunEffect.Enabled = isSunRaysOn
+	sunToggle.Text = isSunRaysOn and "☀ Sun Rays: BẬT" or "☀ Sun Rays: TẮT"
+	sunToggle.BackgroundColor3 = isSunRaysOn
+		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+end)
+colorToggle.MouseButton1Click:Connect(function()
+	isColorFixOn = not isColorFixOn
+	colorEffect.Enabled = isColorFixOn
+	colorToggle.Text = isColorFixOn and "🎨 Color Fix: BẬT" or "🎨 Color Fix: TẮT"
+	colorToggle.BackgroundColor3 = isColorFixOn
+		and Color3.fromRGB(200, 120, 50) or Color3.fromRGB(100, 100, 100)
+end)
+
+-- Brightness
+applyBrightnessBtn.MouseButton1Click:Connect(function()
+	local n = tonumber(brightnessBox.Text)
+	if n and n >= 0.5 and n <= 3 then
+		tweenLight({Brightness = n})
+	else
+		brightnessBox.Text = string.format("%.1f", Lighting.Brightness)
+	end
+end)
+
+-- Ambient
+applyAmbientBtn.MouseButton1Click:Connect(function()
+	local r = math.clamp(tonumber(ambientRBox.Text) or 128, 0, 255)
+	local g = math.clamp(tonumber(ambientGBox.Text) or 128, 0, 255)
+	local b = math.clamp(tonumber(ambientBBox.Text) or 128, 0, 255)
+	tweenLight({Ambient = Color3.fromRGB(r, g, b)})
+end)
+
+-- FPS Counter
+local fpsBuffer  = {}
+local FPS_SAMPLE = 30
+fpsToggle.MouseButton1Click:Connect(function()
+	isFpsShown       = not isFpsShown
+	fpsLabel.Visible = isFpsShown
+	fpsToggle.Text   = isFpsShown and "📈 FPS Counter: BẬT" or "📈 FPS Counter: TẮT"
+	fpsToggle.BackgroundColor3 = isFpsShown
+		and Color3.fromRGB(0, 180, 80) or Color3.fromRGB(100, 100, 100)
+	if isFpsShown then
+		RunService:BindToRenderStep("FpsCounter", Enum.RenderPriority.Last.Value, function(dt)
+			table.insert(fpsBuffer, dt)
+			if #fpsBuffer > FPS_SAMPLE then table.remove(fpsBuffer, 1) end
+			if #fpsBuffer > 0 then
+				local avg = 0
+				for _, v in ipairs(fpsBuffer) do avg = avg + v end
+				local fps = math.round(#fpsBuffer / avg)
+				fpsLabel.TextColor3 = fps >= 55 and Color3.fromRGB(0, 255, 100)
+					or fps >= 30 and Color3.fromRGB(255, 200, 0)
+					or Color3.fromRGB(255, 60, 60)
+				fpsLabel.Text = string.format("FPS: %d", fps)
+			end
+		end)
+	else
+		RunService:UnbindFromRenderStep("FpsCounter")
+		fpsBuffer = {}
+		fpsLabel.Text = ""
+	end
+end)
+
+-- Texture
+local function setTextureQuality(mode)
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("Texture") or obj:IsA("Decal") then
+			obj.Transparency = (mode == "Off") and 1 or 0
+		end
+	end
+	pcall(function()
+		settings().Rendering.EagerBulkExecution = (mode == "High")
+	end)
+end
+
+texHighBtn.MouseButton1Click:Connect(function()
+	setTextureQuality("High")
+	texHighBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+	texLowBtn.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+	texOffBtn.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+end)
+texLowBtn.MouseButton1Click:Connect(function()
+	setTextureQuality("Low")
+	texHighBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+	texLowBtn.BackgroundColor3  = Color3.fromRGB(0, 160, 60)
+	texOffBtn.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+end)
+texOffBtn.MouseButton1Click:Connect(function()
+	setTextureQuality("Off")
+	texHighBtn.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+	texLowBtn.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+	texOffBtn.BackgroundColor3  = Color3.fromRGB(60, 60, 60)
+end)
+
+-- Particle & Decal
+local function setParticlesEnabled(state)
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") then
+			obj.Enabled = state
+		end
+	end
+end
+local function setDecalsEnabled(state)
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("Decal") then
+			obj.Transparency = state and 0 or 1
+		end
+	end
+end
+
+particleToggle.MouseButton1Click:Connect(function()
+	isParticleOn = not isParticleOn
+	setParticlesEnabled(isParticleOn)
+	particleToggle.Text = isParticleOn and "💨 Particle: BẬT" or "💨 Particle: TẮT"
+	particleToggle.BackgroundColor3 = isParticleOn
+		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+end)
+decalToggle.MouseButton1Click:Connect(function()
+	isDecalOn = not isDecalOn
+	setDecalsEnabled(isDecalOn)
+	decalToggle.Text = isDecalOn and "🖼 Decal: BẬT" or "🖼 Decal: TẮT"
+	decalToggle.BackgroundColor3 = isDecalOn
+		and Color3.fromRGB(0, 150, 80) or Color3.fromRGB(100, 100, 100)
+end)
+
+-- Reset đồ họa
+resetGfxBtn.MouseButton1Click:Connect(function()
+	applyQualityPreset("Ultra")
+	isShadowOn = true; Lighting.GlobalShadows = true
+	isBloomOn = true;  bloomEffect.Enabled = true
+	isBlurOn  = false; blurEffect.Enabled  = false
+	isSunRaysOn = true; sunEffect.Enabled  = true
+	isColorFixOn = false; colorEffect.Enabled = false
+	bloomToggle.Text  = "🌸 Bloom: BẬT";   bloomToggle.BackgroundColor3  = Color3.fromRGB(0, 150, 80)
+	blurToggle.Text   = "🌫 Blur: TẮT";    blurToggle.BackgroundColor3   = Color3.fromRGB(100, 100, 100)
+	sunToggle.Text    = "☀ Sun Rays: BẬT"; sunToggle.BackgroundColor3    = Color3.fromRGB(0, 150, 80)
+	colorToggle.Text  = "🎨 Color Fix: TẮT"; colorToggle.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+	isParticleOn = true; setParticlesEnabled(true)
+	isDecalOn    = true; setDecalsEnabled(true)
+	particleToggle.Text = "💨 Particle: BẬT"; particleToggle.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+	decalToggle.Text    = "🖼 Decal: BẬT";    decalToggle.BackgroundColor3    = Color3.fromRGB(0, 150, 80)
+	tweenLight({Brightness = 1.2, Ambient = Color3.fromRGB(128, 128, 128),
+		OutdoorAmbient = Color3.fromRGB(180, 180, 180),
+		EnvironmentDiffuseScale = 1, EnvironmentSpecularScale = 1})
+	brightnessBox.Text = "1.2"
+	setTextureQuality("High")
+	texHighBtn.BackgroundColor3 = Color3.fromRGB(0, 120, 200)
+	texLowBtn.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+	texOffBtn.BackgroundColor3  = Color3.fromRGB(100, 100, 100)
+end)
+
 -- ==================== TOGGLE MENU ====================
 closeButton.MouseButton1Click:Connect(function()
 	mainFrame.Visible = false
@@ -1134,7 +1478,6 @@ player.CharacterAdded:Connect(function(char)
 	if isNoClipOn then enableNoClip() end
 	if isFlyWalkMode then stopFlyWalkMode() end
 	if isCustomCamera then stopCustomCamera(); task.wait(0.1); startCustomCamera() end
-	-- Reset button states
 	flyButton.Text = "🕊️ Bay: TẮT"
 	flyButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
 	standAirButton.Text = "🪩 Thảm kính: TẮT"
