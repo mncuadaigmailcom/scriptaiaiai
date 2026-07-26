@@ -198,9 +198,14 @@ local function AddTab(name, icon, order)
     Corner(btn, UDim.new(0,6))
     
     local sf = New("ScrollingFrame", {
-        Size=UDim2.new(1,0,1,0), BackgroundTransparency=1, BorderSizePixel=0,
+        Size=UDim2.new(1,0,1,0), 
+        BackgroundTransparency=1, BorderSizePixel=0,
         ScrollBarThickness=5, ScrollBarImageColor3=Color3.fromRGB(80,80,80),
         ClipsDescendants=true, CanvasSize=UDim2.new(0,0,0,0), Visible=false,
+        -- QUAN TRỌNG: Thêm các thuộc tính này để cho phép nhập TextBox
+        Active = true,
+        Selectable = false,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
     }, contentArea)
     
     btn.MouseButton1Click:Connect(function()
@@ -693,6 +698,8 @@ local function Input(parent, text, y, w, h, ml)
         BackgroundColor3=C.BG, BackgroundTransparency=0.3,
         TextColor3=Color3.fromRGB(30,30,30), Font=Enum.Font.GothamMedium, TextSize=12,
         BorderSizePixel=0, ClearTextOnFocus=false,
+        -- QUAN TRỌNG: Đảm bảo TextBox có thể nhận input
+        ZIndex = 2,
     }, parent)
     if ml then
         inp.MultiLine=true
@@ -710,6 +717,7 @@ local function Button(parent, text, x, y, w, h, color)
         Size=UDim2.new(0,w or 100,0,h or 24), Position=UDim2.new(0,x or 8,0,y or 0),
         Text=text, BackgroundColor3=color or C.GRAY, BackgroundTransparency=0.2,
         TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0,
+        ZIndex = 2,
     }, parent)
     Corner(btn, UDim.new(0,5))
     Stroke(btn, color and color:Lerp(Color3.new(0,0,0),0.4) or nil, 1)
@@ -735,6 +743,7 @@ for _, s in ipairs(quickScripts) do
     local btn = New("TextButton", {
         Size=UDim2.new(1,-16,0,28), Position=UDim2.new(0,8,0,y),
         Text="", BackgroundColor3=s.cl, BackgroundTransparency=0.3, BorderSizePixel=0,
+        ZIndex = 2,
     }, codeTab)
     Corner(btn, UDim.new(0,5))
     Stroke(btn, s.cl, 1.2)
@@ -744,6 +753,7 @@ for _, s in ipairs(quickScripts) do
         Text=s.n.."\n"..s.d, BackgroundTransparency=1, TextColor3=C.WHITE,
         Font=Enum.Font.GothamBold, TextSize=10,
         TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Center,
+        ZIndex = 2,
     }, btn)
     
     btn.MouseButton1Click:Connect(function()
@@ -785,6 +795,7 @@ local unitBtn = New("TextButton", {
     Size=UDim2.new(0,55,0,22), Position=UDim2.new(0,75,0,y+24),
     Text="Giây", BackgroundColor3=C.BG, BackgroundTransparency=0.3,
     TextColor3=C.DARK, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0,
+    ZIndex = 2,
 }, codeTab)
 Corner(unitBtn,UDim.new(0,4))
 Stroke(unitBtn)
@@ -994,6 +1005,7 @@ function RebuildScripts()
             Size=UDim2.new(0,18,0,18), Position=UDim2.new(1,-44,0,4),
             Text="▶", BackgroundColor3=C.GREEN, BackgroundTransparency=0.2,
             TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0,
+            ZIndex = 2,
         }, row)
         Corner(ind,UDim.new(1,0))
         
@@ -1001,6 +1013,7 @@ function RebuildScripts()
             Size=UDim2.new(0,18,0,18), Position=UDim2.new(1,-44,0,24),
             Text="✏", BackgroundColor3=C.BLUE, BackgroundTransparency=0.2,
             TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0,
+            ZIndex = 2,
         }, row)
         Corner(edit,UDim.new(1,0))
         
@@ -1008,6 +1021,7 @@ function RebuildScripts()
             Size=UDim2.new(0,18,0,18), Position=UDim2.new(1,-22,0,4),
             Text="✕", BackgroundColor3=C.RED, BackgroundTransparency=0.2,
             TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0,
+            ZIndex = 2,
         }, row)
         Corner(del,UDim.new(1,0))
         
