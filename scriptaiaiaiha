@@ -1,6 +1,6 @@
 -- ============================================
--- EXECUTOR MENU - Phiên bản Tiếng Việt Full Tính Năng
--- (Đã sửa nút Kéo Chỉnh Kích Thước 4 Góc To & Nổi Bật 100%)
+-- EXECUTOR MENU - Phiên bản Banana Cat Hub Style
+-- (Kích thước ngang chuẩn 540x340 + Chỉnh kích thước 4 góc + Tự khôi phục)
 -- StarterGui -> LocalScript
 -- ============================================
 
@@ -19,15 +19,15 @@ local playerGui = player:WaitForChild("PlayerGui")
 -- ==================== CONSTANTS ====================
 local C = {
     WHITE = Color3.fromRGB(255, 255, 255),
-    DARK = Color3.fromRGB(50, 50, 50),
+    DARK = Color3.fromRGB(40, 40, 45),
     GRAY = Color3.fromRGB(100, 100, 100),
-    GREEN = Color3.fromRGB(0, 150, 80),
-    BLUE = Color3.fromRGB(0, 120, 200),
-    RED = Color3.fromRGB(200, 60, 60),
+    GREEN = Color3.fromRGB(0, 170, 90),
+    BLUE = Color3.fromRGB(0, 130, 220),
+    RED = Color3.fromRGB(220, 60, 60),
     YELLOW = Color3.fromRGB(255, 200, 0),
-    PURPLE = Color3.fromRGB(120, 50, 180),
-    ORANGE = Color3.fromRGB(200, 120, 50),
-    BG = Color3.fromRGB(245, 245, 245),
+    PURPLE = Color3.fromRGB(130, 60, 200),
+    ORANGE = Color3.fromRGB(220, 130, 50),
+    BG = Color3.fromRGB(240, 242, 248),
 }
 
 local DEFAULT_LIGHTING = {
@@ -60,11 +60,11 @@ local function New(cls, props, parent)
 end
 
 local function Corner(p, r)
-    return New("UICorner", {CornerRadius = r or UDim.new(0, 6)}, p)
+    return New("UICorner", {CornerRadius = r or UDim.new(0, 8)}, p)
 end
 
 local function Stroke(p, c, t)
-    return New("UIStroke", {Color = c or Color3.fromRGB(140, 140, 140), Thickness = t or 1.2}, p)
+    return New("UIStroke", {Color = c or Color3.fromRGB(160, 165, 180), Thickness = t or 1.2}, p)
 end
 
 local function Tween(o, p, d, e)
@@ -85,64 +85,64 @@ local gui = New("ScreenGui", {
 
 -- Toggle Button
 local togBtn = New("TextButton", {
-    Size=UDim2.new(0,42,0,42),
-    Position=UDim2.new(1,-52,1,-52),
-    Text="⚙",
+    Size=UDim2.new(0,44,0,44),
+    Position=UDim2.new(1,-56,1,-56),
+    Text="🍌",
     BackgroundColor3=C.WHITE,
-    BackgroundTransparency=0.3,
+    BackgroundTransparency=0.2,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
-    TextSize=20,
+    TextSize=22,
     BorderSizePixel=0,
     ZIndex=10,
 }, gui)
 Corner(togBtn, UDim.new(1,0))
-Stroke(togBtn)
+Stroke(togBtn, C.BLUE, 1.5)
 
--- Main Frame
+-- Main Frame (KÍCH THƯỚC CHUẨN BANANA CAT HUB: 540x340)
 local main = New("Frame", {
-    Size=UDim2.new(0,440,0,500),
-    Position=UDim2.new(0.5,-220,0.5,-250),
+    Size=UDim2.new(0,540,0,340),
+    Position=UDim2.new(0.5,-270,0.5,-170),
     BackgroundColor3=C.WHITE,
-    BackgroundTransparency=0.05,
+    BackgroundTransparency=0.03,
     BorderSizePixel=0,
     Visible=false,
     ClipsDescendants=false,
     ZIndex=2,
 }, gui)
-Corner(main, UDim.new(0,12))
-Stroke(main, nil, 2.5)
+Corner(main, UDim.new(0,10))
+Stroke(main, Color3.fromRGB(180,185,200), 2)
 
 -- Title Bar
 local titleBar = New("Frame", {
-    Size=UDim2.new(1,0,0,28),
-    BackgroundColor3=Color3.fromRGB(240,240,240),
+    Size=UDim2.new(1,0,0,30),
+    BackgroundColor3=Color3.fromRGB(235,238,245),
     BackgroundTransparency=0.1,
     BorderSizePixel=0,
     ZIndex=3,
 }, main)
-Corner(titleBar, UDim.new(0,12))
+Corner(titleBar, UDim.new(0,10))
 
 New("TextLabel", {
     Size=UDim2.new(1,-40,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="⚡ Executor Pro v2.6",
+    Text="🍌 Banana Cat Executor Hub v3.0",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
-    TextSize=14,
+    TextSize=13,
     TextXAlignment=Enum.TextXAlignment.Left,
     ZIndex=4,
 }, titleBar)
 
 local closeBtn = New("TextButton", {
-    Size=UDim2.new(0,28,0,28),
+    Size=UDim2.new(0,30,0,30),
     Position=UDim2.new(1,-32,0,0),
     Text="✕",
     BackgroundTransparency=1,
-    TextColor3=Color3.fromRGB(120,120,120),
+    TextColor3=Color3.fromRGB(120,120,130),
     Font=Enum.Font.GothamBold,
-    TextSize=16,
+    TextSize=15,
     BorderSizePixel=0,
     ZIndex=4,
 }, titleBar)
@@ -168,8 +168,8 @@ UserInputService.InputEnded:Connect(function(i)
     end
 end)
 
--- ===== RESIZE TẠI 4 GÓC (4-CORNER RESIZING - RÕ RÀNG NỔI BẬT) =====
-local minW, minH = 340, 280
+-- ===== RESIZE TẠI 4 GÓC (4-CORNER RESIZING) =====
+local minW, minH = 420, 260
 
 local function SetupResizeHandle(btn, cornerType)
     local resizing, sizeStart, posStart, inputStart
@@ -219,29 +219,29 @@ local function SetupResizeHandle(btn, cornerType)
     end)
 end
 
--- Tạo 4 nút kéo màu Xanh Dương ở 4 góc (ZIndex = 100 để luôn đè lên trên cùng)
+-- Nút kéo 4 góc
 local function CreateHandle(icon, pos)
     local btn = New("TextButton", {
-        Size=UDim2.new(0,22,0,22),
+        Size=UDim2.new(0,20,0,20),
         Position=pos,
         Text=icon,
         BackgroundColor3=C.BLUE,
         BackgroundTransparency=0.1,
         TextColor3=C.WHITE,
         Font=Enum.Font.GothamBold,
-        TextSize=12,
+        TextSize=11,
         BorderSizePixel=0,
-        ZIndex=100, -- Luôn nổi lên trên cùng
+        ZIndex=100,
     }, main)
-    Corner(btn, UDim.new(0,6))
-    Stroke(btn, Color3.fromRGB(255,255,255), 1.5)
+    Corner(btn, UDim.new(0,5))
+    Stroke(btn, Color3.fromRGB(255,255,255), 1.2)
     return btn
 end
 
 local handleTL = CreateHandle("↖", UDim2.new(0, 2, 0, 2))
-local handleTR = CreateHandle("↗", UDim2.new(1, -24, 0, 2))
-local handleBL = CreateHandle("↙", UDim2.new(0, 2, 1, -24))
-local handleBR = CreateHandle("↘", UDim2.new(1, -24, 1, -24))
+local handleTR = CreateHandle("↗", UDim2.new(1, -22, 0, 2))
+local handleBL = CreateHandle("↙", UDim2.new(0, 2, 1, -22))
+local handleBR = CreateHandle("↘", UDim2.new(1, -22, 1, -22))
 
 SetupResizeHandle(handleTL, "TL")
 SetupResizeHandle(handleTR, "TR")
@@ -253,9 +253,9 @@ local tabs = {}
 local tabContent = {}
 
 local tabBar = New("ScrollingFrame", {
-    Size=UDim2.new(0,85,1,-28),
-    Position=UDim2.new(1,-85,0,28),
-    BackgroundColor3=Color3.fromRGB(230,230,230),
+    Size=UDim2.new(0,95,1,-30),
+    Position=UDim2.new(1,-95,0,30),
+    BackgroundColor3=Color3.fromRGB(232,235,242),
     BackgroundTransparency=0.1,
     BorderSizePixel=0,
     ZIndex=3,
@@ -272,8 +272,8 @@ New("UIListLayout", {
 New("UIPadding", {PaddingTop=UDim.new(0,6), PaddingLeft=UDim.new(0,4)}, tabBar)
 
 local contentArea = New("Frame", {
-    Size=UDim2.new(1,-85,1,-28),
-    Position=UDim2.new(0,0,0,28),
+    Size=UDim2.new(1,-95,1,-30),
+    Position=UDim2.new(0,0,0,30),
     BackgroundTransparency=1,
     BorderSizePixel=0,
     ZIndex=3,
@@ -283,7 +283,7 @@ local activeTab = nil
 
 local function AddTab(name, icon, order)
     local btn = New("TextButton", {
-        Size=UDim2.new(1,-8,0,32),
+        Size=UDim2.new(1,-8,0,30),
         Text=icon.." "..name,
         BackgroundColor3=C.BG,
         BackgroundTransparency=0.3,
@@ -302,7 +302,7 @@ local function AddTab(name, icon, order)
         BackgroundTransparency=1,
         BorderSizePixel=0,
         ScrollBarThickness=5,
-        ScrollBarImageColor3=Color3.fromRGB(80,80,80),
+        ScrollBarImageColor3=Color3.fromRGB(120,120,140),
         ClipsDescendants=true,
         CanvasSize=UDim2.new(0,0,0,0),
         Visible=false,
@@ -327,11 +327,11 @@ local function AddTab(name, icon, order)
 
     table.insert(tabs, btn)
     table.insert(tabContent, sf)
-    tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 36 + 10)
+    tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 34 + 10)
     return sf
 end
 
--- Tạo 6 Tab
+-- 6 Tab
 local codeTab   = AddTab("Code", "💻", 1)
 local moveTab   = AddTab("Di Chuyển", "🏃", 2)
 local playerTab = AddTab("Người Chơi", "👤", 3)
@@ -387,7 +387,7 @@ UserInputService.JumpRequest:Connect(function()
     end
 end)
 
--- ==================== CLICK TELEPORT (Ctrl + Click Left) ====================
+-- ==================== CLICK TELEPORT ====================
 UserInputService.InputBegan:Connect(function(i, gp)
     if gp then return end
     if S.clickTp and i.UserInputType == Enum.UserInputType.MouseButton1 and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
@@ -1721,14 +1721,14 @@ gfxTab.CanvasSize=UDim2.new(0,0,0,gy+40)
 -- ==================== TOGGLE MENU ====================
 closeBtn.MouseButton1Click:Connect(function()
     main.Visible=false
-    togBtn.Text="⚙"
+    togBtn.Text="🍌"
 end)
 
 togBtn.MouseButton1Click:Connect(function()
     if S.flyRun then return end
     local v=not main.Visible
     main.Visible=v
-    togBtn.Text=v and "✕" or "⚙"
+    togBtn.Text=v and "✕" or "🍌"
 end)
 
 -- ==================== CHARACTER RESPAWN & AUTO RESTORE STATE ====================
@@ -1750,4 +1750,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Executor Menu v2.6 đã hoàn tất! 4 Nút Kéo Góc MÀU XANH DƯƠNG hiện to rõ nét ở 4 góc.")
+print("✅ Banana Cat Executor Hub v3.0 đã tải hoàn tất!")
