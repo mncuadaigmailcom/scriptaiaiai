@@ -1,7 +1,7 @@
 -- ============================================
--- EXECUTOR MENU - Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
--- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
--- + Tab "Code Đã Lưu" Có Mũi Tên Sổ Code & 2 Nút Chạy/Xóa Kéo Dài
+-- EXECUTOR MENU - Banana Cat Hub Style (Caro Pattern + Resize 4 góc)
+-- Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
+-- Bổ sung Tab "Code Server" (Remote Spy) Nằm Giữa "Code Đã Lưu" & "Di Chuyển"
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -114,8 +114,8 @@ Stroke(togBtn, C.BLUE, 2)
 
 -- Main Frame
 local main = New("Frame", {
-    Size=UDim2.new(0,540,0,340),
-    Position=UDim2.new(0.5,-270,0.5,-170),
+    Size=UDim2.new(0,550,0,340),
+    Position=UDim2.new(0.5,-275,0.5,-170),
     BackgroundColor3=Color3.fromRGB(235, 238, 245),
     BackgroundTransparency=0.25,
     BorderSizePixel=0,
@@ -199,7 +199,7 @@ UserInputService.InputEnded:Connect(function(i)
 end)
 
 -- ===== RESIZE TẠI 4 GÓC =====
-local minW, minH = 440, 260
+local minW, minH = 450, 260
 
 local function SetupResizeHandle(btn, cornerType)
     local resizing, sizeStart, posStart, inputStart
@@ -282,8 +282,8 @@ local tabs = {}
 local tabContent = {}
 
 local tabBar = New("ScrollingFrame", {
-    Size=UDim2.new(0,105,1,-30),
-    Position=UDim2.new(1,-105,0,30),
+    Size=UDim2.new(0,110,1,-30),
+    Position=UDim2.new(1,-110,0,30),
     BackgroundColor3=Color3.fromRGB(225,230,240),
     BackgroundTransparency=0.3,
     BorderSizePixel=0,
@@ -301,7 +301,7 @@ New("UIListLayout", {
 New("UIPadding", {PaddingTop=UDim.new(0,6), PaddingLeft=UDim.new(0,4)}, tabBar)
 
 local contentArea = New("Frame", {
-    Size=UDim2.new(1,-105,1,-30),
+    Size=UDim2.new(1,-110,1,-30),
     Position=UDim2.new(0,0,0,30),
     BackgroundTransparency=1,
     BorderSizePixel=0,
@@ -366,14 +366,15 @@ local function AddTab(name, icon, order)
     return sf
 end
 
--- 7 TABS (TÍNH NĂNG "CODE ĐÃ LƯU" NẰM GIỮA CODE VÀ DI CHUYỂN)
-local codeTab      = AddTab("Code", "💻", 1)
-local savedCodeTab = AddTab("Code Đã Lưu", "💾", 2)
-local moveTab      = AddTab("Di Chuyển", "🏃", 3)
-local playerTab    = AddTab("Người Chơi", "👤", 4)
-local envTab       = AddTab("Môi Trường", "⚙️", 5)
-local camTab       = AddTab("Camera", "📷", 6)
-local gfxTab       = AddTab("Đồ Họa", "🎨", 7)
+-- 8 TABS (TAB "CODE SERVER" ĐƯỢC CHÈN GIỮA "CODE ĐÃ LƯU" VÀ "DI CHUYỂN")
+local codeTab       = AddTab("Code", "💻", 1)
+local savedCodeTab  = AddTab("Code Đã Lưu", "💾", 2)
+local serverCodeTab = AddTab("Code Server", "📡", 3) -- TAB MỚI THÊM VÀO VỊ TRÍ NÀY!
+local moveTab       = AddTab("Di Chuyển", "🏃", 4)
+local playerTab     = AddTab("Người Chơi", "👤", 5)
+local envTab        = AddTab("Môi Trường", "⚙️", 6)
+local camTab        = AddTab("Camera", "📷", 7)
+local gfxTab        = AddTab("Đồ Họa", "🎨", 8)
 
 SwitchTab(1)
 
@@ -388,9 +389,11 @@ local S = {
     shadows=true, bloom=true, blur=false, sunRays=true, colorCorr=false,
     fpsCounter=false, particles=true, decals=true,
     infJump=false, clickTp=false, esp=false, antiAfk=true, fullBright=false,
+    serverLogging=false,
 }
 
 local scripts = {}
+local serverLogs = {}
 local totalRuns, cancelled = 0, false
 local curThread, curIndicator = nil, nil
 
@@ -1212,7 +1215,7 @@ saveBtn.Activated:Connect(function()
     statusLbl.Text="✅ Đã lưu vào Tab 'Code Đã Lưu'!"
 end)
 
--- ==================== TAB 2: CODE ĐÃ LƯU (MỚI CHỈNH SỬA THEO YÊU CẦU) ====================
+-- ==================== TAB 2: CODE ĐÃ LƯU ====================
 local sy = 8
 Label(savedCodeTab, "💾 Danh Sách Script Đã Lưu", sy)
 sy = sy + 18
@@ -1268,7 +1271,6 @@ RebuildScripts = function()
         }, scriptList)
         Corner(row,UDim.new(0,6)); Stroke(row)
 
-        -- 1. NÚT MŨI TÊN BÊN TRÁI (SỔ CODE)
         local arrowBtn = New("TextButton", {
             Size=UDim2.new(0,24,0,24), Position=UDim2.new(0,6,0,9),
             Text=isExpanded and "▲" or "▼",
@@ -1277,7 +1279,6 @@ RebuildScripts = function()
         }, row)
         Corner(arrowBtn, UDim.new(0,4))
 
-        -- 2. TÊN SCRIPT (CẠNH MŨI TÊN)
         local nameLbl = New("TextLabel", {
             Size=UDim2.new(1,-170,0,42), Position=UDim2.new(0,36,0,0),
             Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
@@ -1285,7 +1286,6 @@ RebuildScripts = function()
             TextTruncate=Enum.TextTruncate.AtEnd, ZIndex=8,
         }, row)
 
-        -- 3. NÚT "▶ CHẠY" KÉO DÀI (BÊN PHẢI)
         local runScriptBtn = New("TextButton", {
             Size=UDim2.new(0,62,0,26), Position=UDim2.new(1,-130,0,8),
             Text="▶ Chạy", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
@@ -1293,7 +1293,6 @@ RebuildScripts = function()
         }, row)
         Corner(runScriptBtn, UDim.new(0,5))
 
-        -- 4. NÚT "🗑 XÓA" KÉO DÀI (BÊN PHẢI)
         local delScriptBtn = New("TextButton", {
             Size=UDim2.new(0,58,0,26), Position=UDim2.new(1,-64,0,8),
             Text="🗑 Xóa", BackgroundColor3=C.RED, BackgroundTransparency=0.1,
@@ -1301,7 +1300,6 @@ RebuildScripts = function()
         }, row)
         Corner(delScriptBtn, UDim.new(0,5))
 
-        -- 5. KHUNG HIỂN THỊ CODE (SỔ RA KHI BẤM MŨI TÊN)
         if isExpanded then
             local codeBoxFrame = New("ScrollingFrame", {
                 Size=UDim2.new(1,-12,0,92), Position=UDim2.new(0,6,0,44),
@@ -1321,20 +1319,17 @@ RebuildScripts = function()
             }, codeBoxFrame)
         end
 
-        -- SK KIỆN MŨI TÊN: MỞ RỘNG / THU GỌN
         arrowBtn.Activated:Connect(function()
             d.expanded = not d.expanded
             RebuildScripts()
         end)
 
-        -- SK KIỆN CHẠY CODE
         local idx = i
         runScriptBtn.Activated:Connect(function()
             RunCode(d.code, d.name, runScriptBtn, 1, 0)
             statusLbl.Text="⏳ Đang chạy: "..d.name
         end)
 
-        -- SK KIỆN XÓA
         delScriptBtn.Activated:Connect(function()
             table.remove(scripts, idx)
             RebuildScripts()
@@ -1351,7 +1346,217 @@ end
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 RebuildScripts()
 
--- ==================== TAB 3: DI CHUYỂN ====================
+-- ==================== TAB 3: CODE SERVER (MỚI BỔ SUNG KHỦNG) ====================
+local ssy = 8
+Label(serverCodeTab, "📡 Theo Dõi Remote Events & Functions Gửi Lên Server", ssy)
+ssy = ssy + 18
+
+local togServerBtn = Button(serverCodeTab, "📡 Bắt Đầu Theo Dõi", 8, ssy, 130, 24, C.GRAY)
+local clearServerBtn = Button(serverCodeTab, "🗑️ Xóa Lịch Sử", 148, ssy, 110, 24, C.RED)
+ssy = ssy + 30
+
+local searchServerIn = New("TextBox", {
+    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,ssy), Text="",
+    PlaceholderText="🔍 Lọc gói tin Remote...", PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
+    Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
+}, serverCodeTab)
+Corner(searchServerIn, UDim.new(0,5))
+Stroke(searchServerIn, Color3.fromRGB(180,180,200), 1.2)
+New("UIPadding", {PaddingLeft=UDim.new(0,6)}, searchServerIn)
+ssy = ssy + 32
+
+local serverLogList = New("Frame", {
+    Size=UDim2.new(1,-16,0,0), Position=UDim2.new(0,8,0,ssy),
+    BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
+}, serverCodeTab)
+New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,6)}, serverLogList)
+
+-- SERIALIZER BIẾN THÀNH LUA CODE
+local function SerializeArg(val)
+    local t = typeof(val)
+    if t == "string" then
+        return '"' .. val:gsub('"', '\\"') .. '"'
+    elseif t == "number" or t == "boolean" then
+        return tostring(val)
+    elseif t == "Instance" then
+        return val:GetFullName()
+    elseif t == "Vector3" then
+        return string.format("Vector3.new(%.2f, %.2f, %.2f)", val.X, val.Y, val.Z)
+    elseif t == "CFrame" then
+        return string.format("CFrame.new(%.2f, %.2f, %.2f)", val.Position.X, val.Position.Y, val.Position.Z)
+    elseif t == "Color3" then
+        return string.format("Color3.fromRGB(%d, %d, %d)", math.floor(val.R*255), math.floor(val.G*255), math.floor(val.B*255))
+    elseif t == "table" then
+        local parts = {}
+        for k, v in pairs(val) do
+            table.insert(parts, "[" .. SerializeArg(k) .. "] = " .. SerializeArg(v))
+        end
+        return "{" .. table.concat(parts, ", ") .. "}"
+    else
+        return "nil"
+    end
+end
+
+local function FormatRemoteCode(remote, method, args)
+    local remotePath = remote:GetFullName()
+    local formattedArgs = {}
+    for _, arg in ipairs(args) do
+        table.insert(formattedArgs, SerializeArg(arg))
+    end
+    local argStr = table.concat(formattedArgs, ", ")
+    return string.format('%s:%s(%s)', remotePath, method, argStr)
+end
+
+local RebuildServerLogs
+
+RebuildServerLogs = function()
+    for _, c in ipairs(serverLogList:GetChildren()) do
+        if not c:IsA("UIListLayout") then c:Destroy() end
+    end
+
+    local term = searchServerIn.Text:lower()
+    local disp = {}
+    for _, log in ipairs(serverLogs) do
+        if term == "" or log.code:lower():find(term, 1, true) or log.name:lower():find(term, 1, true) then
+            table.insert(disp, log)
+        end
+    end
+
+    if #disp == 0 then
+        New("TextLabel", {
+            Size=UDim2.new(1,0,0,40),
+            Text=S.serverLogging and "📡 Đang lắng nghe gói tin..." or "📭 Bấm 'Bắt Đầu Theo Dõi' để lắng nghe Server",
+            BackgroundTransparency=1, TextColor3=C.GRAY, Font=Enum.Font.GothamMedium, TextSize=11,
+            TextXAlignment=Enum.TextXAlignment.Center, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
+        }, serverLogList)
+    end
+
+    local totalH = 0
+    for i, log in ipairs(disp) do
+        local rowH = 68
+        local row = New("Frame", {
+            Size=UDim2.new(1,0,0,rowH), BackgroundColor3=Color3.fromRGB(255,255,255),
+            BackgroundTransparency=0.1, BorderSizePixel=0, ZIndex=6, ClipsDescendants=true,
+        }, serverLogList)
+        Corner(row, UDim.new(0,6)); Stroke(row)
+
+        local titleLbl = New("TextLabel", {
+            Size=UDim2.new(1,-170,0,18), Position=UDim2.new(0,8,0,4),
+            Text="📡 " .. log.name .. " (" .. log.method .. ")",
+            BackgroundTransparency=1, TextColor3=C.BLUE, Font=Enum.Font.GothamBold,
+            TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, TextTruncate=Enum.TextTruncate.AtEnd, ZIndex=7,
+        }, row)
+
+        local codeScroll = New("ScrollingFrame", {
+            Size=UDim2.new(1,-170,0,38), Position=UDim2.new(0,8,0,24),
+            BackgroundColor3=Color3.fromRGB(240,242,250), BackgroundTransparency=0,
+            BorderSizePixel=0, ZIndex=7, ScrollBarThickness=3, CanvasSize=UDim2.new(0,0,0,0),
+        }, row)
+        Corner(codeScroll, UDim.new(0,4))
+
+        local codeTxt = New("TextBox", {
+            Size=UDim2.new(1,-6,1,-4), Position=UDim2.new(0,3,0,2),
+            Text=log.code, TextColor3=Color3.fromRGB(30,30,30), BackgroundTransparency=1,
+            Font=Enum.Font.Code, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left,
+            TextYAlignment=Enum.TextYAlignment.Top, TextWrapped=true, MultiLine=true,
+            ClearTextOnFocus=false, TextEditable=false, Active=true, ZIndex=8,
+        }, codeScroll)
+
+        -- 3 NÚT TƯƠNG TÁC
+        local runSBtn = New("TextButton", {
+            Size=UDim2.new(0,48,0,22), Position=UDim2.new(1,-154,0,23),
+            Text="▶ Chạy", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
+            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(runSBtn, UDim.new(0,4))
+
+        local copyBtn = New("TextButton", {
+            Size=UDim2.new(0,52,0,22), Position=UDim2.new(1,-102,0,23),
+            Text="📋 Chép", BackgroundColor3=C.PURPLE, BackgroundTransparency=0.1,
+            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(copyBtn, UDim.new(0,4))
+
+        local saveSBtn = New("TextButton", {
+            Size=UDim2.new(0,44,0,22), Position=UDim2.new(1,-46,0,23),
+            Text="💾 Lưu", BackgroundColor3=C.BLUE, BackgroundTransparency=0.1,
+            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(saveSBtn, UDim.new(0,4))
+
+        runSBtn.Activated:Connect(function()
+            RunCode(log.code, log.name, runSBtn, 1, 0)
+        end)
+
+        copyBtn.Activated:Connect(function()
+            if setclipboard then
+                setclipboard(log.code)
+            end
+            nameIn.Text = log.name
+            codeIn.Text = log.code
+            SwitchTab(1) -- Bấm copy chuyển thẳng qua tab Code
+        end)
+
+        saveSBtn.Activated:Connect(function()
+            table.insert(scripts, {name=log.name, code=log.code, expanded=false})
+            if RebuildScripts then RebuildScripts() end
+            SwitchTab(2) -- Chuyển sang Tab Code Đã Lưu
+        end)
+
+        totalH = totalH + rowH + 6
+    end
+
+    local listH = math.max(totalH, 40)
+    serverLogList.Size = UDim2.new(1,-16,0,listH)
+    serverCodeTab.CanvasSize = UDim2.new(0,0,0,ssy+listH+30)
+end
+
+searchServerIn:GetPropertyChangedSignal("Text"):Connect(RebuildServerLogs)
+
+-- REMOTE SPY ENGINE HOOK
+local oldNamecall
+if hookmetamethod then
+    oldNamecall = hookmetamethod(game, "__namecall", newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        if S.serverLogging and (method == "FireServer" or method == "InvokeServer") then
+            local args = {...}
+            task.spawn(function()
+                pcall(function()
+                    local luaCode = FormatRemoteCode(self, method, args)
+                    table.insert(serverLogs, 1, {
+                        name = self.Name,
+                        method = method,
+                        code = luaCode,
+                        remote = self
+                    })
+                    if #serverLogs > 50 then table.remove(serverLogs) end
+                    if activeTab == serverCodeTab then
+                        RebuildServerLogs()
+                    end
+                end)
+            end)
+        end
+        return oldNamecall(self, ...)
+    end))
+end
+
+togServerBtn.Activated:Connect(function()
+    S.serverLogging = not S.serverLogging
+    togServerBtn.Text = S.serverLogging and "🛑 Dừng Theo Dõi" or "📡 Bắt Đầu Theo Dõi"
+    togServerBtn.BackgroundColor3 = S.serverLogging and C.GREEN or C.GRAY
+    RebuildServerLogs()
+end)
+
+clearServerBtn.Activated:Connect(function()
+    serverLogs = {}
+    RebuildServerLogs()
+end)
+
+RebuildServerLogs()
+
+-- ==================== TAB 4: DI CHUYỂN ====================
 local my = 8
 
 Label(moveTab, "⚡ Tốc độ bay", my)
@@ -1374,7 +1579,6 @@ local carpBtn = Button(moveTab, "🪩 Thảm kính: TẮT", 8, my, 130, 24, C.GR
 local flyRunBtn = Button(moveTab, "🕹️ Bay chạy bộ: TẮT", 148, my, 130, 24, C.GRAY)
 my = my + 30
 
--- ĐIỀU CHỈNH 3 CHIỀU THẢM
 Label(moveTab, "📐 Kích thước thảm kính (Rộng x Dày x Dài)", my)
 my = my + 16
 
@@ -1466,13 +1670,10 @@ local jpLbl = Label(moveTab, "Hiện tại: 50", my)
 jpLbl.Position=UDim2.new(0,72,0,my); jpLbl.Size=UDim2.new(0,120,0,14)
 jpLbl.TextColor3=C.GREEN; jpLbl.TextSize=9
 
--- Connect controls
 flySpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flySpdIn.Text); if n and n>=0 then S.flySpeed=n else flySpdIn.Text=tostring(S.flySpeed) end end)
-
 carpWIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpWIn.Text); if n and n>=0.1 then S.carpetWidth=n else carpWIn.Text=tostring(S.carpetWidth) end end)
 carpTIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpTIn.Text); if n and n>=0.05 then S.carpetThickness=n else carpTIn.Text=tostring(S.carpetThickness) end end)
 carpLIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpLIn.Text); if n and n>=0.1 then S.carpetLength=n else carpLIn.Text=tostring(S.carpetLength) end end)
-
 wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(wsIn.Text); if n and n>0 then S.walkSpeed=n; UpdChar() else wsIn.Text=tostring(S.walkSpeed) end; wsLbl.Text="Hiện tại: "..S.walkSpeed end)
 jpIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(jpIn.Text); if n and n>0 then S.jumpPower=n; UpdChar() else jpIn.Text=tostring(S.jumpPower) end; jpLbl.Text="Hiện tại: "..S.jumpPower end)
 
@@ -1513,7 +1714,7 @@ end)
 
 moveTab.CanvasSize=UDim2.new(0,0,0,my+40)
 
--- ==================== TAB 4: NGƯỜI CHƠI ====================
+-- ==================== TAB 5: NGƯỜI CHƠI ====================
 local py = 8
 
 Label(playerTab, "👁️ Quan sát & Nhìn xuyên tường", py)
@@ -1575,7 +1776,7 @@ end)
 
 playerTab.CanvasSize = UDim2.new(0, 0, 0, py + 50)
 
--- ==================== TAB 5: MÔI TRƯỜNG ====================
+-- ==================== TAB 6: MÔI TRƯỜNG ====================
 local ey = 8
 
 Label(envTab, "🌤 Điều khiển thời tiết", ey)
@@ -1661,7 +1862,7 @@ end)
 
 envTab.CanvasSize=UDim2.new(0,0,0,ey+50)
 
--- ==================== TAB 6: CAMERA ====================
+-- ==================== TAB 7: CAMERA ====================
 local cy = 8
 
 Label(camTab, "📷 Camera Tùy Chỉnh (Bám nhân vật)", cy)
@@ -1736,7 +1937,7 @@ fcSpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber
 
 camTab.CanvasSize=UDim2.new(0,0,0,cy+80)
 
--- ==================== TAB 7: ĐỒ HỌA ====================
+-- ==================== TAB 8: ĐỒ HỌA ====================
 local gy = 8
 
 Label(gfxTab, "📊 Chất lượng đồ họa", gy)
@@ -1976,4 +2177,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Hub đã cập nhật giao diện Tab 'Code Đã Lưu' có Mũi Tên Sổ Code + Nút Chạy/Xóa Kéo Dài!")
+print("✅ Banana Cat Hub đã tích hợp thành công Tab 'Code Server' (Remote Spy) ở vị trí số 3!")
