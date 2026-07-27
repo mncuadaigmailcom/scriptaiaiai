@@ -1,8 +1,8 @@
 -- ============================================
 -- EXECUTOR MENU - Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
--- + Tab "Code Đã Lưu" Có Mũi Tên Sổ Code & 2 Nút Chạy/Xóa Kéo Dài
--- + [MỚI] BỔ SUNG TÍNH NĂNG ĐỐNG BĂNG NGƯỜI CHƠI KHÁC (FREEZE OTHERS) & ANTI-KICK BẢO VỆ
+-- + Tab "Code Đã Lưu" CẬP NHẬT: Sổ code có nút "📋 Sao Chép Code" + Đổi vị trí Nút Xóa (Trái) & Nút Chạy (Phải)
+-- + ĐỐNG BĂNG NGƯỜI CHƠI KHÁC (FREEZE OTHERS) & ANTI-KICK BẢO VỆ BẢN THÂN
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -389,7 +389,7 @@ local S = {
     shadows=true, bloom=true, blur=false, sunRays=true, colorCorr=false,
     fpsCounter=false, particles=true, decals=true,
     infJump=false, clickTp=false, esp=false, antiAfk=true, fullBright=false,
-    blockServer=false, freezeOthers=false, -- TÍNH NĂNG ĐÓNG BĂNG NGƯỜI CHƠI KHÁC
+    blockServer=false, freezeOthers=false,
 }
 
 local scripts = {}
@@ -432,7 +432,6 @@ end
 
 -- ==================== VÒNG LẶP STEPPED: FREEZE OTHERS & ANTI-SERVER ====================
 RunService.Stepped:Connect(function()
-    -- 1. Chặn Server ép Bản thân ngồi / khóa chân
     if S.blockServer then
         local h = Hum()
         local r = Root()
@@ -440,7 +439,6 @@ RunService.Stepped:Connect(function()
         if r and not S.freeCam and r.Anchored then r.Anchored = false end
     end
 
-    -- 2. 🥶 ĐÓNG BĂNG TẤT CẢ NGƯỜI CHƠI KHÁC (Client Freeze)
     if S.freezeOthers then
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= player and p.Character then
@@ -1265,7 +1263,7 @@ saveBtn.Activated:Connect(function()
     statusLbl.Text="✅ Đã lưu vào Tab 'Code Đã Lưu'!"
 end)
 
--- ==================== TAB 2: CODE ĐÃ LƯU ====================
+-- ==================== TAB 2: CODE ĐÃ LƯU (CẬP NHẬT GIAO DIỆN MỚI) ====================
 local sy = 8
 Label(savedCodeTab, "💾 Danh Sách Script Đã Lưu", sy)
 sy = sy + 18
@@ -1312,7 +1310,7 @@ RebuildScripts = function()
 
     for i, d in ipairs(disp) do
         local isExpanded = d.expanded or false
-        local rowH = isExpanded and 145 or 42
+        local rowH = isExpanded and 160 or 42
 
         local row = New("Frame", {
             Size=UDim2.new(1,0,0,rowH), BackgroundColor3=Color3.fromRGB(255,255,255),
@@ -1321,6 +1319,7 @@ RebuildScripts = function()
         }, scriptList)
         Corner(row,UDim.new(0,6)); Stroke(row)
 
+        -- 1. NÚT MŨI TÊN BÊN TRÁI (SỔ CODE)
         local arrowBtn = New("TextButton", {
             Size=UDim2.new(0,24,0,24), Position=UDim2.new(0,6,0,9),
             Text=isExpanded and "▲" or "▼",
@@ -1329,30 +1328,34 @@ RebuildScripts = function()
         }, row)
         Corner(arrowBtn, UDim.new(0,4))
 
+        -- 2. TÊN SCRIPT (CẠNH MŨI TÊN)
         local nameLbl = New("TextLabel", {
-            Size=UDim2.new(1,-170,0,42), Position=UDim2.new(0,36,0,0),
+            Size=UDim2.new(1,-175,0,42), Position=UDim2.new(0,36,0,0),
             Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
             Font=Enum.Font.GothamBold, TextSize=11, TextXAlignment=Enum.TextXAlignment.Left,
             TextTruncate=Enum.TextTruncate.AtEnd, ZIndex=8,
         }, row)
 
-        local runScriptBtn = New("TextButton", {
-            Size=UDim2.new(0,62,0,26), Position=UDim2.new(1,-130,0,8),
-            Text="▶ Chạy", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
-            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
-        }, row)
-        Corner(runScriptBtn, UDim.new(0,5))
-
+        -- 3. NÚT "🗑 XÓA" (ĐƯỢC CHUYỂN SANG BÊN TRÁI NÚT CHẠY)
         local delScriptBtn = New("TextButton", {
-            Size=UDim2.new(0,58,0,26), Position=UDim2.new(1,-64,0,8),
+            Size=UDim2.new(0,58,0,26), Position=UDim2.new(1,-132,0,8),
             Text="🗑 Xóa", BackgroundColor3=C.RED, BackgroundTransparency=0.1,
             TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
         }, row)
         Corner(delScriptBtn, UDim.new(0,5))
 
+        -- 4. NÚT "▶ CHẠY" (ĐƯỢC CHUYỂN SANG BÊN PHẢI NGOÀI CÙNG)
+        local runScriptBtn = New("TextButton", {
+            Size=UDim2.new(0,62,0,26), Position=UDim2.new(1,-68,0,8),
+            Text="▶ Chạy", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
+            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(runScriptBtn, UDim.new(0,5))
+
+        -- 5. KHUNG HIỂN THỊ CODE VÀ NÚT SAO CHÉP (SỔ RA KHI BẤM MŨI TÊN)
         if isExpanded then
             local codeBoxFrame = New("ScrollingFrame", {
-                Size=UDim2.new(1,-12,0,92), Position=UDim2.new(0,6,0,44),
+                Size=UDim2.new(1,-12,0,82), Position=UDim2.new(0,6,0,42),
                 BackgroundColor3=Color3.fromRGB(240,242,250), BackgroundTransparency=0,
                 BorderSizePixel=0, ZIndex=8, ScrollBarThickness=4,
                 CanvasSize=UDim2.new(0,0,0,0),
@@ -1367,6 +1370,34 @@ RebuildScripts = function()
                 TextYAlignment=Enum.TextYAlignment.Top, MultiLine=true, TextWrapped=true,
                 ClearTextOnFocus=false, TextEditable=false, Active=true, ZIndex=9,
             }, codeBoxFrame)
+
+            -- [MỚI] NÚT SAO CHÉP CODE NẰM TRONG KHUNG SỔ NÀY
+            local copyBtn = New("TextButton", {
+                Size=UDim2.new(0,120,0,24), Position=UDim2.new(0,6,0,128),
+                Text="📋 Sao Chép Code", BackgroundColor3=C.BLUE, BackgroundTransparency=0.1,
+                TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+            }, row)
+            Corner(copyBtn, UDim.new(0,5))
+
+            copyBtn.Activated:Connect(function()
+                if setclipboard then
+                    setclipboard(d.code)
+                    copyBtn.Text = "✅ Đã Sao Chép!"
+                elseif toclipboard then
+                    toclipboard(d.code)
+                    copyBtn.Text = "✅ Đã Sao Chép!"
+                else
+                    codeLbl:CaptureFocus()
+                    codeLbl.SelectionStart = 1
+                    codeLbl.CursorPosition = #d.code + 1
+                    copyBtn.Text = "⚠️ Đã Bôi Đen Code"
+                end
+                task.delay(1.5, function()
+                    if copyBtn and copyBtn.Parent then
+                        copyBtn.Text = "📋 Sao Chép Code"
+                    end
+                end)
+            end)
         end
 
         arrowBtn.Activated:Connect(function()
@@ -1573,7 +1604,6 @@ py = py + 30
 Label(playerTab, "🧊 Đóng Băng & Tác Động Người Khác", py)
 py = py + 14
 
--- 1. [MỚI] TÍNH NĂNG ĐÓNG BĂNG NGƯỜI CHƠI KHÁC
 local freezeOthersBtn = Button(playerTab, "🥶 Đóng Băng Người Khác: TẮT", 8, py, 220, 24, C.GRAY)
 freezeOthersBtn.Activated:Connect(function()
     S.freezeOthers = not S.freezeOthers
@@ -1596,7 +1626,6 @@ antiAfkBtn.Activated:Connect(function()
 end)
 py = py + 30
 
--- 2. TÍNH NĂNG CHẶN SERVER KICK/TÁC ĐỘNG LÊN MÌNH (ĐÃ ĐỔI TÊN RÕ RÀNG)
 local blockServerBtn = Button(playerTab, "🛡️ Anti-Kick / Khóa Chân: TẮT", 8, py, 220, 24, C.GRAY)
 blockServerBtn.Activated:Connect(function()
     S.blockServer = not S.blockServer
@@ -2042,4 +2071,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Đã cập nhật nút '🥶 Đóng Băng Người Khác' chính xác vào Tab Người Chơi!")
+print("✅ Đã cập nhật Tab 'Code Đã Lưu' thành công: Thêm nút '📋 Sao Chép Code' + Đổi nút '🗑 Xóa' bên Trái và '▶ Chạy' bên Phải!")
