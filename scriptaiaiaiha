@@ -1,7 +1,7 @@
 -- ============================================
 -- EXECUTOR MENU - Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
--- + Tab "Code Đã Lưu" Nằm Giữa "Code" và "Di Chuyển"
+-- + Tab "Code Đã Lưu" Có Mũi Tên Sổ Code & 2 Nút Chạy/Xóa Kéo Dài
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -368,14 +368,13 @@ end
 
 -- 7 TABS (TÍNH NĂNG "CODE ĐÃ LƯU" NẰM GIỮA CODE VÀ DI CHUYỂN)
 local codeTab      = AddTab("Code", "💻", 1)
-local savedCodeTab = AddTab("Code Đã Lưu", "💾", 2) -- TAB MỚI THÊM VÀO GIỮA
+local savedCodeTab = AddTab("Code Đã Lưu", "💾", 2)
 local moveTab      = AddTab("Di Chuyển", "🏃", 3)
 local playerTab    = AddTab("Người Chơi", "👤", 4)
 local envTab       = AddTab("Môi Trường", "⚙️", 5)
 local camTab       = AddTab("Camera", "📷", 6)
 local gfxTab       = AddTab("Đồ Họa", "🎨", 7)
 
--- Chọn Mặc định Tab Code
 SwitchTab(1)
 
 -- ==================== STATE ====================
@@ -573,7 +572,6 @@ local function CreateCarpet(y)
         
         cp.CFrame = CFrame.new(curR.Position.X, S.carpetY, curR.Position.Z)
 
-        -- FIX NOCLIP KHÔNG BỊ RƠI XUYÊN QUA THẢM KÍNH
         if S.noClip then
             local standingY = S.carpetY + (curT / 2) + 3.0
             if curR.Position.Y < standingY then
@@ -996,7 +994,7 @@ local function RunCode(code, name, ind, times, delay)
             if ok then okC+=1 else failC+=1; warn("❌ Lần",i,err) end
         end
         totalRuns+=okC+failC
-        if ind then ind.BackgroundColor3=C.BLUE; if curIndicator==ind then curIndicator=nil end end
+        if ind then ind.BackgroundColor3=C.GREEN; if curIndicator==ind then curIndicator=nil end end
         curThread=nil
     end)
     return true, nil
@@ -1194,7 +1192,6 @@ runBtn.Activated:Connect(function()
     end
 end)
 
--- Forward declaration cho RebuildScripts
 local RebuildScripts
 
 saveBtn.Activated:Connect(function()
@@ -1210,19 +1207,19 @@ saveBtn.Activated:Connect(function()
         if not ex then break end
         cnt+=1; n=bn.." ("..cnt..")"
     end
-    table.insert(scripts,{name=n,code=c})
+    table.insert(scripts,{name=n, code=c, expanded=false})
     if RebuildScripts then RebuildScripts() end
     statusLbl.Text="✅ Đã lưu vào Tab 'Code Đã Lưu'!"
 end)
 
--- ==================== TAB 2: CODE ĐÃ LƯU (THÊM VÀO GIỮA) ====================
+-- ==================== TAB 2: CODE ĐÃ LƯU (MỚI CHỈNH SỬA THEO YÊU CẦU) ====================
 local sy = 8
-Label(savedCodeTab, "💾 Danh Sách Script Đã Lưu (▶ Chạy | ✏ Sửa | ✕ Xóa)", sy)
+Label(savedCodeTab, "💾 Danh Sách Script Đã Lưu", sy)
 sy = sy + 18
 
 local searchIn = New("TextBox", {
     Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,sy), Text="",
-    PlaceholderText="🔍 Tìm kiếm script theo tên...", PlaceholderColor3=Color3.fromRGB(160,160,160),
+    PlaceholderText="🔍 Tìm kiếm script...", PlaceholderColor3=Color3.fromRGB(160,160,160),
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
     Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
@@ -1236,7 +1233,7 @@ local scriptList = New("Frame", {
     Size=UDim2.new(1,-16,0,0), Position=UDim2.new(0,8,0,sy),
     BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
 }, savedCodeTab)
-New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,4)}, scriptList)
+New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,6)}, scriptList)
 
 RebuildScripts = function()
     for _,c in ipairs(scriptList:GetChildren()) do
@@ -1258,78 +1255,97 @@ RebuildScripts = function()
         }, scriptList)
     end
 
-    for i,d in ipairs(disp) do
+    local totalHeight = 0
+
+    for i, d in ipairs(disp) do
+        local isExpanded = d.expanded or false
+        local rowH = isExpanded and 145 or 42
+
         local row = New("Frame", {
-            Size=UDim2.new(1,0,0,46), BackgroundColor3=Color3.fromRGB(255,255,255),
+            Size=UDim2.new(1,0,0,rowH), BackgroundColor3=Color3.fromRGB(255,255,255),
             BackgroundTransparency=0.1, BorderSizePixel=0, ZIndex=6,
+            ClipsDescendants=true,
         }, scriptList)
-        Corner(row,UDim.new(0,5)); Stroke(row)
+        Corner(row,UDim.new(0,6)); Stroke(row)
 
-        local infoFrame = New("Frame", {
-            Size=UDim2.new(1,-90,0,38), Position=UDim2.new(0,8,0,4), BackgroundTransparency=1, ZIndex=7,
+        -- 1. NÚT MŨI TÊN BÊN TRÁI (SỔ CODE)
+        local arrowBtn = New("TextButton", {
+            Size=UDim2.new(0,24,0,24), Position=UDim2.new(0,6,0,9),
+            Text=isExpanded and "▲" or "▼",
+            BackgroundColor3=Color3.fromRGB(220,225,240), BackgroundTransparency=0,
+            TextColor3=C.BLUE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(arrowBtn, UDim.new(0,4))
+
+        -- 2. TÊN SCRIPT (CẠNH MŨI TÊN)
+        local nameLbl = New("TextLabel", {
+            Size=UDim2.new(1,-170,0,42), Position=UDim2.new(0,36,0,0),
+            Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
+            Font=Enum.Font.GothamBold, TextSize=11, TextXAlignment=Enum.TextXAlignment.Left,
+            TextTruncate=Enum.TextTruncate.AtEnd, ZIndex=8,
         }, row)
 
-        local rn = New("TextButton", {
-            Size=UDim2.new(1,0,1,0), Text="", BackgroundTransparency=1, BorderSizePixel=0, ZIndex=7,
-        }, infoFrame)
-
-        New("TextLabel", {
-            Size=UDim2.new(1,0,0,16), Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
-            Font=Enum.Font.GothamBold, TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8,
-        }, infoFrame)
-
-        New("TextLabel", {
-            Size=UDim2.new(1,0,0,14), Position=UDim2.new(0,0,0,18),
-            Text=d.code:gsub("%s+"," "):sub(1,45)..(#d.code>45 and "..." or ""),
-            BackgroundTransparency=1, TextColor3=Color3.fromRGB(120,120,120),
-            Font=Enum.Font.GothamMedium, TextSize=8, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8,
-        }, infoFrame)
-
-        local ind = New("TextButton", {
-            Size=UDim2.new(0,24,0,24), Position=UDim2.new(1,-80,0,11), Text="▶",
-            BackgroundColor3=C.GREEN, BackgroundTransparency=0.1, TextColor3=C.WHITE,
-            Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+        -- 3. NÚT "▶ CHẠY" KÉO DÀI (BÊN PHẢI)
+        local runScriptBtn = New("TextButton", {
+            Size=UDim2.new(0,62,0,26), Position=UDim2.new(1,-130,0,8),
+            Text="▶ Chạy", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
+            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
         }, row)
-        Corner(ind,UDim.new(1,0))
+        Corner(runScriptBtn, UDim.new(0,5))
 
-        local edit = New("TextButton", {
-            Size=UDim2.new(0,24,0,24), Position=UDim2.new(1,-52,0,11), Text="✏",
-            BackgroundColor3=C.BLUE, BackgroundTransparency=0.1, TextColor3=C.WHITE,
-            Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+        -- 4. NÚT "🗑 XÓA" KÉO DÀI (BÊN PHẢI)
+        local delScriptBtn = New("TextButton", {
+            Size=UDim2.new(0,58,0,26), Position=UDim2.new(1,-64,0,8),
+            Text="🗑 Xóa", BackgroundColor3=C.RED, BackgroundTransparency=0.1,
+            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
         }, row)
-        Corner(edit,UDim.new(1,0))
+        Corner(delScriptBtn, UDim.new(0,5))
 
-        local del = New("TextButton", {
-            Size=UDim2.new(0,24,0,24), Position=UDim2.new(1,-24,0,11), Text="✕",
-            BackgroundColor3=C.RED, BackgroundTransparency=0.1, TextColor3=C.WHITE,
-            Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
-        }, row)
-        Corner(del,UDim.new(1,0))
+        -- 5. KHUNG HIỂN THỊ CODE (SỔ RA KHI BẤM MŨI TÊN)
+        if isExpanded then
+            local codeBoxFrame = New("ScrollingFrame", {
+                Size=UDim2.new(1,-12,0,92), Position=UDim2.new(0,6,0,44),
+                BackgroundColor3=Color3.fromRGB(240,242,250), BackgroundTransparency=0,
+                BorderSizePixel=0, ZIndex=8, ScrollBarThickness=4,
+                CanvasSize=UDim2.new(0,0,0,0),
+            }, row)
+            Corner(codeBoxFrame, UDim.new(0,5))
+            Stroke(codeBoxFrame, Color3.fromRGB(190,195,210), 1)
 
-        local idx=i
-        ind.Activated:Connect(function()
-            if curIndicator==ind then Cancel() return end
-            RunCode(d.code,d.name,ind,1,0)
-            statusLbl.Text="⏳ Đang chạy: "..d.name
-        end)
-        edit.Activated:Connect(function()
-            nameIn.Text=d.name
-            codeIn.Text=d.code
-            SwitchTab(1) -- Chuyển về Tab Code để chỉnh sửa
-        end)
-        del.Activated:Connect(function()
-            if curIndicator==ind then Cancel() end
-            table.remove(scripts,idx)
+            local codeLbl = New("TextBox", {
+                Size=UDim2.new(1,-8,1,-8), Position=UDim2.new(0,4,0,4),
+                Text=d.code, TextColor3=Color3.fromRGB(30,30,30), BackgroundTransparency=1,
+                Font=Enum.Font.Code, TextSize=10, TextXAlignment=Enum.TextXAlignment.Left,
+                TextYAlignment=Enum.TextYAlignment.Top, MultiLine=true, TextWrapped=true,
+                ClearTextOnFocus=false, TextEditable=false, Active=true, ZIndex=9,
+            }, codeBoxFrame)
+        end
+
+        -- SK KIỆN MŨI TÊN: MỞ RỘNG / THU GỌN
+        arrowBtn.Activated:Connect(function()
+            d.expanded = not d.expanded
             RebuildScripts()
         end)
 
-        rn.MouseEnter:Connect(function() Tween(row,{BackgroundTransparency=0},0.15) end)
-        rn.MouseLeave:Connect(function() Tween(row,{BackgroundTransparency=0.1},0.15) end)
+        -- SK KIỆN CHẠY CODE
+        local idx = i
+        runScriptBtn.Activated:Connect(function()
+            RunCode(d.code, d.name, runScriptBtn, 1, 0)
+            statusLbl.Text="⏳ Đang chạy: "..d.name
+        end)
+
+        -- SK KIỆN XÓA
+        delScriptBtn.Activated:Connect(function()
+            table.remove(scripts, idx)
+            RebuildScripts()
+        end)
+
+        totalHeight = totalHeight + rowH + 6
     end
 
-    local listH = #disp>0 and #disp*50 or 40
-    scriptList.Size=UDim2.new(1,-16,0,listH)
-    savedCodeTab.CanvasSize=UDim2.new(0,0,0,sy+listH+20)
+    local listH = math.max(totalHeight, 40)
+    scriptList.Size = UDim2.new(1,-16,0,listH)
+    savedCodeTab.CanvasSize = UDim2.new(0, 0, 0, sy + listH + 30)
 end
 
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
@@ -1960,4 +1976,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Hub đã bổ sung Tab 'Code Đã Lưu' ở giữa thành công!")
+print("✅ Banana Cat Hub đã cập nhật giao diện Tab 'Code Đã Lưu' có Mũi Tên Sổ Code + Nút Chạy/Xóa Kéo Dài!")
