@@ -2,7 +2,7 @@
 -- EXECUTOR MENU - Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
 -- + Tab "Code Đã Lưu" Có Mũi Tên Sổ Code & 2 Nút Chạy/Xóa Kéo Dài
--- + [MỚI] TÍNH NĂNG CHẶN ĐIỀU KIỆN MÁY CHỦ (Anti-Kick/Server Control)
+-- + [MỚI] BỔ SUNG TÍNH NĂNG ĐỐNG BĂNG NGƯỜI CHƠI KHÁC (FREEZE OTHERS) & ANTI-KICK BẢO VỆ
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -389,7 +389,7 @@ local S = {
     shadows=true, bloom=true, blur=false, sunRays=true, colorCorr=false,
     fpsCounter=false, particles=true, decals=true,
     infJump=false, clickTp=false, esp=false, antiAfk=true, fullBright=false,
-    blockServer=false, -- TÍNH NĂNG CHẶN ĐIỀU KIỆN MÁY CHỦ
+    blockServer=false, freezeOthers=false, -- TÍNH NĂNG ĐÓNG BĂNG NGƯỜI CHƠI KHÁC
 }
 
 local scripts = {}
@@ -415,8 +415,7 @@ local function UpdChar()
     end
 end
 
--- ==================== CHẶN ĐIỀU KIỆN MÁY CHỦ (ANTI-SERVER CONDITIONS) ====================
--- Hook Metatable để chặn Kick từ Server
+-- ==================== CHẶN SERVER TÁC ĐỘNG BẢO VỆ BẢN THÂN ====================
 local oldNamecall
 if hookmetamethod then
     oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
@@ -431,19 +430,41 @@ if hookmetamethod then
     end)
 end
 
--- Vòng lặp bảo vệ Nhân vật khỏi các hiệu ứng cưỡng ép từ máy chủ
+-- ==================== VÒNG LẶP STEPPED: FREEZE OTHERS & ANTI-SERVER ====================
 RunService.Stepped:Connect(function()
+    -- 1. Chặn Server ép Bản thân ngồi / khóa chân
     if S.blockServer then
         local h = Hum()
         local r = Root()
-        if h then
-            if h.Sit then h.Sit = false end -- Chặn ép ngồi
-        end
-        if r and not S.freeCam then
-            if r.Anchored then r.Anchored = false end -- Chặn ép khóa vị trí (Anchored)
+        if h and h.Sit then h.Sit = false end
+        if r and not S.freeCam and r.Anchored then r.Anchored = false end
+    end
+
+    -- 2. 🥶 ĐÓNG BĂNG TẤT CẢ NGƯỜI CHƠI KHÁC (Client Freeze)
+    if S.freezeOthers then
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= player and p.Character then
+                for _, part in ipairs(p.Character:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.Anchored = true
+                    end
+                end
+            end
         end
     end
 end)
+
+local function UnfreezeAllPlayers()
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player and p.Character then
+            for _, part in ipairs(p.Character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Anchored = false
+                end
+            end
+        end
+    end
+end
 
 -- ==================== ANTI AFK ====================
 player.Idled:Connect(function()
@@ -1300,7 +1321,6 @@ RebuildScripts = function()
         }, scriptList)
         Corner(row,UDim.new(0,6)); Stroke(row)
 
-        -- 1. NÚT MŨI TÊN BÊN TRÁI
         local arrowBtn = New("TextButton", {
             Size=UDim2.new(0,24,0,24), Position=UDim2.new(0,6,0,9),
             Text=isExpanded and "▲" or "▼",
@@ -1309,7 +1329,6 @@ RebuildScripts = function()
         }, row)
         Corner(arrowBtn, UDim.new(0,4))
 
-        -- 2. TÊN SCRIPT
         local nameLbl = New("TextLabel", {
             Size=UDim2.new(1,-170,0,42), Position=UDim2.new(0,36,0,0),
             Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
@@ -1317,7 +1336,6 @@ RebuildScripts = function()
             TextTruncate=Enum.TextTruncate.AtEnd, ZIndex=8,
         }, row)
 
-        -- 3. NÚT "▶ CHẠY" KÉO DÀI
         local runScriptBtn = New("TextButton", {
             Size=UDim2.new(0,62,0,26), Position=UDim2.new(1,-130,0,8),
             Text="▶ Chạy", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
@@ -1325,7 +1343,6 @@ RebuildScripts = function()
         }, row)
         Corner(runScriptBtn, UDim.new(0,5))
 
-        -- 4. NÚT "🗑 XÓA" KÉO DÀI
         local delScriptBtn = New("TextButton", {
             Size=UDim2.new(0,58,0,26), Position=UDim2.new(1,-64,0,8),
             Text="🗑 Xóa", BackgroundColor3=C.RED, BackgroundTransparency=0.1,
@@ -1333,7 +1350,6 @@ RebuildScripts = function()
         }, row)
         Corner(delScriptBtn, UDim.new(0,5))
 
-        -- 5. KHUNG HIỂN THỊ CODE (SỔ RA KHI BẤM MŨI TÊN)
         if isExpanded then
             local codeBoxFrame = New("ScrollingFrame", {
                 Size=UDim2.new(1,-12,0,92), Position=UDim2.new(0,6,0,44),
@@ -1554,7 +1570,22 @@ espBtn.Activated:Connect(function()
 end)
 py = py + 30
 
-Label(playerTab, "🛡️ Treo máy & Bảo vệ", py)
+Label(playerTab, "🧊 Đóng Băng & Tác Động Người Khác", py)
+py = py + 14
+
+-- 1. [MỚI] TÍNH NĂNG ĐÓNG BĂNG NGƯỜI CHƠI KHÁC
+local freezeOthersBtn = Button(playerTab, "🥶 Đóng Băng Người Khác: TẮT", 8, py, 220, 24, C.GRAY)
+freezeOthersBtn.Activated:Connect(function()
+    S.freezeOthers = not S.freezeOthers
+    freezeOthersBtn.Text = S.freezeOthers and "🥶 Đóng Băng Người Khác: BẬT" or "🥶 Đóng Băng Người Khác: TẮT"
+    freezeOthersBtn.BackgroundColor3 = S.freezeOthers and C.BLUE or C.GRAY
+    if not S.freezeOthers then
+        UnfreezeAllPlayers()
+    end
+end)
+py = py + 30
+
+Label(playerTab, "🛡️ Treo máy & Bảo vệ Bản Thân", py)
 py = py + 14
 
 local antiAfkBtn = Button(playerTab, "🛡️ Anti-AFK (Treo máy): BẬT", 8, py, 200, 24, C.GREEN)
@@ -1563,16 +1594,13 @@ antiAfkBtn.Activated:Connect(function()
     antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
     antiAfkBtn.BackgroundColor3 = S.antiAfk and C.GREEN or C.GRAY
 end)
-py = py + 32
+py = py + 30
 
--- [MỚI] TÍNH NĂNG CHẶN ĐIỀU KIỆN MÁY CHỦ (NẰM GẦN ĐỔI SERVER)
-Label(playerTab, "🛡️ Chặn tác động / Điều kiện từ Máy chủ", py)
-py = py + 14
-
-local blockServerBtn = Button(playerTab, "🛡️ Chặn Điều Kiện Server: TẮT", 8, py, 220, 24, C.GRAY)
+-- 2. TÍNH NĂNG CHẶN SERVER KICK/TÁC ĐỘNG LÊN MÌNH (ĐÃ ĐỔI TÊN RÕ RÀNG)
+local blockServerBtn = Button(playerTab, "🛡️ Anti-Kick / Khóa Chân: TẮT", 8, py, 220, 24, C.GRAY)
 blockServerBtn.Activated:Connect(function()
     S.blockServer = not S.blockServer
-    blockServerBtn.Text = S.blockServer and "🛡️ Chặn Điều Kiện Server: BẬT" or "🛡️ Chặn Điều Kiện Server: TẮT"
+    blockServerBtn.Text = S.blockServer and "🛡️ Anti-Kick / Khóa Chân: BẬT" or "🛡️ Anti-Kick / Khóa Chân: TẮT"
     blockServerBtn.BackgroundColor3 = S.blockServer and C.GREEN or C.GRAY
 end)
 py = py + 32
@@ -2014,4 +2042,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Hub đã tích hợp tính năng CHẶN ĐIỀU KIỆN MÁY CHỦ thành công!")
+print("✅ Đã cập nhật nút '🥶 Đóng Băng Người Khác' chính xác vào Tab Người Chơi!")
