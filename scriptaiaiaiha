@@ -1,10 +1,7 @@
 -- ============================================
--- EXECUTOR MENU - Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
--- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
--- + Tab "Code Đã Lưu" CẬP NHẬT: Sổ code có nút "📋 Sao Chép Code" + Đổi vị trí Nút Xóa (Trái) & Nút Chạy (Phải)
--- + ĐỐNG BĂNG NGƯỜI CHƠI KHÁC (FREEZE OTHERS) & ANTI-KICK BẢO VỆ BẢN THÂN
--- + [MỚI] TÍNH NĂNG BAY ĐẾN NGƯỜI CHƠI (BAY LÊN -> BAY SANG -> BAY XUỐNG + CHỈNH TỐC ĐỘ & CHIỀU CAO)
--- StarterGui -> LocalScript hoặc Executor
+-- EXECUTOR MENU - Banana Cat Hub Style
+-- Full Features + Fix Bug GUI Safe Target + Bay Đến Người Chơi
+-- StarterGui -> LocalScript hoặc Paste vào Executor
 -- ============================================
 
 local Players = game:GetService("Players")
@@ -17,15 +14,29 @@ local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
--- Xác định Parent an toàn cho UI
-local targetGui = playerGui
-if gethui then
-    targetGui = gethui()
-elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
-    targetGui = game:GetService("CoreGui")
+if not player then
+    player = Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
 end
+local playerGui = player:WaitForChild("PlayerGui", 10)
+
+-- ==================== XÁC ĐỊNH PARENT AN TOÀN CHỐNG CRASH ====================
+local targetGui = playerGui
+
+pcall(function()
+    if gethui then
+        targetGui = gethui()
+    else
+        local coreGui = game:GetService("CoreGui")
+        local success = pcall(function()
+            local test = Instance.new("Folder")
+            test.Parent = coreGui
+            test:Destroy()
+        end)
+        if success then
+            targetGui = coreGui
+        end
+    end
+end)
 
 -- ==================== CONSTANTS ====================
 local C = {
@@ -391,7 +402,7 @@ local S = {
     fpsCounter=false, particles=true, decals=true,
     infJump=false, clickTp=false, esp=false, antiAfk=true, fullBright=false,
     blockServer=false, freezeOthers=false,
-    -- State cho Bay Đến Người Chơi
+    -- State Bay Đến Người Chơi
     flyToSpeed = 100,
     flyToHeight = 50,
     selectedPlayer = nil,
@@ -423,19 +434,21 @@ end
 -- ==================== CHẶN SERVER TÁC ĐỘNG BẢO VỆ BẢN THÂN ====================
 local oldNamecall
 if hookmetamethod then
-    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        if S.blockServer then
-            if method == "Kick" or method == "kick" then
-                warn("[Banana Cat Hub] Đã chặn thành công lệnh Kick từ Máy chủ!")
-                return nil
+    pcall(function()
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if S.blockServer then
+                if method == "Kick" or method == "kick" then
+                    warn("[Banana Cat Hub] Đã chặn thành công lệnh Kick từ Máy chủ!")
+                    return nil
+                end
             end
-        end
-        return oldNamecall(self, ...)
+            return oldNamecall(self, ...)
+        end)
     end)
 end
 
--- ==================== VÒNG LẶP STEPPED: FREEZE OTHERS & ANTI-SERVER ====================
+-- ==================== STEPPED LOOP: FREEZE OTHERS & ANTI-KICK ====================
 RunService.Stepped:Connect(function()
     if S.blockServer then
         local h = Hum()
@@ -472,8 +485,10 @@ end
 -- ==================== ANTI AFK ====================
 player.Idled:Connect(function()
     if S.antiAfk then
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
+        pcall(function()
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
     end
 end)
 
@@ -496,7 +511,7 @@ UserInputService.InputBegan:Connect(function(i, gp)
     end
 end)
 
--- ==================== NOCLIP (STEPPED MƯỢT 100%) ====================
+-- ==================== NOCLIP ====================
 local ncConn = nil
 
 local function EnNC()
@@ -1013,14 +1028,13 @@ for _, p in ipairs(Players:GetPlayers()) do HookPlayer(p) end
 Players.PlayerAdded:Connect(function(p) HookPlayer(p) end)
 Players.PlayerRemoving:Connect(function(p) RemovePlayerESP(p) end)
 
--- ==================== LOGIC BAY ĐẾN NGƯỜI CHƠI (FLY TO PLAYER) ====================
+-- ==================== BAY ĐẾN NGƯỜI CHƠI (CÓ TIMEOUT CHỐNG KẸT) ====================
 local function FlyToPlayerSequence(targetPlayer)
     if not targetPlayer or not targetPlayer.Character then return end
     local targetRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
     local myRoot = Root()
     if not targetRoot or not myRoot then return end
 
-    -- Tự động bật NoClip tạm thời để không bị vướng tường khi di chuyển
     local origNoClip = S.noClip
     S.noClip = true
     EnNC()
@@ -1032,26 +1046,21 @@ local function FlyToPlayerSequence(targetPlayer)
     local upPos = startPos + Vector3.new(0, height, 0)
 
     -- GIAI ĐOẠN 1: BAY THẲNG LÊN TRỜI
+    local t1 = os.clock()
     while (myRoot.Position - upPos).Magnitude > 3 do
-        if not myRoot or not myRoot.Parent then break end
+        if not myRoot or not myRoot.Parent or (os.clock() - t1 > 10) then break end
         local dt = task.wait()
         local dir = (upPos - myRoot.Position).Unit
         local step = math.min(speed * dt, (upPos - myRoot.Position).Magnitude)
         myRoot.CFrame = CFrame.new(myRoot.Position + dir * step)
     end
 
-    -- GIAI ĐOẠN 2: BAY NGANG TRÊN TRỜI ĐẾN ĐỈNH ĐẦU NGƯỜI CHƠI
-    local function GetTargetOverhead()
-        if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-            local tPos = targetPlayer.Character.HumanoidRootPart.Position
-            return Vector3.new(tPos.X, myRoot.Position.Y, tPos.Z)
-        end
-        return nil
-    end
-
-    while true do
-        local overhead = GetTargetOverhead()
-        if not overhead or not myRoot or not myRoot.Parent then break end
+    -- GIAI ĐOẠN 2: BAY NGANG TRÊN BẦU TRỜI ĐẾN TRÊN ĐẦU ĐỐI PHƯƠNG
+    local t2 = os.clock()
+    while (os.clock() - t2 < 20) do
+        if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") or not myRoot or not myRoot.Parent then break end
+        local tPos = targetPlayer.Character.HumanoidRootPart.Position
+        local overhead = Vector3.new(tPos.X, myRoot.Position.Y, tPos.Z)
         local dist = (myRoot.Position - overhead).Magnitude
         if dist < 4 then break end
 
@@ -1061,8 +1070,9 @@ local function FlyToPlayerSequence(targetPlayer)
         myRoot.CFrame = CFrame.new(myRoot.Position + dir * step)
     end
 
-    -- GIAI ĐOẠN 3: BAY TỪ TRÊN TRỜI XUỐNG VỊ TRÍ NGƯỜI CHƠI
-    while true do
+    -- GIAI ĐOẠN 3: BAY TỪ TRỜI XUỐNG VỊ TRÍ ĐỐI PHƯƠNG
+    local t3 = os.clock()
+    while (os.clock() - t3 < 10) do
         if not targetPlayer.Character or not targetPlayer.Character:FindFirstChild("HumanoidRootPart") or not myRoot or not myRoot.Parent then break end
         local finalTarget = targetPlayer.Character.HumanoidRootPart.Position + Vector3.new(0, 3, 0)
         local dist = (myRoot.Position - finalTarget).Magnitude
@@ -1074,7 +1084,6 @@ local function FlyToPlayerSequence(targetPlayer)
         myRoot.CFrame = CFrame.new(myRoot.Position + dir * step)
     end
 
-    -- Khôi phục trạng thái NoClip ban đầu
     if not origNoClip then
         S.noClip = false
         DisNC()
@@ -1212,7 +1221,6 @@ New("UIPadding", {PaddingLeft=UDim.new(0,6), PaddingTop=UDim.new(0,4)}, codeIn)
 
 y = y + 86
 
--- Loop settings
 Label(codeTab, "🔁 Cài đặt lặp", y)
 y = y + 14
 Label(codeTab, "Số lần lặp:", y)
@@ -1392,7 +1400,6 @@ RebuildScripts = function()
         }, scriptList)
         Corner(row,UDim.new(0,6)); Stroke(row)
 
-        -- 1. NÚT MŨI TÊN BÊN TRÁI (SỔ CODE)
         local arrowBtn = New("TextButton", {
             Size=UDim2.new(0,24,0,24), Position=UDim2.new(0,6,0,9),
             Text=isExpanded and "▲" or "▼",
@@ -1401,7 +1408,6 @@ RebuildScripts = function()
         }, row)
         Corner(arrowBtn, UDim.new(0,4))
 
-        -- 2. TÊN SCRIPT
         local nameLbl = New("TextLabel", {
             Size=UDim2.new(1,-175,0,42), Position=UDim2.new(0,36,0,0),
             Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
@@ -1409,7 +1415,6 @@ RebuildScripts = function()
             TextTruncate=Enum.TextTruncate.AtEnd, ZIndex=8,
         }, row)
 
-        -- 3. NÚT "🗑 XÓA" (BÊN TRÁI NÚT CHẠY)
         local delScriptBtn = New("TextButton", {
             Size=UDim2.new(0,58,0,26), Position=UDim2.new(1,-132,0,8),
             Text="🗑 Xóa", BackgroundColor3=C.RED, BackgroundTransparency=0.1,
@@ -1417,7 +1422,6 @@ RebuildScripts = function()
         }, row)
         Corner(delScriptBtn, UDim.new(0,5))
 
-        -- 4. NÚT "▶ CHẠY" (PHẢI NGOÀI CÙNG)
         local runScriptBtn = New("TextButton", {
             Size=UDim2.new(0,62,0,26), Position=UDim2.new(1,-68,0,8),
             Text="▶ Chạy", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
@@ -1425,7 +1429,6 @@ RebuildScripts = function()
         }, row)
         Corner(runScriptBtn, UDim.new(0,5))
 
-        -- 5. SỔ CODE & NÚT SAO CHÉP CODE
         if isExpanded then
             local codeBoxFrame = New("ScrollingFrame", {
                 Size=UDim2.new(1,-12,0,82), Position=UDim2.new(0,6,0,42),
@@ -1658,13 +1661,12 @@ end)
 
 moveTab.CanvasSize=UDim2.new(0,0,0,my+40)
 
--- ==================== TAB 4: NGƯỜI CHƠI (ĐÃ THÊM TÍNH NĂNG BAY ĐẾN) ====================
+-- ==================== TAB 4: NGƯỜI CHƠI ====================
 local py = 8
 
 Label(playerTab, "🚀 Bay Đến Người Chơi (Up ➔ Forward ➔ Down)", py)
 py = py + 14
 
--- NÚT CHỌN NGƯỜI CHƠI & DROPDOWN LIST
 local selPlrBtn = Button(playerTab, "👤 Chọn: Chưa chọn ▾", 8, py, 230, 24, Color3.fromRGB(70, 80, 100))
 py = py + 28
 
@@ -1717,7 +1719,6 @@ selPlrBtn.Activated:Connect(function()
     plrListFrame.Visible = not plrListFrame.Visible
 end)
 
--- Ô CHỈNH TỐC ĐỘ VÀ CHIỀU CAO BAY
 New("TextLabel", {
     Size=UDim2.new(0,45,0,24), Position=UDim2.new(0,8,0,py),
     Text="Tốc độ:", BackgroundTransparency=1, TextColor3=C.DARK,
@@ -1763,11 +1764,12 @@ startFlyToBtn.Activated:Connect(function()
     startFlyToBtn.Text = "⏳ Đang Bay..."
     startFlyToBtn.BackgroundColor3 = C.YELLOW
 
-    FlyToPlayerSequence(S.selectedPlayer)
-
-    startFlyToBtn.Text = "🚀 Bay Đến Ngay"
-    startFlyToBtn.BackgroundColor3 = C.PURPLE
-    isFlyingTo = false
+    task.spawn(function()
+        FlyToPlayerSequence(S.selectedPlayer)
+        startFlyToBtn.Text = "🚀 Bay Đến Ngay"
+        startFlyToBtn.BackgroundColor3 = C.PURPLE
+        isFlyingTo = false
+    end)
 end)
 
 flyToSpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flyToSpdIn.Text); if n and n>0 then S.flyToSpeed=n else flyToSpdIn.Text=tostring(S.flyToSpeed) end end)
@@ -2259,4 +2261,7 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Đã cập nhật thành công tính năng Bay Đến Người Chơi (Up ➔ Forward ➔ Down) vào Tab Người Chơi!")
+print("--------------------------------------------------")
+print("✅ [Banana Cat Hub] Đã tải Menu thành công 100%!")
+print("📌 Bấm nút Quả Chuối 🍌 ở góc dưới bên phải hoặc phím [Right Control] để Ẩn/Hiện Menu.")
+print("--------------------------------------------------")
