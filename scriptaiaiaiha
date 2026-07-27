@@ -3,8 +3,7 @@
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
 -- + Tab "Code Đã Lưu" CẬP NHẬT: Sổ code có nút "📋 Sao Chép Code" + Đổi vị trí Nút Xóa (Trái) & Nút Chạy (Phải)
 -- + ĐỐNG BĂNG NGƯỜI CHƠI KHÁC (FREEZE OTHERS) & ANTI-KICK BẢO VỆ BẢN THÂN
--- + BAY ĐẾN NGƯỜI CHƠI (LÊN CAO -> BAY NGANG -> HẠ XUỐNG) + TÙY CHỈNH TỐC ĐỘ & ĐỘ CAO
--- [FIXED] Tự động sửa lỗi không hiện UI trên mọi loại Executor!
+-- + BAY TỚI NGƯỜI CHƠI (FLY TO PLAYER) VỚI ĐIỀU CHỈNH TỐC ĐỘ & CHIỀU CAO
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -20,17 +19,12 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- ==================== XÁC ĐỊNH PARENT AN TOÀN CHỐNG LỖI ====================
-local targetGui = nil
+-- Xác định Parent an toàn cho UI
+local targetGui = playerGui
 if gethui then
     targetGui = gethui()
-else
-    pcall(function()
-        targetGui = game:GetService("CoreGui")
-    end)
-end
-if not targetGui then
-    targetGui = playerGui
+elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
+    targetGui = game:GetService("CoreGui")
 end
 
 -- ==================== CONSTANTS ====================
@@ -45,6 +39,8 @@ local C = {
     PURPLE = Color3.fromRGB(130, 60, 200),
     ORANGE = Color3.fromRGB(220, 130, 50),
     BG = Color3.fromRGB(240, 242, 248),
+    CYAN = Color3.fromRGB(0, 200, 220),
+    PINK = Color3.fromRGB(220, 80, 160),
 }
 
 local DEFAULT_LIGHTING = {
@@ -96,16 +92,12 @@ end
 if targetGui:FindFirstChild("ExMenu") then
     targetGui.ExMenu:Destroy()
 end
-if playerGui:FindFirstChild("ExMenu") then
-    playerGui.ExMenu:Destroy()
-end
 
 local gui = New("ScreenGui", {
     Name="ExMenu",
     IgnoreGuiInset=true,
     ResetOnSpawn=false,
     ZIndexBehavior=Enum.ZIndexBehavior.Sibling,
-    Enabled = true,
 }, targetGui)
 
 -- Toggle Button (Nút Chuối Mở Menu)
@@ -131,7 +123,7 @@ local main = New("Frame", {
     BackgroundColor3=Color3.fromRGB(235, 238, 245),
     BackgroundTransparency=0.25,
     BorderSizePixel=0,
-    Visible=true,
+    Visible=false,
     ClipsDescendants=false,
     ZIndex=2,
 }, gui)
@@ -391,7 +383,7 @@ SwitchTab(1)
 
 -- ==================== STATE ====================
 local S = {
-    flySpeed=50, 
+    flySpeed=50,
     carpetWidth=1.5, carpetThickness=0.2, carpetLength=1.5,
     walkSpeed=16, jumpPower=50,
     noClip=false, fog=false, flying=false, carpet=false, flyRun=false,
@@ -401,9 +393,12 @@ local S = {
     fpsCounter=false, particles=true, decals=true,
     infJump=false, clickTp=false, esp=false, antiAfk=true, fullBright=false,
     blockServer=false, freezeOthers=false,
-    teleportFlySpeed = 100,
-    teleportFlyHeight = 150,
-    selectedTargetPlayer = nil,
+    -- Bay tới người chơi
+    flyToPlayer=false,
+    flyToSpeed=80,
+    flyToHeight=60,
+    flyToTarget=nil,
+    flyToPhase="idle", -- "idle" | "rising" | "flying" | "descending" | "done"
 }
 
 local scripts = {}
@@ -412,11 +407,11 @@ local curThread, curIndicator = nil, nil
 
 -- ==================== HELPERS ====================
 local function GetChar() return player.Character end
-local function Hum() 
+local function Hum()
     local c = GetChar()
     return c and c:FindFirstChildOfClass("Humanoid")
 end
-local function Root() 
+local function Root()
     local c = GetChar()
     return c and c:FindFirstChild("HumanoidRootPart")
 end
@@ -429,24 +424,22 @@ local function UpdChar()
     end
 end
 
--- ==================== CHẶN SERVER TÁC ĐỘNG BẢO VỆ BẢN THÂN (PCALL BẢO VỆ) ====================
-pcall(function()
-    if hookmetamethod and getnamecallmethod then
-        local oldNamecall
-        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-            local method = getnamecallmethod()
-            if S.blockServer then
-                if method == "Kick" or method == "kick" then
-                    warn("[Banana Cat Hub] Đã chặn thành công lệnh Kick từ Máy chủ!")
-                    return nil
-                end
+-- ==================== CHẶN SERVER TÁC ĐỘNG BẢO VỆ BẢN THÂN ====================
+local oldNamecall
+if hookmetamethod then
+    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+        local method = getnamecallmethod()
+        if S.blockServer then
+            if method == "Kick" or method == "kick" then
+                warn("[Banana Cat Hub] Đã chặn thành công lệnh Kick từ Máy chủ!")
+                return nil
             end
-            return oldNamecall(self, ...)
-        end)
-    end
-end)
+        end
+        return oldNamecall(self, ...)
+    end)
+end
 
--- ==================== VÒNG LẶP STEPPED ====================
+-- ==================== VÒNG LẶP STEPPED: FREEZE OTHERS & ANTI-SERVER ====================
 RunService.Stepped:Connect(function()
     if S.blockServer then
         local h = Hum()
@@ -483,10 +476,8 @@ end
 -- ==================== ANTI AFK ====================
 player.Idled:Connect(function()
     if S.antiAfk then
-        pcall(function()
-            VirtualUser:CaptureController()
-            VirtualUser:ClickButton2(Vector2.new())
-        end)
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
     end
 end)
 
@@ -509,7 +500,7 @@ UserInputService.InputBegan:Connect(function(i, gp)
     end
 end)
 
--- ==================== NOCLIP ====================
+-- ==================== NOCLIP (STEPPED MƯỢT 100%) ====================
 local ncConn = nil
 
 local function EnNC()
@@ -519,8 +510,8 @@ local function EnNC()
         local c = GetChar()
         if c then
             for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then 
-                    p.CanCollide = false 
+                if p:IsA("BasePart") then
+                    p.CanCollide = false
                 end
             end
         end
@@ -528,9 +519,9 @@ local function EnNC()
 end
 
 local function DisNC()
-    if ncConn then 
-        ncConn:Disconnect() 
-        ncConn = nil 
+    if ncConn then
+        ncConn:Disconnect()
+        ncConn = nil
     end
     local c = GetChar()
     if c then
@@ -606,7 +597,7 @@ end
 local function CreateCarpet(y)
     local r = Root()
     if not r then return end
-    
+
     if cp then cp:Destroy() end
 
     local w = S.carpetWidth or 1.5
@@ -616,21 +607,18 @@ local function CreateCarpet(y)
     S.carpetY = y or (r.Position.Y - 3.0 - (t / 2))
 
     cp = New("Part", {
-        Name="Carpet", 
+        Name="Carpet",
         Size=Vector3.new(w, t, l),
         Transparency=0.9,
-        Color=Color3.fromRGB(200,230,255), 
-        Material=Enum.Material.SmoothPlastic,
-        Anchored=true, 
-        CanCollide=true, 
-        Friction=1,
+        Color=Color3.fromRGB(200,230,255), Material=Enum.Material.SmoothPlastic,
+        Anchored=true, CanCollide=true, Friction=1,
         Position=Vector3.new(r.Position.X, S.carpetY, r.Position.Z),
     }, workspace)
 
     RunService:BindToRenderStep("Carpet", Enum.RenderPriority.Camera.Value - 1, function()
         local curR = Root()
         if not S.carpet or not cp or not curR then return end
-        
+
         local curW = S.carpetWidth or 1.5
         local curT = S.carpetThickness or 0.2
         local curL = S.carpetLength or 1.5
@@ -638,7 +626,7 @@ local function CreateCarpet(y)
         if cp.Size.X ~= curW or cp.Size.Y ~= curT or cp.Size.Z ~= curL then
             cp.Size = Vector3.new(curW, curT, curL)
         end
-        
+
         cp.CFrame = CFrame.new(curR.Position.X, S.carpetY, curR.Position.Z)
 
         if S.noClip then
@@ -762,7 +750,7 @@ clsOBtn.Activated:Connect(function() S.flyRun=false; StopFlyRun() end)
 togCBtn.Activated:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
 
 movUBtn.Activated:Connect(function()
-    if S.flyRun then 
+    if S.flyRun then
         if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
         local curY = S.carpetY or (r and (r.Position.Y - 3.0) or 0)
@@ -771,7 +759,7 @@ movUBtn.Activated:Connect(function()
 end)
 
 movDBtn.Activated:Connect(function()
-    if S.flyRun then 
+    if S.flyRun then
         if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
         local curY = S.carpetY or (r and (r.Position.Y - 3.0) or 0)
@@ -1026,113 +1014,6 @@ for _, p in ipairs(Players:GetPlayers()) do HookPlayer(p) end
 Players.PlayerAdded:Connect(function(p) HookPlayer(p) end)
 Players.PlayerRemoving:Connect(function(p) RemovePlayerESP(p) end)
 
--- ==================== BAY ĐẾN NGƯỜI CHƠI (TELEPORT FLY) ====================
-local tpFlyThread = nil
-local tpFlyCancelled = false
-
-local function StopTpFly()
-    tpFlyCancelled = true
-    if tpFlyThread then
-        task.cancel(tpFlyThread)
-        tpFlyThread = nil
-    end
-    if not S.noClip then
-        DisNC()
-    end
-end
-
-local function StartTpFly(targetP, statusLbl)
-    StopTpFly()
-
-    if not targetP then
-        if statusLbl then statusLbl.Text = "⚠️ Chưa chọn người chơi!" end
-        return
-    end
-
-    local targetChar = targetP.Character
-    local targetRoot = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
-    local r = Root()
-
-    if not r then
-        if statusLbl then statusLbl.Text = "⚠️ Bản thân chưa có nhân vật!" end
-        return
-    end
-
-    if not targetRoot then
-        if statusLbl then statusLbl.Text = "⚠️ Người chơi chưa xuất hiện!" end
-        return
-    end
-
-    tpFlyCancelled = false
-
-    tpFlyThread = task.spawn(function()
-        local wasNC = S.noClip
-        if not wasNC then
-            EnNC()
-        end
-
-        local speed = math.clamp(S.teleportFlySpeed or 100, 10, 500)
-        local heightOffset = math.clamp(S.teleportFlyHeight or 150, 20, 1000)
-
-        -- BƯỚC 1: BAY VÚT LÊN CAO
-        if statusLbl then statusLbl.Text = "🛫 Bước 1: Đang bay lên cao..." end
-        local startPos = r.Position
-        local targetY = startPos.Y + heightOffset
-
-        while not tpFlyCancelled and r and r.Parent do
-            local dt = RunService.Heartbeat:Wait()
-            local curPos = r.Position
-            local upTargetPos = Vector3.new(curPos.X, targetY, curPos.Z)
-            local dist = (upTargetPos - curPos).Magnitude
-
-            if dist < 3 then break end
-
-            local step = math.min(dist, speed * dt)
-            r.CFrame = CFrame.new(curPos + (upTargetPos - curPos).Unit * step)
-        end
-
-        -- BƯỚC 2: BAY NGANG TRÊN KHÔNG
-        if not tpFlyCancelled and statusLbl then statusLbl.Text = "✈️ Bước 2: Đang bay ngang tới mục tiêu..." end
-        while not tpFlyCancelled and r and r.Parent and targetP.Character and targetP.Character:FindFirstChild("HumanoidRootPart") do
-            local dt = RunService.Heartbeat:Wait()
-            local curTargetRoot = targetP.Character.HumanoidRootPart
-            local curPos = r.Position
-            local acrossTargetPos = Vector3.new(curTargetRoot.Position.X, curPos.Y, curTargetRoot.Position.Z)
-            local dist = (acrossTargetPos - curPos).Magnitude
-
-            if dist < 4 then break end
-
-            local step = math.min(dist, speed * dt)
-            r.CFrame = CFrame.new(curPos + (acrossTargetPos - curPos).Unit * step)
-        end
-
-        -- BƯỚC 3: BAY THẲNG XUỐNG
-        if not tpFlyCancelled and statusLbl then statusLbl.Text = "🛬 Bước 3: Đang hạ cánh xuống..." end
-        while not tpFlyCancelled and r and r.Parent and targetP.Character and targetP.Character:FindFirstChild("HumanoidRootPart") do
-            local dt = RunService.Heartbeat:Wait()
-            local curTargetRoot = targetP.Character.HumanoidRootPart
-            local curPos = r.Position
-            local downTargetPos = curTargetRoot.Position + Vector3.new(0, 3, 0)
-            local dist = (downTargetPos - curPos).Magnitude
-
-            if dist < 3 then break end
-
-            local step = math.min(dist, speed * dt)
-            r.CFrame = CFrame.new(curPos + (downTargetPos - curPos).Unit * step)
-        end
-
-        if not wasNC then
-            DisNC()
-        end
-
-        if not tpFlyCancelled and statusLbl then
-            statusLbl.Text = "✅ Đã bay tới vị trí người chơi!"
-        end
-
-        tpFlyThread = nil
-    end)
-end
-
 -- ==================== CODE EXECUTION ====================
 local function ExecOnce(code, name)
     if #name>0 then print("👤 Chạy bởi:", name) end
@@ -1264,6 +1145,7 @@ New("UIPadding", {PaddingLeft=UDim.new(0,6), PaddingTop=UDim.new(0,4)}, codeIn)
 
 y = y + 86
 
+-- Loop settings
 Label(codeTab, "🔁 Cài đặt lặp", y)
 y = y + 14
 Label(codeTab, "Số lần lặp:", y)
@@ -1451,7 +1333,7 @@ RebuildScripts = function()
         }, row)
         Corner(arrowBtn, UDim.new(0,4))
 
-        local nameLbl = New("TextLabel", {
+        New("TextLabel", {
             Size=UDim2.new(1,-175,0,42), Position=UDim2.new(0,36,0,0),
             Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
             Font=Enum.Font.GothamBold, TextSize=11, TextXAlignment=Enum.TextXAlignment.Left,
@@ -1707,6 +1589,703 @@ moveTab.CanvasSize=UDim2.new(0,0,0,my+40)
 -- ==================== TAB 4: NGƯỜI CHƠI ====================
 local py = 8
 
+-- ==================== FLY TO PLAYER SYSTEM ====================
+-- Biến trạng thái bay tới người chơi
+local flyToThread = nil
+local flyToStatusLbl = nil
+local flyToBtn = nil
+local selectedPlayerName = nil
+local flyToPlayerDropdownVisible = false
+
+local function StopFlyToPlayer()
+    S.flyToPlayer = false
+    S.flyToPhase = "idle"
+    S.flyToTarget = nil
+    if flyToThread then
+        task.cancel(flyToThread)
+        flyToThread = nil
+    end
+    -- Khôi phục humanoid nếu cần
+    local h = Hum()
+    local r = Root()
+    if h then
+        h.AutoRotate = true
+        h.PlatformStand = false
+        h.WalkSpeed = S.walkSpeed
+        h.JumpPower = S.jumpPower
+    end
+    if r then
+        -- Xóa BodyMover nếu còn sót
+        local bvF = r:FindFirstChild("FlyToPlayerBV")
+        local bgF = r:FindFirstChild("FlyToPlayerBG")
+        if bvF then bvF:Destroy() end
+        if bgF then bgF:Destroy() end
+    end
+    if flyToBtn then
+        flyToBtn.Text = "🚀 Bắt Đầu Bay"
+        flyToBtn.BackgroundColor3 = C.CYAN
+    end
+    if flyToStatusLbl then
+        flyToStatusLbl.Text = "⏸ Chưa bắt đầu"
+        flyToStatusLbl.TextColor3 = C.GRAY
+    end
+end
+
+local function GetTargetRoot()
+    if not S.flyToTarget then return nil end
+    local targetPlayer = Players:FindFirstChild(S.flyToTarget)
+    if not targetPlayer then return nil end
+    local char = targetPlayer.Character
+    if not char then return nil end
+    return char:FindFirstChild("HumanoidRootPart")
+end
+
+local function StartFlyToPlayer()
+    local r = Root()
+    local h = Hum()
+    if not r or not h then
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "❌ Nhân vật chưa tải!"
+            flyToStatusLbl.TextColor3 = C.RED
+        end
+        return
+    end
+
+    if not S.flyToTarget or S.flyToTarget == "" then
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "❌ Chưa chọn người chơi!"
+            flyToStatusLbl.TextColor3 = C.RED
+        end
+        return
+    end
+
+    local targetPlayer = Players:FindFirstChild(S.flyToTarget)
+    if not targetPlayer then
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "❌ Người chơi không tồn tại!"
+            flyToStatusLbl.TextColor3 = C.RED
+        end
+        return
+    end
+
+    if targetPlayer == player then
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "❌ Không thể bay tới chính mình!"
+            flyToStatusLbl.TextColor3 = C.RED
+        end
+        return
+    end
+
+    -- Dừng các tính năng bay khác trước
+    if S.flying then
+        S.flying = false
+        StopFly()
+    end
+    if S.carpet then
+        S.carpet = false
+        StopCarpet()
+    end
+    if S.flyRun then
+        S.flyRun = false
+        if StopFlyRun then StopFlyRun() end
+    end
+
+    S.flyToPlayer = true
+    S.flyToPhase = "rising"
+
+    if flyToBtn then
+        flyToBtn.Text = "⏹ Dừng Bay"
+        flyToBtn.BackgroundColor3 = C.RED
+    end
+
+    -- Tắt trọng lực nhân vật
+    h.AutoRotate = false
+    h.PlatformStand = true
+
+    -- Tạo BodyMover
+    local existBV = r:FindFirstChild("FlyToPlayerBV")
+    local existBG = r:FindFirstChild("FlyToPlayerBG")
+    if existBV then existBV:Destroy() end
+    if existBG then existBG:Destroy() end
+
+    local bodyVelocity = New("BodyVelocity", {
+        Name = "FlyToPlayerBV",
+        MaxForce = Vector3.new(1e5, 1e5, 1e5),
+        Velocity = Vector3.zero,
+    }, r)
+
+    local bodyGyro = New("BodyGyro", {
+        Name = "FlyToPlayerBG",
+        MaxTorque = Vector3.new(1e5, 1e5, 1e5),
+        P = 3000,
+        D = 300,
+        CFrame = r.CFrame,
+    }, r)
+
+    flyToThread = task.spawn(function()
+        -- ==== GIAI ĐOẠN 1: BAY LÊN CAO ====
+        S.flyToPhase = "rising"
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "⬆ Đang bay lên cao..."
+            flyToStatusLbl.TextColor3 = C.YELLOW
+        end
+
+        local targetHeight = r.Position.Y + S.flyToHeight
+        local speed = S.flyToSpeed
+
+        while S.flyToPlayer and S.flyToPhase == "rising" do
+            local curR = Root()
+            if not curR then StopFlyToPlayer(); return end
+
+            local curY = curR.Position.Y
+            local diff = targetHeight - curY
+
+            if math.abs(diff) < 2 then
+                -- Đến độ cao mong muốn, chuyển sang pha bay ngang
+                S.flyToPhase = "flying"
+                break
+            end
+
+            local dir = Vector3.new(0, math.sign(diff), 0)
+            bodyVelocity.Velocity = dir * math.min(speed, math.abs(diff) * 3 + 5)
+            bodyGyro.CFrame = curR.CFrame
+
+            task.wait(0.02)
+        end
+
+        if not S.flyToPlayer then return end
+
+        -- ==== GIAI ĐOẠN 2: BAY NGANG TỚI MỤC TIÊU ====
+        S.flyToPhase = "flying"
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "✈ Đang bay tới "..S.flyToTarget.."..."
+            flyToStatusLbl.TextColor3 = C.CYAN
+        end
+
+        while S.flyToPlayer and S.flyToPhase == "flying" do
+            local curR = Root()
+            if not curR then StopFlyToPlayer(); return end
+
+            local tgtR = GetTargetRoot()
+            if not tgtR then
+                if flyToStatusLbl then
+                    flyToStatusLbl.Text = "❌ Mục tiêu biến mất!"
+                    flyToStatusLbl.TextColor3 = C.RED
+                end
+                StopFlyToPlayer()
+                return
+            end
+
+            -- Bay ở độ cao mình đã lên (trên đầu mục tiêu)
+            local targetPos = Vector3.new(tgtR.Position.X, tgtR.Position.Y + S.flyToHeight, tgtR.Position.Z)
+            local toTarget = targetPos - curR.Position
+            local horizontalDist = Vector2.new(toTarget.X, toTarget.Z).Magnitude
+
+            if horizontalDist < 5 then
+                -- Đủ gần, chuyển sang pha hạ xuống
+                S.flyToPhase = "descending"
+                break
+            end
+
+            local dir = toTarget.Unit
+            -- Duy trì độ cao trong khi bay ngang
+            local heightDiff = targetPos.Y - curR.Position.Y
+            local velDir = Vector3.new(dir.X, math.clamp(heightDiff * 0.1, -1, 1), dir.Z).Unit
+            bodyVelocity.Velocity = velDir * speed
+            bodyGyro.CFrame = CFrame.new(curR.Position, curR.Position + Vector3.new(toTarget.X, 0, toTarget.Z))
+
+            task.wait(0.02)
+        end
+
+        if not S.flyToPlayer then return end
+
+        -- ==== GIAI ĐOẠN 3: HẠ XUỐNG BÊN CẠNH MỤC TIÊU ====
+        S.flyToPhase = "descending"
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "⬇ Đang hạ xuống..."
+            flyToStatusLbl.TextColor3 = C.GREEN
+        end
+
+        while S.flyToPlayer and S.flyToPhase == "descending" do
+            local curR = Root()
+            if not curR then StopFlyToPlayer(); return end
+
+            local tgtR = GetTargetRoot()
+            if not tgtR then
+                if flyToStatusLbl then
+                    flyToStatusLbl.Text = "❌ Mục tiêu biến mất!"
+                    flyToStatusLbl.TextColor3 = C.RED
+                end
+                StopFlyToPlayer()
+                return
+            end
+
+            -- Hạ xuống ngang vị trí mục tiêu (đứng cạnh)
+            local landPos = Vector3.new(tgtR.Position.X + 3, tgtR.Position.Y, tgtR.Position.Z + 3)
+            local toTarget = landPos - curR.Position
+            local dist = toTarget.Magnitude
+
+            if dist < 3 then
+                -- Đã đến nơi
+                S.flyToPhase = "done"
+                break
+            end
+
+            local dir = toTarget.Unit
+            bodyVelocity.Velocity = dir * math.min(speed * 0.6, dist * 4 + 5)
+            bodyGyro.CFrame = CFrame.new(curR.Position, Vector3.new(tgtR.Position.X, curR.Position.Y, tgtR.Position.Z))
+
+            task.wait(0.02)
+        end
+
+        -- ==== HOÀN TẤT ====
+        local finalR = Root()
+        if finalR then
+            bodyVelocity.Velocity = Vector3.zero
+        end
+
+        task.wait(0.3)
+
+        -- Dừng và dọn dẹp
+        StopFlyToPlayer()
+
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "✅ Đã đến nơi!"
+            flyToStatusLbl.TextColor3 = C.GREEN
+        end
+    end)
+end
+
+-- ==================== BUILD UI TAB NGƯỜI CHƠI ====================
+
+Label(playerTab, "🚀 Bay Tới Người Chơi", py)
+py = py + 16
+
+-- Panel bay tới người chơi
+local flyToPanel = New("Frame", {
+    Size=UDim2.new(1,-16,0,200),
+    Position=UDim2.new(0,8,0,py),
+    BackgroundColor3=Color3.fromRGB(220,235,255),
+    BackgroundTransparency=0.1,
+    BorderSizePixel=0,
+    ZIndex=6,
+}, playerTab)
+Corner(flyToPanel, UDim.new(0,8))
+Stroke(flyToPanel, C.CYAN, 1.5)
+
+-- Tiêu đề panel
+New("TextLabel", {
+    Size=UDim2.new(1,-10,0,20),
+    Position=UDim2.new(0,8,0,5),
+    Text="✈ Cấu hình Bay Tới Người Chơi",
+    BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(0,100,180),
+    Font=Enum.Font.GothamBold,
+    TextSize=11,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, flyToPanel)
+
+-- === CHỌN NGƯỜI CHƠI ===
+New("TextLabel", {
+    Size=UDim2.new(0,100,0,16),
+    Position=UDim2.new(0,8,0,28),
+    Text="🎯 Người chơi:",
+    BackgroundTransparency=1,
+    TextColor3=C.DARK,
+    Font=Enum.Font.GothamBold,
+    TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, flyToPanel)
+
+-- Nút hiện danh sách người chơi (dropdown)
+local playerDropBtn = New("TextButton", {
+    Size=UDim2.new(0,150,0,24),
+    Position=UDim2.new(0,8,0,46),
+    Text="▼ Chọn người chơi",
+    BackgroundColor3=Color3.fromRGB(255,255,255),
+    BackgroundTransparency=0,
+    TextColor3=C.DARK,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    BorderSizePixel=0,
+    ZIndex=8,
+    TextTruncate=Enum.TextTruncate.AtEnd,
+}, flyToPanel)
+Corner(playerDropBtn, UDim.new(0,5))
+Stroke(playerDropBtn, Color3.fromRGB(0,150,220), 1.2)
+
+-- Nút refresh danh sách
+local refreshBtn = New("TextButton", {
+    Size=UDim2.new(0,26,0,24),
+    Position=UDim2.new(0,164,0,46),
+    Text="🔄",
+    BackgroundColor3=C.BLUE,
+    BackgroundTransparency=0.2,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=12,
+    BorderSizePixel=0,
+    ZIndex=8,
+}, flyToPanel)
+Corner(refreshBtn, UDim.new(0,5))
+
+-- Dropdown list người chơi (float bên ngoài panel)
+local playerDropList = New("ScrollingFrame", {
+    Size=UDim2.new(0,160,0,0),
+    Position=UDim2.new(0,8,0,72),
+    BackgroundColor3=Color3.fromRGB(245,248,255),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    Visible=false,
+    ZIndex=50,
+    ScrollBarThickness=4,
+    CanvasSize=UDim2.new(0,0,0,0),
+    ClipsDescendants=true,
+}, flyToPanel)
+Corner(playerDropList, UDim.new(0,6))
+Stroke(playerDropList, C.BLUE, 1.5)
+
+New("UIListLayout", {
+    SortOrder=Enum.SortOrder.LayoutOrder,
+    Padding=UDim.new(0,2),
+}, playerDropList)
+New("UIPadding", {PaddingTop=UDim.new(0,2), PaddingLeft=UDim.new(0,2)}, playerDropList)
+
+-- === ĐIỀU CHỈNH TỐC ĐỘ BAY ===
+New("TextLabel", {
+    Size=UDim2.new(0,100,0,14),
+    Position=UDim2.new(0,8,0,76),
+    Text="⚡ Tốc độ bay:",
+    BackgroundTransparency=1,
+    TextColor3=C.DARK,
+    Font=Enum.Font.GothamBold,
+    TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, flyToPanel)
+
+local flyToSpeedIn = New("TextBox", {
+    Size=UDim2.new(0,55,0,22),
+    Position=UDim2.new(0,8,0,92),
+    Text=tostring(S.flyToSpeed),
+    BackgroundColor3=Color3.fromRGB(255,255,255),
+    BackgroundTransparency=0,
+    TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.GothamMedium,
+    TextSize=11,
+    BorderSizePixel=0,
+    ClearTextOnFocus=false,
+    Active=true,
+    Selectable=true,
+    ZIndex=8,
+}, flyToPanel)
+Corner(flyToSpeedIn, UDim.new(0,5))
+Stroke(flyToSpeedIn, Color3.fromRGB(0,150,220), 1.2)
+
+New("TextLabel", {
+    Size=UDim2.new(0,60,0,14),
+    Position=UDim2.new(0,70,0,96),
+    Text="studs/s",
+    BackgroundTransparency=1,
+    TextColor3=C.GRAY,
+    Font=Enum.Font.GothamMedium,
+    TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, flyToPanel)
+
+-- === ĐIỀU CHỈNH CHIỀU CAO BAY ===
+New("TextLabel", {
+    Size=UDim2.new(0,120,0,14),
+    Position=UDim2.new(0,140,0,76),
+    Text="📏 Chiều cao bay lên:",
+    BackgroundTransparency=1,
+    TextColor3=C.DARK,
+    Font=Enum.Font.GothamBold,
+    TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, flyToPanel)
+
+local flyToHeightIn = New("TextBox", {
+    Size=UDim2.new(0,55,0,22),
+    Position=UDim2.new(0,140,0,92),
+    Text=tostring(S.flyToHeight),
+    BackgroundColor3=Color3.fromRGB(255,255,255),
+    BackgroundTransparency=0,
+    TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.GothamMedium,
+    TextSize=11,
+    BorderSizePixel=0,
+    ClearTextOnFocus=false,
+    Active=true,
+    Selectable=true,
+    ZIndex=8,
+}, flyToPanel)
+Corner(flyToHeightIn, UDim.new(0,5))
+Stroke(flyToHeightIn, Color3.fromRGB(0,150,220), 1.2)
+
+New("TextLabel", {
+    Size=UDim2.new(0,50,0,14),
+    Position=UDim2.new(0,200,0,96),
+    Text="studs",
+    BackgroundTransparency=1,
+    TextColor3=C.GRAY,
+    Font=Enum.Font.GothamMedium,
+    TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, flyToPanel)
+
+-- === TRẠNG THÁI ===
+flyToStatusLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16),
+    Position=UDim2.new(0,8,0,120),
+    Text="⏸ Chưa bắt đầu",
+    BackgroundTransparency=1,
+    TextColor3=C.GRAY,
+    Font=Enum.Font.GothamBold,
+    TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, flyToPanel)
+
+-- Thanh tiến trình (progress bar giả)
+local progressBG = New("Frame", {
+    Size=UDim2.new(1,-16,0,6),
+    Position=UDim2.new(0,8,0,138),
+    BackgroundColor3=Color3.fromRGB(200,210,230),
+    BackgroundTransparency=0.2,
+    BorderSizePixel=0,
+    ZIndex=7,
+}, flyToPanel)
+Corner(progressBG, UDim.new(1,0))
+
+local progressBar = New("Frame", {
+    Size=UDim2.new(0,0,1,0),
+    BackgroundColor3=C.CYAN,
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=8,
+}, progressBG)
+Corner(progressBar, UDim.new(1,0))
+
+-- Vòng lặp cập nhật thanh tiến trình
+RunService.Heartbeat:Connect(function()
+    if not S.flyToPlayer then
+        if S.flyToPhase == "done" or S.flyToPhase == "idle" then
+            Tween(progressBar, {Size=UDim2.new(0,0,1,0)}, 0.5)
+            progressBar.BackgroundColor3 = C.GRAY
+        end
+        return
+    end
+
+    local phase = S.flyToPhase
+    if phase == "rising" then
+        Tween(progressBar, {Size=UDim2.new(0.33,0,1,0)}, 0.3)
+        progressBar.BackgroundColor3 = C.YELLOW
+    elseif phase == "flying" then
+        Tween(progressBar, {Size=UDim2.new(0.66,0,1,0)}, 0.3)
+        progressBar.BackgroundColor3 = C.CYAN
+    elseif phase == "descending" then
+        Tween(progressBar, {Size=UDim2.new(0.9,0,1,0)}, 0.3)
+        progressBar.BackgroundColor3 = C.GREEN
+    elseif phase == "done" then
+        Tween(progressBar, {Size=UDim2.new(1,0,1,0)}, 0.3)
+        progressBar.BackgroundColor3 = C.GREEN
+    end
+end)
+
+-- === NÚT BẮT ĐẦU / DỪNG BAY ===
+flyToBtn = New("TextButton", {
+    Size=UDim2.new(1,-16,0,28),
+    Position=UDim2.new(0,8,0,150),
+    Text="🚀 Bắt Đầu Bay",
+    BackgroundColor3=C.CYAN,
+    BackgroundTransparency=0.1,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=12,
+    BorderSizePixel=0,
+    ZIndex=7,
+}, flyToPanel)
+Corner(flyToBtn, UDim.new(0,6))
+Stroke(flyToBtn, Color3.fromRGB(0,180,220), 1.5)
+
+flyToBtn.MouseEnter:Connect(function()
+    Tween(flyToBtn, {BackgroundTransparency=0}, 0.15)
+end)
+flyToBtn.MouseLeave:Connect(function()
+    Tween(flyToBtn, {BackgroundTransparency=0.1}, 0.15)
+end)
+
+-- === LOGIC DROPDOWN NGƯỜI CHƠI ===
+local function RebuildPlayerList()
+    for _, c in ipairs(playerDropList:GetChildren()) do
+        if not c:IsA("UIListLayout") and not c:IsA("UIPadding") then
+            c:Destroy()
+        end
+    end
+
+    local playerList = Players:GetPlayers()
+    local count = 0
+
+    for _, p in ipairs(playerList) do
+        if p ~= player then
+            count = count + 1
+            local pBtn = New("TextButton", {
+                Size=UDim2.new(1,-4,0,26),
+                Text="👤 "..p.Name,
+                BackgroundColor3=Color3.fromRGB(235,240,255),
+                BackgroundTransparency=0,
+                TextColor3=C.DARK,
+                Font=Enum.Font.GothamBold,
+                TextSize=10,
+                BorderSizePixel=0,
+                TextXAlignment=Enum.TextXAlignment.Left,
+                ZIndex=51,
+            }, playerDropList)
+            Corner(pBtn, UDim.new(0,4))
+            New("UIPadding", {PaddingLeft=UDim.new(0,6)}, pBtn)
+
+            -- Highlight nếu đang được chọn
+            if S.flyToTarget == p.Name then
+                pBtn.BackgroundColor3 = Color3.fromRGB(180,220,255)
+            end
+
+            pBtn.Activated:Connect(function()
+                S.flyToTarget = p.Name
+                selectedPlayerName = p.Name
+                playerDropBtn.Text = "✅ "..p.Name
+                playerDropBtn.BackgroundColor3 = Color3.fromRGB(220,240,255)
+
+                -- Ẩn dropdown
+                playerDropList.Visible = false
+                flyToPlayerDropdownVisible = false
+
+                -- Cập nhật màu trạng thái
+                if flyToStatusLbl then
+                    flyToStatusLbl.Text = "🎯 Đã chọn: "..p.Name
+                    flyToStatusLbl.TextColor3 = C.BLUE
+                end
+            end)
+        end
+    end
+
+    if count == 0 then
+        New("TextLabel", {
+            Size=UDim2.new(1,-4,0,26),
+            Text="😴 Không có ai trong server",
+            BackgroundTransparency=1,
+            TextColor3=C.GRAY,
+            Font=Enum.Font.GothamMedium,
+            TextSize=9,
+            ZIndex=51,
+        }, playerDropList)
+        count = 1
+    end
+
+    local listH = math.min(count * 28 + 4, 120)
+    playerDropList.Size = UDim2.new(0, 160, 0, listH)
+    playerDropList.CanvasSize = UDim2.new(0, 0, 0, count * 28 + 4)
+end
+
+playerDropBtn.Activated:Connect(function()
+    flyToPlayerDropdownVisible = not flyToPlayerDropdownVisible
+    if flyToPlayerDropdownVisible then
+        RebuildPlayerList()
+    end
+    playerDropList.Visible = flyToPlayerDropdownVisible
+end)
+
+refreshBtn.Activated:Connect(function()
+    RebuildPlayerList()
+    if flyToPlayerDropdownVisible then
+        playerDropList.Visible = true
+    end
+    flyToStatusLbl.Text = "🔄 Đã làm mới danh sách"
+    flyToStatusLbl.TextColor3 = C.BLUE
+end)
+
+-- Đóng dropdown khi click ra ngoài
+UserInputService.InputBegan:Connect(function(i, gp)
+    if gp then return end
+    if (i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch) then
+        if flyToPlayerDropdownVisible then
+            local objs = playerGui:GetGuiObjectsAtPosition(i.Position.X, i.Position.Y)
+            local hitDrop = false
+            for _, o in ipairs(objs) do
+                if o == playerDropBtn or o == playerDropList or o:IsDescendantOf(playerDropList) then
+                    hitDrop = true
+                    break
+                end
+            end
+            if not hitDrop then
+                playerDropList.Visible = false
+                flyToPlayerDropdownVisible = false
+            end
+        end
+    end
+end)
+
+-- Logic nhập tốc độ & chiều cao
+flyToSpeedIn.FocusLost:Connect(function(e)
+    if not e then return end
+    local n = tonumber(flyToSpeedIn.Text)
+    if n and n >= 5 and n <= 500 then
+        S.flyToSpeed = n
+    else
+        flyToSpeedIn.Text = tostring(S.flyToSpeed)
+    end
+end)
+
+flyToHeightIn.FocusLost:Connect(function(e)
+    if not e then return end
+    local n = tonumber(flyToHeightIn.Text)
+    if n and n >= 5 and n <= 500 then
+        S.flyToHeight = n
+    else
+        flyToHeightIn.Text = tostring(S.flyToHeight)
+    end
+end)
+
+-- Logic nút bay
+flyToBtn.Activated:Connect(function()
+    if S.flyToPlayer then
+        StopFlyToPlayer()
+    else
+        StartFlyToPlayer()
+    end
+end)
+
+-- Tự dừng khi người chơi mục tiêu rời game
+Players.PlayerRemoving:Connect(function(p)
+    if S.flyToPlayer and S.flyToTarget == p.Name then
+        StopFlyToPlayer()
+        if flyToStatusLbl then
+            flyToStatusLbl.Text = "❌ "..p.Name.." đã rời game!"
+            flyToStatusLbl.TextColor3 = C.RED
+        end
+        if playerDropBtn then
+            playerDropBtn.Text = "▼ Chọn người chơi"
+            playerDropBtn.BackgroundColor3 = Color3.fromRGB(255,255,255)
+        end
+        S.flyToTarget = nil
+    end
+    -- Cũng cập nhật dropdown nếu đang mở
+    if flyToPlayerDropdownVisible then
+        RebuildPlayerList()
+    end
+end)
+
+py = py + 210
+
+-- ==================== ESP ====================
+Label(playerTab, "━━━━━━━━━━━━━━━━━━━━━━", py)
+py = py + 16
+
 Label(playerTab, "👁️ Quan sát & Nhìn xuyên tường", py)
 py = py + 14
 
@@ -1719,120 +2298,7 @@ espBtn.Activated:Connect(function()
 end)
 py = py + 30
 
-Label(playerTab, "🚀 Bay Đến Người Chơi (Lên Cao ➔ Bay Ngang ➔ Hạ Xuống)", py)
-py = py + 16
-
-local selectTargetBtn = New("TextButton", {
-    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,py),
-    Text="👤 Chọn Người Chơi... ▾", BackgroundColor3=Color3.fromRGB(255,255,255),
-    BackgroundTransparency=0, TextColor3=C.DARK, Font=Enum.Font.GothamBold,
-    TextSize=10, BorderSizePixel=0, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
-}, playerTab)
-Corner(selectTargetBtn, UDim.new(0,5))
-Stroke(selectTargetBtn, Color3.fromRGB(180,180,200), 1.2)
-New("UIPadding", {PaddingLeft=UDim.new(0,8)}, selectTargetBtn)
-
-py = py + 30
-
-local targetListFrame = New("ScrollingFrame", {
-    Size=UDim2.new(1,-16,0,100), Position=UDim2.new(0,8,0,py-2),
-    BackgroundColor3=Color3.fromRGB(250,250,255), BackgroundTransparency=0,
-    BorderSizePixel=0, Visible=false, ZIndex=20, ScrollBarThickness=4,
-    CanvasSize=UDim2.new(0,0,0,0),
-}, playerTab)
-Corner(targetListFrame, UDim.new(0,5))
-Stroke(targetListFrame, Color3.fromRGB(150,160,200), 1.2)
-
-New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,2)}, targetListFrame)
-
-local function RefreshPlayerDropdown()
-    for _, child in ipairs(targetListFrame:GetChildren()) do
-        if not child:IsA("UIListLayout") then child:Destroy() end
-    end
-    local count = 0
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= player then
-            count = count + 1
-            local pBtn = New("TextButton", {
-                Size=UDim2.new(1,0,0,22), Text="  👤 " .. p.DisplayName .. " (@" .. p.Name .. ")",
-                BackgroundColor3=Color3.fromRGB(240,242,250), BackgroundTransparency=0,
-                TextColor3=C.DARK, Font=Enum.Font.GothamMedium, TextSize=10,
-                TextXAlignment=Enum.TextXAlignment.Left, BorderSizePixel=0, ZIndex=21,
-            }, targetListFrame)
-            pBtn.Activated:Connect(function()
-                S.selectedTargetPlayer = p
-                selectTargetBtn.Text = "🎯 Đã Chọn: " .. p.DisplayName
-                targetListFrame.Visible = false
-            end)
-        end
-    end
-    targetListFrame.CanvasSize = UDim2.new(0, 0, 0, count * 24)
-end
-
-selectTargetBtn.Activated:Connect(function()
-    RefreshPlayerDropdown()
-    targetListFrame.Visible = not targetListFrame.Visible
-end)
-
-Label(playerTab, "Tốc độ bay:", py)
-New("TextLabel", {
-    Size=UDim2.new(0,80,0,14), Position=UDim2.new(0,110,0,py),
-    Text="Độ cao vút lên:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(60,60,60),
-    Font=Enum.Font.GothamMedium, TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=6,
-}, playerTab)
-
-py = py + 14
-
-local tpFlySpdIn = New("TextBox", {
-    Size=UDim2.new(0,80,0,24), Position=UDim2.new(0,8,0,py), Text="100",
-    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
-    Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
-    Active=true, Selectable=true, ZIndex=8,
-}, playerTab)
-Corner(tpFlySpdIn, UDim.new(0,5)); Stroke(tpFlySpdIn)
-
-local tpFlyHgtIn = New("TextBox", {
-    Size=UDim2.new(0,80,0,24), Position=UDim2.new(0,110,0,py), Text="150",
-    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
-    Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
-    Active=true, Selectable=true, ZIndex=8,
-}, playerTab)
-Corner(tpFlyHgtIn, UDim.new(0,5)); Stroke(tpFlyHgtIn)
-
-tpFlySpdIn.FocusLost:Connect(function(e)
-    if not e then return end
-    local n = tonumber(tpFlySpdIn.Text)
-    if n and n > 0 then S.teleportFlySpeed = n else tpFlySpdIn.Text = tostring(S.teleportFlySpeed) end
-end)
-
-tpFlyHgtIn.FocusLost:Connect(function(e)
-    if not e then return end
-    local n = tonumber(tpFlyHgtIn.Text)
-    if n and n > 0 then S.teleportFlyHeight = n else tpFlyHgtIn.Text = tostring(S.teleportFlyHeight) end
-end)
-
-py = py + 30
-
-local startTpFlyBtn = Button(playerTab, "🚀 Bay Đến Người Chơi", 8, py, 140, 26, C.GREEN)
-local stopTpFlyBtn = Button(playerTab, "⏹️ Dừng Bay", 156, py, 80, 26, C.RED)
-
-py = py + 30
-
-local tpStatusLbl = Label(playerTab, "💡 Chọn người chơi và nhấn 'Bay Đến'", py)
-tpStatusLbl.TextColor3 = C.BLUE; tpStatusLbl.TextSize = 9
-
-startTpFlyBtn.Activated:Connect(function()
-    targetListFrame.Visible = false
-    StartTpFly(S.selectedTargetPlayer, tpStatusLbl)
-end)
-
-stopTpFlyBtn.Activated:Connect(function()
-    StopTpFly()
-    tpStatusLbl.Text = "⏹️ Đã hủy quá trình bay!"
-end)
-
-py = py + 20
-
+-- ==================== FREEZE OTHERS ====================
 Label(playerTab, "🧊 Đóng Băng & Tác Động Người Khác", py)
 py = py + 14
 
@@ -1847,6 +2313,7 @@ freezeOthersBtn.Activated:Connect(function()
 end)
 py = py + 30
 
+-- ==================== ANTI AFK & ANTI KICK ====================
 Label(playerTab, "🛡️ Treo máy & Bảo vệ Bản Thân", py)
 py = py + 14
 
@@ -1866,6 +2333,7 @@ blockServerBtn.Activated:Connect(function()
 end)
 py = py + 32
 
+-- ==================== SERVER HOP ====================
 Label(playerTab, "━━━━━━━━━━━━━━━━━━━━━━", py)
 py = py + 16
 
@@ -2298,9 +2766,13 @@ player.CharacterAdded:Connect(function(c)
     if S.customCam then EnCC() end
     if S.freeCam then EnFC() end
     if S.esp then UpdateESP() end
+    -- Dừng fly to player khi respawn
+    if S.flyToPlayer then StopFlyToPlayer() end
 end)
 
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Đã sửa xong! Menu Banana Cat Hub hiển thị thành công 100%!")
+print("✅ Đã thêm tính năng 'Bay Tới Người Chơi' vào Tab Người Chơi!")
+print("✈ Cách dùng: Tab Người Chơi → Chọn người → Chỉnh tốc độ/chiều cao → Bấm 'Bắt Đầu Bay'")
+print("📍 Nhân vật sẽ: Bay lên cao → Bay ngang tới mục tiêu → Hạ xuống cạnh người chơi")
