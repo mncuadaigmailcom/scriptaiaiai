@@ -1,6 +1,6 @@
 -- ============================================
--- EXECUTOR MENU - Thêm Tab "Script Lưu" giữa Code & Di Chuyển
--- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Save Config)
+-- EXECUTOR MENU - Fix Hoàn Toàn Lỗi Không Hoạt Động trên mọi Executor
+-- (Banana Cat Hub Style + Caro Pattern + Chỉnh 4 góc + Tab Script Lưu ở giữa)
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -16,13 +16,15 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Xác định Parent an toàn cho UI
+-- Xác định Parent an toàn tuyệt đối
 local targetGui = playerGui
-if gethui then
-    targetGui = gethui()
-elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
-    targetGui = game:GetService("CoreGui")
-end
+pcall(function()
+    if gethui then
+        targetGui = gethui()
+    elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
+        targetGui = game:GetService("CoreGui")
+    end
+end)
 
 -- ==================== CONSTANTS ====================
 local C = {
@@ -76,7 +78,9 @@ local function Stroke(p, c, t)
 end
 
 local function Tween(o, p, d, e)
-    TweenService:Create(o, TweenInfo.new(d or 1.5, e or Enum.EasingStyle.Quad), p):Play()
+    pcall(function()
+        TweenService:Create(o, TweenInfo.new(d or 1.5, e or Enum.EasingStyle.Quad), p):Play()
+    end)
 end
 
 local function TweenL(p)
@@ -354,7 +358,7 @@ local function AddTab(name, icon, order)
         activeTab=sf
     end
 
-    btn.Activated:Connect(SwitchToThisTab)
+    btn.MouseButton1Click:Connect(SwitchToThisTab)
 
     table.insert(tabs, btn)
     table.insert(tabContent, sf)
@@ -363,9 +367,9 @@ local function AddTab(name, icon, order)
     return sf
 end
 
--- ===== 7 TAB (ĐẶT TAB "SCRIPT LƯU" Ở GIỮA CODE VÀ DI CHUYỂN) =====
+-- ===== 7 TAB (TAB "SCRIPT LƯU" Ở GIỮA CODE VÀ DI CHUYỂN) =====
 local codeTab         = AddTab("Code", "💻", 1)
-local savedScriptsTab = AddTab("Script Lưu", "💾", 2) -- TAB MỚI Ở GIỮA!
+local savedScriptsTab = AddTab("Script Lưu", "💾", 2)
 local moveTab         = AddTab("Di Chuyển", "🏃", 3)
 local playerTab       = AddTab("Người Chơi", "👤", 4)
 local envTab          = AddTab("Môi Trường", "⚙️", 5)
@@ -683,10 +687,10 @@ TogFlyRun = function()
     if S.flyRun then StartFlyRun() else StopFlyRun() end
 end
 
-clsOBtn.Activated:Connect(function() S.flyRun=false; StopFlyRun() end)
-togCBtn.Activated:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
+clsOBtn.MouseButton1Click:Connect(function() S.flyRun=false; StopFlyRun() end)
+togCBtn.MouseButton1Click:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
 
-movUBtn.Activated:Connect(function()
+movUBtn.MouseButton1Click:Connect(function()
     if S.flyRun then 
         if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
@@ -695,7 +699,7 @@ movUBtn.Activated:Connect(function()
     end
 end)
 
-movDBtn.Activated:Connect(function()
+movDBtn.MouseButton1Click:Connect(function()
     if S.flyRun then 
         if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
@@ -1040,7 +1044,7 @@ for _, s in ipairs(quickScripts) do
         BackgroundTransparency=1, TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10,
         TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
     }, btn)
-    btn.Activated:Connect(function() RunCode(s.c, s.n, nil, 1, 0) end)
+    btn.MouseButton1Click:Connect(function() RunCode(s.c, s.n, nil, 1, 0) end)
     y = y + 32
 end
 
@@ -1131,9 +1135,9 @@ local minOpt = New("TextButton", {
     Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=16,
 }, ddFrame)
 
-unitBtn.Activated:Connect(function() ddFrame.Visible=not ddFrame.Visible end)
-secOpt.Activated:Connect(function() unitBtn.Text="Giây ▾"; ddFrame.Visible=false end)
-minOpt.Activated:Connect(function() unitBtn.Text="Phút ▾"; ddFrame.Visible=false end)
+unitBtn.MouseButton1Click:Connect(function() ddFrame.Visible=not ddFrame.Visible end)
+secOpt.MouseButton1Click:Connect(function() unitBtn.Text="Giây ▾"; ddFrame.Visible=false end)
+minOpt.MouseButton1Click:Connect(function() unitBtn.Text="Phút ▾"; ddFrame.Visible=false end)
 
 UserInputService.InputBegan:Connect(function(i,gp)
     if gp then return end
@@ -1152,7 +1156,7 @@ y = y + 82
 local runBtn = Button(codeTab, "▶ Chạy Code", 8, y, 140, 26, Color3.fromRGB(0,160,90))
 local stopBtn = Button(codeTab, "⏹ Dừng", 156, y, 80, 26, C.RED)
 y = y + 32
-local saveBtn = Button(codeTab, "💾 Lưu Script Vào Tab Mới", 8, y, 160, 26, C.BLUE)
+local saveBtn = Button(codeTab, "💾 Lưu Script Vào Tab Mới", 8, y, 170, 26, C.BLUE)
 y = y + 32
 
 local statusLbl = Label(codeTab, "", y)
@@ -1164,7 +1168,7 @@ countLbl.TextColor3=C.GREEN; countLbl.TextSize=9; countLbl.ZIndex=6
 
 codeTab.CanvasSize = UDim2.new(0,0,0,y+40)
 
--- ==================== TAB 2: SCRIPT LƯU (ĐẶT Ở GIỮA CODE VÀ DI CHUYỂN) ====================
+-- ==================== TAB 2: SCRIPT LƯU ====================
 local sy = 8
 
 Label(savedScriptsTab, "💾 Danh Sách Script Đã Lưu (▶ chạy | ✏ sửa | ✕ xóa)", sy)
@@ -1188,7 +1192,6 @@ local scriptList = New("Frame", {
 }, savedScriptsTab)
 New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,3)}, scriptList)
 
--- Khung cấu hình nằm ở cuối Tab Script Lưu
 local configFrame = New("Frame", {
     Size=UDim2.new(1,-16,0,100), Position=UDim2.new(0,8,0,sy+40),
     BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
@@ -1269,20 +1272,19 @@ RebuildScripts = function()
         Corner(del,UDim.new(1,0))
 
         local idx=i
-        ind.Activated:Connect(function()
+        ind.MouseButton1Click:Connect(function()
             if curIndicator==ind then Cancel() return end
             RunCode(d.code,d.name,ind,1,0)
             statusLbl.Text="⏳ Đang chạy: "..d.name
         end)
         
-        -- Bấm Sửa: Tự chuyển về Tab Code để chỉnh sửa
-        edit.Activated:Connect(function()
+        edit.MouseButton1Click:Connect(function()
             nameIn.Text=d.name
             codeIn.Text=d.code
             if tabButtons["Code"] then tabButtons["Code"]() end
         end)
 
-        del.Activated:Connect(function()
+        del.MouseButton1Click:Connect(function()
             if curIndicator==ind then Cancel() end
             table.remove(scripts,idx)
             RebuildScripts()
@@ -1301,9 +1303,9 @@ end
 
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 
-stopBtn.Activated:Connect(function() Cancel(); statusLbl.Text="⏹️ Đã dừng" end)
+stopBtn.MouseButton1Click:Connect(function() Cancel(); statusLbl.Text="⏹️ Đã dừng" end)
 
-runBtn.Activated:Connect(function()
+runBtn.MouseButton1Click:Connect(function()
     local t=math.clamp(tonumber(repIn.Text)or 1,1,1000)
     local d=math.max(tonumber(delIn.Text)or 0,0)
     if unitBtn.Text:find("Phút") then d=d*60 end
@@ -1323,7 +1325,7 @@ runBtn.Activated:Connect(function()
     end
 end)
 
-saveBtn.Activated:Connect(function()
+saveBtn.MouseButton1Click:Connect(function()
     local n=nameIn.Text
     local c=codeIn.Text
     if #c==0 then statusLbl.Text="⚠️ Vui lòng nhập code!"; return end
@@ -1364,7 +1366,6 @@ carpBtn = Button(moveTab, "🪩 Thảm kính: TẮT", 8, my, 130, 24, C.GRAY)
 flyRunBtn = Button(moveTab, "🕹️ Bay chạy bộ: TẮT", 148, my, 130, 24, C.GRAY)
 my = my + 30
 
--- ĐIỀU CHỈNH 3 CHIỀU THẢM
 Label(moveTab, "📐 Kích thước thảm kính (Rộng x Dày x Dài)", my)
 my = my + 16
 
@@ -1456,7 +1457,6 @@ local jpLbl = Label(moveTab, "Hiện tại: 50", my)
 jpLbl.Position=UDim2.new(0,72,0,my); jpLbl.Size=UDim2.new(0,120,0,14)
 jpLbl.TextColor3=C.GREEN; jpLbl.TextSize=9
 
--- Connect controls
 flySpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flySpdIn.Text); if n and n>=0 then S.flySpeed=n else flySpdIn.Text=tostring(S.flySpeed) end end)
 
 carpWIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpWIn.Text); if n and n>=0.1 then S.carpetWidth=n else carpWIn.Text=tostring(S.carpetWidth) end end)
@@ -1466,36 +1466,36 @@ carpLIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber
 wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(wsIn.Text); if n and n>0 then S.walkSpeed=n; UpdChar() else wsIn.Text=tostring(S.walkSpeed) end; wsLbl.Text="Hiện tại: "..S.walkSpeed end)
 jpIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(jpIn.Text); if n and n>0 then S.jumpPower=n; UpdChar() else jpIn.Text=tostring(S.jumpPower) end; jpLbl.Text="Hiện tại: "..S.jumpPower end)
 
-flyBtn.Activated:Connect(function()
+flyBtn.MouseButton1Click:Connect(function()
     S.flying = not S.flying
     TogFly()
     flyBtn.Text=S.flying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
     flyBtn.BackgroundColor3=S.flying and Color3.fromRGB(70,130,180) or C.GRAY
 end)
-carpBtn.Activated:Connect(function()
+carpBtn.MouseButton1Click:Connect(function()
     S.carpet = not S.carpet
     TogCarpet()
     carpBtn.Text=S.carpet and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
     carpBtn.BackgroundColor3=S.carpet and Color3.fromRGB(160,100,200) or C.GRAY
 end)
-flyRunBtn.Activated:Connect(function()
+flyRunBtn.MouseButton1Click:Connect(function()
     S.flyRun = not S.flyRun
     TogFlyRun()
     flyRunBtn.Text=S.flyRun and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
     flyRunBtn.BackgroundColor3=S.flyRun and C.ORANGE or C.GRAY
 end)
-noclipBtn.Activated:Connect(function()
+noclipBtn.MouseButton1Click:Connect(function()
     S.noClip=not S.noClip
     noclipBtn.Text=S.noClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
     noclipBtn.BackgroundColor3=S.noClip and Color3.fromRGB(0,180,100) or C.GRAY
     if S.noClip then EnNC() else DisNC() end
 end)
-infJumpBtn.Activated:Connect(function()
+infJumpBtn.MouseButton1Click:Connect(function()
     S.infJump=not S.infJump
     infJumpBtn.Text=S.infJump and "🦘 Nhảy Vô Hạn: BẬT" or "🦘 Nhảy Vô Hạn: TẮT"
     infJumpBtn.BackgroundColor3=S.infJump and C.GREEN or C.GRAY
 end)
-clickTpBtn.Activated:Connect(function()
+clickTpBtn.MouseButton1Click:Connect(function()
     S.clickTp=not S.clickTp
     clickTpBtn.Text=S.clickTp and "🎯 Click TP (Ctrl+Click): BẬT" or "🎯 Click TP (Ctrl+Click): TẮT"
     clickTpBtn.BackgroundColor3=S.clickTp and C.GREEN or C.GRAY
@@ -1510,7 +1510,7 @@ Label(playerTab, "👁️ Quan sát & Nhìn xuyên tường", py)
 py = py + 14
 
 espBtn = Button(playerTab, "👁️ ESP Người Chơi: TẮT", 8, py, 200, 24, C.GRAY)
-espBtn.Activated:Connect(function()
+espBtn.MouseButton1Click:Connect(function()
     S.esp = not S.esp
     espBtn.Text = S.esp and "👁️ ESP Người Chơi: BẬT" or "👁️ ESP Người Chơi: TẮT"
     espBtn.BackgroundColor3 = S.esp and C.GREEN or C.GRAY
@@ -1522,7 +1522,7 @@ Label(playerTab, "🛡️ Treo máy & Hệ thống", py)
 py = py + 14
 
 antiAfkBtn = Button(playerTab, "🛡️ Anti-AFK (Treo máy): BẬT", 8, py, 200, 24, C.GREEN)
-antiAfkBtn.Activated:Connect(function()
+antiAfkBtn.MouseButton1Click:Connect(function()
     S.antiAfk = not S.antiAfk
     antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
     antiAfkBtn.BackgroundColor3 = S.antiAfk and C.GREEN or C.GRAY
@@ -1538,23 +1538,25 @@ py = py + 14
 local rejoinBtn = Button(playerTab, "🔄 Vào Lại Server", 8, py, 110, 24, C.BLUE)
 local serverHopBtn = Button(playerTab, "🌐 Đổi Server Khác", 126, py, 110, 24, C.PURPLE)
 
-rejoinBtn.Activated:Connect(function()
+rejoinBtn.MouseButton1Click:Connect(function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 end)
 
-serverHopBtn.Activated:Connect(function()
+serverHopBtn.MouseButton1Click:Connect(function()
     local servers = {}
     local req = request or http_request or (syn and syn.request)
     if req then
-        local res = req({Url = string.format("https://games.roblox.com/v1/games/%d/servers/0?sortOrder=Desc&limit=100", game.PlaceId)})
-        local body = HttpService:JSONDecode(res.Body)
-        if body and body.data then
-            for _, s in ipairs(body.data) do
-                if type(s) == "table" and s.playing < s.maxPlayers and s.id ~= game.JobId then
-                    table.insert(servers, s.id)
+        pcall(function()
+            local res = req({Url = string.format("https://games.roblox.com/v1/games/%d/servers/0?sortOrder=Desc&limit=100", game.PlaceId)})
+            local body = HttpService:JSONDecode(res.Body)
+            if body and body.data then
+                for _, s in ipairs(body.data) do
+                    if type(s) == "table" and s.playing < s.maxPlayers and s.id ~= game.JobId then
+                        table.insert(servers, s.id)
+                    end
                 end
             end
-        end
+        end)
     end
     if #servers > 0 then
         TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], player)
@@ -1606,21 +1608,21 @@ local aB = New("TextBox", {Size=UDim2.new(0,40,0,24), Position=UDim2.new(0,100,0
 Corner(aB,UDim.new(0,5)); Stroke(aB)
 local applyAmbBtn = Button(envTab, "✔ Áp dụng", 150, ey, 80, 24, C.BLUE)
 
-darkBtn.Activated:Connect(function()
+darkBtn.MouseButton1Click:Connect(function()
     TweenL({ClockTime=0, Brightness=0.3, OutdoorAmbient=Color3.fromRGB(20,20,40), Ambient=Color3.fromRGB(20,20,40)})
 end)
-brightBtn.Activated:Connect(function()
+brightBtn.MouseButton1Click:Connect(function()
     TweenL({ClockTime=14, Brightness=2.5, OutdoorAmbient=C.WHITE, Ambient=C.WHITE, EnvironmentDiffuseScale=1, EnvironmentSpecularScale=1})
     if S.fog then S.fog=false; fogBtn.Text="🌫️ Sương mù: TẮT"; fogBtn.BackgroundColor3=C.GRAY; Tween(Lighting,{FogEnd=100000,FogStart=0,FogColor=Color3.new(1,1,1)}) end
 end)
-fogBtn.Activated:Connect(function()
+fogBtn.MouseButton1Click:Connect(function()
     S.fog=not S.fog
     fogBtn.Text=S.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
     fogBtn.BackgroundColor3=S.fog and Color3.fromRGB(70,70,70) or C.GRAY
     TweenL(S.fog and {FogStart=0,FogEnd=80,FogColor=Color3.fromRGB(180,180,180)} or {FogStart=0,FogEnd=100000,FogColor=Color3.new(1,1,1)})
 end)
 
-fullBrightBtn.Activated:Connect(function()
+fullBrightBtn.MouseButton1Click:Connect(function()
     S.fullBright = not S.fullBright
     fullBrightBtn.Text = S.fullBright and "💡 Sáng Đêm: BẬT" or "💡 Sáng Đêm: TẮT"
     fullBrightBtn.BackgroundColor3 = S.fullBright and C.GREEN or C.GRAY
@@ -1633,16 +1635,16 @@ fullBrightBtn.Activated:Connect(function()
     end
 end)
 
-resetEnvBtn.Activated:Connect(function()
+resetEnvBtn.MouseButton1Click:Connect(function()
     TweenL(DEFAULT_LIGHTING)
     S.fog=false; fogBtn.Text="🌫️ Sương mù: TẮT"; fogBtn.BackgroundColor3=C.GRAY
     S.fullBright=false; fullBrightBtn.Text="💡 Sáng Đêm: TẮT"; fullBrightBtn.BackgroundColor3=C.GRAY
 end)
-applyBrightBtn.Activated:Connect(function()
+applyBrightBtn.MouseButton1Click:Connect(function()
     local n=tonumber(brightIn.Text)
     if n and n>=0.5 and n<=3 then TweenL({Brightness=n}) else brightIn.Text=string.format("%.1f",Lighting.Brightness) end
 end)
-applyAmbBtn.Activated:Connect(function()
+applyAmbBtn.MouseButton1Click:Connect(function()
     local r=math.clamp(tonumber(aR.Text)or 128,0,255)
     local g=math.clamp(tonumber(aG.Text)or 128,0,255)
     local b=math.clamp(tonumber(aB.Text)or 128,0,255)
@@ -1707,13 +1709,13 @@ New("TextLabel", {
     TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top, BorderSizePixel=0, ZIndex=7,
 }, helpFrame)
 
-ccBtn.Activated:Connect(function()
+ccBtn.MouseButton1Click:Connect(function()
     S.customCam = not S.customCam
     TogCC()
     ccBtn.Text=S.customCam and "📷 Camera tùy chỉnh: BẬT" or "📷 Camera tùy chỉnh: TẮT"
     ccBtn.BackgroundColor3=S.customCam and C.ORANGE or C.GRAY
 end)
-fcBtn.Activated:Connect(function()
+fcBtn.MouseButton1Click:Connect(function()
     S.freeCam = not S.freeCam
     TogFC()
     fcBtn.Text=S.freeCam and "🎥 Camera tự do: BẬT" or "🎥 Camera tự do: TẮT"
@@ -1743,7 +1745,7 @@ local presetBtns = {
 }
 for i,d in ipairs(presetBtns) do
     local btn = Button(gfxTab, d.n, 8+(i-1)*72, gy, 64, 22, d.c)
-    btn.Activated:Connect(function()
+    btn.MouseButton1Click:Connect(function()
         local pr=PRESETS[d.p]
         if not pr then return end
         pcall(function() settings().Rendering.QualityLevel=pr.level end)
@@ -1757,7 +1759,7 @@ end
 gy = gy + 28
 
 local ulBtn = Button(gfxTab, "⚡ Siêu thấp - Tối đa FPS", 8, gy, 220, 22, Color3.fromRGB(100,60,60))
-ulBtn.Activated:Connect(function()
+ulBtn.MouseButton1Click:Connect(function()
     local pr=PRESETS.UltraLow
     pcall(function() settings().Rendering.QualityLevel=pr.level end)
     Lighting.ShadowSoftness=pr.shadow; Lighting.GlobalShadows=pr.shadows
@@ -1771,7 +1773,7 @@ gy = gy + 30
 Label(gfxTab, "🌑 Bóng đổ", gy)
 gy = gy + 14
 local shadowBtn = Button(gfxTab, "🌑 Bóng đổ: BẬT", 8, gy, 160, 22, C.GREEN)
-shadowBtn.Activated:Connect(function()
+shadowBtn.MouseButton1Click:Connect(function()
     S.shadows=not S.shadows
     Lighting.GlobalShadows=S.shadows
     shadowBtn.Text=S.shadows and "🌑 Bóng đổ: BẬT" or "🌑 Bóng đổ: TẮT"
@@ -1799,7 +1801,7 @@ for i,d in ipairs(effects) do
     local yy = gy + (i-1)//2 * 28
     local isOn = not d.t:find("TẮT")
     local btn = Button(gfxTab, d.t, x, yy, 130, 22, isOn and d.on or d.off)
-    btn.Activated:Connect(function()
+    btn.MouseButton1Click:Connect(function()
         S[d.s]=not S[d.s]
         d.e.Enabled=S[d.s]
         if S[d.s] then
@@ -1826,7 +1828,7 @@ local fpsLbl = New("TextLabel", {
 Corner(fpsLbl,UDim.new(0,6))
 
 local fpsBuf={}
-fpsBtn.Activated:Connect(function()
+fpsBtn.MouseButton1Click:Connect(function()
     S.fpsCounter=not S.fpsCounter
     fpsLbl.Visible=S.fpsCounter
     fpsBtn.Text=S.fpsCounter and "📈 Hiện FPS: BẬT" or "📈 Hiện FPS: TẮT"
@@ -1866,9 +1868,9 @@ local function setTextures(mode)
         end
     end
 end
-texHighBtn.Activated:Connect(function() setTextures("High") end)
-texLowBtn.Activated:Connect(function() setTextures("Low") end)
-texOffBtn.Activated:Connect(function() setTextures("Off") end)
+texHighBtn.MouseButton1Click:Connect(function() setTextures("High") end)
+texLowBtn.MouseButton1Click:Connect(function() setTextures("Low") end)
+texOffBtn.MouseButton1Click:Connect(function() setTextures("Off") end)
 
 gy = gy + 30
 Label(gfxTab, "💨 Hiệu ứng hạt & Hình dán", gy)
@@ -1891,13 +1893,13 @@ local function setDecals(enabled)
     end
 end
 
-partBtn.Activated:Connect(function()
+partBtn.MouseButton1Click:Connect(function()
     S.particles=not S.particles
     setParticles(S.particles)
     partBtn.Text=S.particles and "💨 Hạt: BẬT" or "💨 Hạt: TẮT"
     partBtn.BackgroundColor3=S.particles and C.GREEN or C.GRAY
 end)
-decalBtn.Activated:Connect(function()
+decalBtn.MouseButton1Click:Connect(function()
     S.decals=not S.decals
     setDecals(S.decals)
     decalBtn.Text=S.decals and "🖼 Hình dán: BẬT" or "🖼 Hình dán: TẮT"
@@ -1906,7 +1908,7 @@ end)
 
 gy = gy + 32
 local resetGfxBtn = Button(gfxTab, "🔄 Đặt lại đồ họa về mặc định", 8, gy, 240, 24, Color3.fromRGB(150,60,60))
-resetGfxBtn.Activated:Connect(function()
+resetGfxBtn.MouseButton1Click:Connect(function()
     local pr=PRESETS.Ultra
     pcall(function() settings().Rendering.QualityLevel=pr.level end)
     Lighting.ShadowSoftness=pr.shadow; Lighting.GlobalShadows=pr.shadows
@@ -1936,42 +1938,44 @@ cfgStatusLbl.TextColor3 = C.YELLOW
 cfgStatusLbl.TextSize = 9
 
 local function ApplyAllUIFromState()
-    flySpdIn.Text = tostring(S.flySpeed)
-    carpWIn.Text = tostring(S.carpetWidth)
-    carpTIn.Text = tostring(S.carpetThickness)
-    carpLIn.Text = tostring(S.carpetLength)
-    wsIn.Text = tostring(S.walkSpeed)
-    jpIn.Text = tostring(S.jumpPower)
-    fovIn.Text = tostring(S.fov)
-    offXIn.Text = tostring(S.camOffX)
-    offYIn.Text = tostring(S.camOffY)
-    fcSpdIn.Text = tostring(S.freeCamSpeed)
-    
-    noclipBtn.Text = S.noClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
-    noclipBtn.BackgroundColor3 = S.noClip and Color3.fromRGB(0,180,100) or C.GRAY
-    if S.noClip then EnNC() else DisNC() end
+    pcall(function()
+        flySpdIn.Text = tostring(S.flySpeed)
+        carpWIn.Text = tostring(S.carpetWidth)
+        carpTIn.Text = tostring(S.carpetThickness)
+        carpLIn.Text = tostring(S.carpetLength)
+        wsIn.Text = tostring(S.walkSpeed)
+        jpIn.Text = tostring(S.jumpPower)
+        fovIn.Text = tostring(S.fov)
+        offXIn.Text = tostring(S.camOffX)
+        offYIn.Text = tostring(S.camOffY)
+        fcSpdIn.Text = tostring(S.freeCamSpeed)
+        
+        noclipBtn.Text = S.noClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
+        noclipBtn.BackgroundColor3 = S.noClip and Color3.fromRGB(0,180,100) or C.GRAY
+        if S.noClip then EnNC() else DisNC() end
 
-    infJumpBtn.Text = S.infJump and "🦘 Nhảy Vô Hạn: BẬT" or "🦘 Nhảy Vô Hạn: TẮT"
-    infJumpBtn.BackgroundColor3 = S.infJump and C.GREEN or C.GRAY
+        infJumpBtn.Text = S.infJump and "🦘 Nhảy Vô Hạn: BẬT" or "🦘 Nhảy Vô Hạn: TẮT"
+        infJumpBtn.BackgroundColor3 = S.infJump and C.GREEN or C.GRAY
 
-    clickTpBtn.Text = S.clickTp and "🎯 Click TP (Ctrl+Click): BẬT" or "🎯 Click TP (Ctrl+Click): TẮT"
-    clickTpBtn.BackgroundColor3 = S.clickTp and C.GREEN or C.GRAY
+        clickTpBtn.Text = S.clickTp and "🎯 Click TP (Ctrl+Click): BẬT" or "🎯 Click TP (Ctrl+Click): TẮT"
+        clickTpBtn.BackgroundColor3 = S.clickTp and C.GREEN or C.GRAY
 
-    espBtn.Text = S.esp and "👁️ ESP Người Chơi: BẬT" or "👁️ ESP Người Chơi: TẮT"
-    espBtn.BackgroundColor3 = S.esp and C.GREEN or C.GRAY
-    UpdateESP()
+        espBtn.Text = S.esp and "👁️ ESP Người Chơi: BẬT" or "👁️ ESP Người Chơi: TẮT"
+        espBtn.BackgroundColor3 = S.esp and C.GREEN or C.GRAY
+        UpdateESP()
 
-    antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
-    antiAfkBtn.BackgroundColor3 = S.antiAfk and C.GREEN or C.GRAY
+        antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
+        antiAfkBtn.BackgroundColor3 = S.antiAfk and C.GREEN or C.GRAY
 
-    fogBtn.Text = S.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
-    fogBtn.BackgroundColor3 = S.fog and Color3.fromRGB(70,70,70) or C.GRAY
+        fogBtn.Text = S.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
+        fogBtn.BackgroundColor3 = S.fog and Color3.fromRGB(70,70,70) or C.GRAY
 
-    fullBrightBtn.Text = S.fullBright and "💡 Sáng Đêm: BẬT" or "💡 Sáng Đêm: TẮT"
-    fullBrightBtn.BackgroundColor3 = S.fullBright and C.GREEN or C.GRAY
+        fullBrightBtn.Text = S.fullBright and "💡 Sáng Đêm: BẬT" or "💡 Sáng Đêm: TẮT"
+        fullBrightBtn.BackgroundColor3 = S.fullBright and C.GREEN or C.GRAY
 
-    UpdChar()
-    RebuildScripts()
+        UpdChar()
+        RebuildScripts()
+    end)
 end
 
 local configFile = "BananaCatHub_Config.json"
@@ -1983,7 +1987,7 @@ local function SaveConfig()
     }
     local success, json = pcall(function() return HttpService:JSONEncode(data) end)
     if success and json then
-        if writefile then
+        if typeof(writefile) == "function" then
             pcall(function() writefile(configFile, json) end)
             cfgStatusLbl.Text = "✅ Đã lưu cấu hình vào máy!"
         else
@@ -1995,7 +1999,7 @@ local function SaveConfig()
 end
 
 local function LoadConfig()
-    if isfile and isfile(configFile) and readfile then
+    if typeof(isfile) == "function" and isfile(configFile) and typeof(readfile) == "function" then
         local success, content = pcall(function() return readfile(configFile) end)
         if success and content then
             local pSuccess, data = pcall(function() return HttpService:JSONDecode(content) end)
@@ -2013,9 +2017,9 @@ local function LoadConfig()
     cfgStatusLbl.Text = "📭 Chưa có file cấu hình được lưu!"
 end
 
-cfgSaveBtn.Activated:Connect(SaveConfig)
-cfgLoadBtn.Activated:Connect(LoadConfig)
-cfgResetBtn.Activated:Connect(function()
+cfgSaveBtn.MouseButton1Click:Connect(SaveConfig)
+cfgLoadBtn.MouseButton1Click:Connect(LoadConfig)
+cfgResetBtn.MouseButton1Click:Connect(function()
     S.walkSpeed = 16
     S.jumpPower = 50
     S.flySpeed = 50
@@ -2034,7 +2038,7 @@ end)
 -- Tự động Load khi vừa bật Menu
 task.defer(function()
     RebuildScripts()
-    if isfile and isfile(configFile) then
+    if typeof(isfile) == "function" and isfile(configFile) then
         LoadConfig()
     end
 end)
@@ -2049,12 +2053,12 @@ local function ToggleMainFrame()
     togBtn.Text = main.Visible and "✕" or "🍌"
 end
 
-closeBtn.Activated:Connect(function()
+closeBtn.MouseButton1Click:Connect(function()
     main.Visible = false
     togBtn.Text = "🍌"
 end)
 
-togBtn.Activated:Connect(ToggleMainFrame)
+togBtn.MouseButton1Click:Connect(ToggleMainFrame)
 
 UserInputService.InputBegan:Connect(function(i, gp)
     if not gp and i.KeyCode == Enum.KeyCode.RightControl then
@@ -2082,4 +2086,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Hub đã chuyển Tab Script Lưu vào giữa Code và Di Chuyển thành công!")
+print("✅ Banana Cat Hub đã tải thành công và sẵn sàng sử dụng!")
