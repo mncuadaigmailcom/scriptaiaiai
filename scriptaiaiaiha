@@ -1,6 +1,7 @@
 -- ============================================
--- EXECUTOR MENU - Fix Hoàn Toàn Lỗi Không Hoạt Động trên mọi Executor
--- (Banana Cat Hub Style + Caro Pattern + Chỉnh 4 góc + Tab Script Lưu ở giữa)
+-- EXECUTOR MENU - Fix NoClip Không Lỗi Thảm & Xuyên Tường Mượt 100%
+-- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
+-- + Tab "Code Đã Lưu" Nằm Giữa "Code" và "Di Chuyển"
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -16,15 +17,13 @@ local VirtualUser = game:GetService("VirtualUser")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Xác định Parent an toàn tuyệt đối
+-- Xác định Parent an toàn cho UI
 local targetGui = playerGui
-pcall(function()
-    if gethui then
-        targetGui = gethui()
-    elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
-        targetGui = game:GetService("CoreGui")
-    end
-end)
+if gethui then
+    targetGui = gethui()
+elseif game:GetService("CoreGui"):FindFirstChild("RobloxGui") then
+    targetGui = game:GetService("CoreGui")
+end
 
 -- ==================== CONSTANTS ====================
 local C = {
@@ -78,9 +77,7 @@ local function Stroke(p, c, t)
 end
 
 local function Tween(o, p, d, e)
-    pcall(function()
-        TweenService:Create(o, TweenInfo.new(d or 1.5, e or Enum.EasingStyle.Quad), p):Play()
-    end)
+    TweenService:Create(o, TweenInfo.new(d or 1.5, e or Enum.EasingStyle.Quad), p):Play()
 end
 
 local function TweenL(p)
@@ -202,7 +199,7 @@ UserInputService.InputEnded:Connect(function(i)
 end)
 
 -- ===== RESIZE TẠI 4 GÓC =====
-local minW, minH = 420, 260
+local minW, minH = 440, 260
 
 local function SetupResizeHandle(btn, cornerType)
     local resizing, sizeStart, posStart, inputStart
@@ -280,14 +277,13 @@ SetupResizeHandle(handleTR, "TR")
 SetupResizeHandle(handleBL, "BL")
 SetupResizeHandle(handleBR, "BR")
 
--- ==================== TAB SYSTEM ====================
+-- ==================== TAB SYSTEM (BÊN PHẢI) ====================
 local tabs = {}
 local tabContent = {}
-local tabButtons = {}
 
 local tabBar = New("ScrollingFrame", {
-    Size=UDim2.new(0,95,1,-30),
-    Position=UDim2.new(1,-95,0,30),
+    Size=UDim2.new(0,105,1,-30),
+    Position=UDim2.new(1,-105,0,30),
     BackgroundColor3=Color3.fromRGB(225,230,240),
     BackgroundTransparency=0.3,
     BorderSizePixel=0,
@@ -305,7 +301,7 @@ New("UIListLayout", {
 New("UIPadding", {PaddingTop=UDim.new(0,6), PaddingLeft=UDim.new(0,4)}, tabBar)
 
 local contentArea = New("Frame", {
-    Size=UDim2.new(1,-95,1,-30),
+    Size=UDim2.new(1,-105,1,-30),
     Position=UDim2.new(0,0,0,30),
     BackgroundTransparency=1,
     BorderSizePixel=0,
@@ -313,6 +309,20 @@ local contentArea = New("Frame", {
 }, main)
 
 local activeTab = nil
+
+local function SwitchTab(index)
+    for _, t in ipairs(tabContent) do t.Visible = false end
+    for _, b in ipairs(tabs) do
+        b.BackgroundColor3 = C.BG
+        b.BackgroundTransparency = 0.3
+    end
+    if tabContent[index] and tabs[index] then
+        tabContent[index].Visible = true
+        tabs[index].BackgroundColor3 = C.BLUE
+        tabs[index].BackgroundTransparency = 0.2
+        activeTab = tabContent[index]
+    end
+end
 
 local function AddTab(name, icon, order)
     local btn = New("TextButton", {
@@ -345,41 +355,28 @@ local function AddTab(name, icon, order)
         ZIndex=4,
     }, contentArea)
 
-    local function SwitchToThisTab()
-        if activeTab==sf then return end
-        for _, t in ipairs(tabContent) do t.Visible=false end
-        for _, b in ipairs(tabs) do
-            b.BackgroundColor3=C.BG
-            b.BackgroundTransparency=0.3
-        end
-        sf.Visible=true
-        btn.BackgroundColor3=C.BLUE
-        btn.BackgroundTransparency=0.2
-        activeTab=sf
-    end
-
-    btn.MouseButton1Click:Connect(SwitchToThisTab)
+    local tabIdx = #tabs + 1
+    btn.Activated:Connect(function()
+        SwitchTab(tabIdx)
+    end)
 
     table.insert(tabs, btn)
     table.insert(tabContent, sf)
-    tabButtons[name] = SwitchToThisTab
     tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 34 + 10)
     return sf
 end
 
--- ===== 7 TAB (TAB "SCRIPT LƯU" Ở GIỮA CODE VÀ DI CHUYỂN) =====
-local codeTab         = AddTab("Code", "💻", 1)
-local savedScriptsTab = AddTab("Script Lưu", "💾", 2)
-local moveTab         = AddTab("Di Chuyển", "🏃", 3)
-local playerTab       = AddTab("Người Chơi", "👤", 4)
-local envTab          = AddTab("Môi Trường", "⚙️", 5)
-local camTab          = AddTab("Camera", "📷", 6)
-local gfxTab          = AddTab("Đồ Họa", "🎨", 7)
+-- 7 TABS (TÍNH NĂNG "CODE ĐÃ LƯU" NẰM GIỮA CODE VÀ DI CHUYỂN)
+local codeTab      = AddTab("Code", "💻", 1)
+local savedCodeTab = AddTab("Code Đã Lưu", "💾", 2) -- TAB MỚI THÊM VÀO GIỮA
+local moveTab      = AddTab("Di Chuyển", "🏃", 3)
+local playerTab    = AddTab("Người Chơi", "👤", 4)
+local envTab       = AddTab("Môi Trường", "⚙️", 5)
+local camTab       = AddTab("Camera", "📷", 6)
+local gfxTab       = AddTab("Đồ Họa", "🎨", 7)
 
-tabs[1].BackgroundColor3=C.BLUE
-tabs[1].BackgroundTransparency=0.2
-tabContent[1].Visible=true
-activeTab=tabContent[1]
+-- Chọn Mặc định Tab Code
+SwitchTab(1)
 
 -- ==================== STATE ====================
 local S = {
@@ -444,7 +441,7 @@ UserInputService.InputBegan:Connect(function(i, gp)
     end
 end)
 
--- ==================== NOCLIP ====================
+-- ==================== NOCLIP (FIXED: CHẠY TRÊN STEPPED MƯỢT 100%) ====================
 local ncConn = nil
 
 local function EnNC()
@@ -454,14 +451,19 @@ local function EnNC()
         local c = GetChar()
         if c then
             for _, p in ipairs(c:GetDescendants()) do
-                if p:IsA("BasePart") then p.CanCollide = false end
+                if p:IsA("BasePart") then 
+                    p.CanCollide = false 
+                end
             end
         end
     end)
 end
 
 local function DisNC()
-    if ncConn then ncConn:Disconnect(); ncConn = nil end
+    if ncConn then 
+        ncConn:Disconnect() 
+        ncConn = nil 
+    end
     local c = GetChar()
     if c then
         for _, p in ipairs(c:GetDescendants()) do
@@ -536,6 +538,7 @@ end
 local function CreateCarpet(y)
     local r = Root()
     if not r then return end
+    
     if cp then cp:Destroy() end
 
     local w = S.carpetWidth or 1.5
@@ -570,6 +573,7 @@ local function CreateCarpet(y)
         
         cp.CFrame = CFrame.new(curR.Position.X, S.carpetY, curR.Position.Z)
 
+        -- FIX NOCLIP KHÔNG BỊ RƠI XUYÊN QUA THẢM KÍNH
         if S.noClip then
             local standingY = S.carpetY + (curT / 2) + 3.0
             if curR.Position.Y < standingY then
@@ -687,10 +691,10 @@ TogFlyRun = function()
     if S.flyRun then StartFlyRun() else StopFlyRun() end
 end
 
-clsOBtn.MouseButton1Click:Connect(function() S.flyRun=false; StopFlyRun() end)
-togCBtn.MouseButton1Click:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
+clsOBtn.Activated:Connect(function() S.flyRun=false; StopFlyRun() end)
+togCBtn.Activated:Connect(function() if S.flyRun then S.carpet=not S.carpet; TogCarpet() end end)
 
-movUBtn.MouseButton1Click:Connect(function()
+movUBtn.Activated:Connect(function()
     if S.flyRun then 
         if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
@@ -699,7 +703,7 @@ movUBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-movDBtn.MouseButton1Click:Connect(function()
+movDBtn.Activated:Connect(function()
     if S.flyRun then 
         if not S.carpet then S.carpet=true; TogCarpet() end
         local r = Root()
@@ -1044,7 +1048,7 @@ for _, s in ipairs(quickScripts) do
         BackgroundTransparency=1, TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10,
         TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
     }, btn)
-    btn.MouseButton1Click:Connect(function() RunCode(s.c, s.n, nil, 1, 0) end)
+    btn.Activated:Connect(function() RunCode(s.c, s.n, nil, 1, 0) end)
     y = y + 32
 end
 
@@ -1135,9 +1139,9 @@ local minOpt = New("TextButton", {
     Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=16,
 }, ddFrame)
 
-unitBtn.MouseButton1Click:Connect(function() ddFrame.Visible=not ddFrame.Visible end)
-secOpt.MouseButton1Click:Connect(function() unitBtn.Text="Giây ▾"; ddFrame.Visible=false end)
-minOpt.MouseButton1Click:Connect(function() unitBtn.Text="Phút ▾"; ddFrame.Visible=false end)
+unitBtn.Activated:Connect(function() ddFrame.Visible=not ddFrame.Visible end)
+secOpt.Activated:Connect(function() unitBtn.Text="Giây ▾"; ddFrame.Visible=false end)
+minOpt.Activated:Connect(function() unitBtn.Text="Phút ▾"; ddFrame.Visible=false end)
 
 UserInputService.InputBegan:Connect(function(i,gp)
     if gp then return end
@@ -1156,7 +1160,7 @@ y = y + 82
 local runBtn = Button(codeTab, "▶ Chạy Code", 8, y, 140, 26, Color3.fromRGB(0,160,90))
 local stopBtn = Button(codeTab, "⏹ Dừng", 156, y, 80, 26, C.RED)
 y = y + 32
-local saveBtn = Button(codeTab, "💾 Lưu Script Vào Tab Mới", 8, y, 170, 26, C.BLUE)
+local saveBtn = Button(codeTab, "💾 Lưu Vào Danh Sách", 8, y, 160, 26, C.BLUE)
 y = y + 32
 
 local statusLbl = Label(codeTab, "", y)
@@ -1166,146 +1170,11 @@ y = y + 14
 local countLbl = Label(codeTab, "🔄 Tổng số lần đã chạy: 0", y)
 countLbl.TextColor3=C.GREEN; countLbl.TextSize=9; countLbl.ZIndex=6
 
-codeTab.CanvasSize = UDim2.new(0,0,0,y+40)
+codeTab.CanvasSize = UDim2.new(0, 0, 0, y + 30)
 
--- ==================== TAB 2: SCRIPT LƯU ====================
-local sy = 8
+stopBtn.Activated:Connect(function() Cancel(); statusLbl.Text="⏹️ Đã dừng" end)
 
-Label(savedScriptsTab, "💾 Danh Sách Script Đã Lưu (▶ chạy | ✏ sửa | ✕ xóa)", sy)
-sy = sy + 16
-
-local searchIn = New("TextBox", {
-    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,sy), Text="",
-    PlaceholderText="🔍 Tìm kiếm script theo tên...", PlaceholderColor3=Color3.fromRGB(160,160,160),
-    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
-    Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
-    Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
-}, savedScriptsTab)
-Corner(searchIn, UDim.new(0,5))
-Stroke(searchIn, Color3.fromRGB(180,180,200), 1.2)
-New("UIPadding", {PaddingLeft=UDim.new(0,6)}, searchIn)
-sy = sy + 32
-
-local scriptList = New("Frame", {
-    Size=UDim2.new(1,-16,0,0), Position=UDim2.new(0,8,0,sy),
-    BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
-}, savedScriptsTab)
-New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,3)}, scriptList)
-
-local configFrame = New("Frame", {
-    Size=UDim2.new(1,-16,0,100), Position=UDim2.new(0,8,0,sy+40),
-    BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
-}, savedScriptsTab)
-
--- CÁC BIẾN CONTROL GIAO DIỆN
-local flySpdIn, carpWIn, carpTIn, carpLIn, wsIn, jpIn, fovIn, offXIn, offYIn, fcSpdIn, brightIn
-local flyBtn, carpBtn, flyRunBtn, noclipBtn, infJumpBtn, clickTpBtn, espBtn, antiAfkBtn, fogBtn, fullBrightBtn, ccBtn, fcBtn
-
-local RebuildScripts
-
-RebuildScripts = function()
-    for _,c in ipairs(scriptList:GetChildren()) do
-        if not c:IsA("UIListLayout") then c:Destroy() end
-    end
-
-    local term=searchIn.Text:lower()
-    local disp={}
-    for _,d in ipairs(scripts) do
-        if term=="" or d.name:lower():find(term,1,true) then table.insert(disp,d) end
-    end
-
-    if #disp==0 then
-        New("TextLabel", {
-            Size=UDim2.new(1,0,0,30),
-            Text=term~="" and "📭 Không tìm thấy script nào" or "📭 Chưa có script nào được lưu",
-            BackgroundTransparency=1, TextColor3=C.GRAY, Font=Enum.Font.GothamMedium, TextSize=10,
-            TextXAlignment=Enum.TextXAlignment.Center, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
-        }, scriptList)
-    end
-
-    for i,d in ipairs(disp) do
-        local row = New("Frame", {
-            Size=UDim2.new(1,0,0,46), BackgroundColor3=Color3.fromRGB(255,255,255),
-            BackgroundTransparency=0.1, BorderSizePixel=0, ZIndex=6,
-        }, scriptList)
-        Corner(row,UDim.new(0,5)); Stroke(row)
-
-        local infoFrame = New("Frame", {
-            Size=UDim2.new(1,-56,0,38), Position=UDim2.new(0,6,0,4), BackgroundTransparency=1, ZIndex=7,
-        }, row)
-
-        local rn = New("TextButton", {
-            Size=UDim2.new(1,0,1,0), Text="", BackgroundTransparency=1, BorderSizePixel=0, ZIndex=7,
-        }, infoFrame)
-
-        New("TextLabel", {
-            Size=UDim2.new(1,0,0,16), Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
-            Font=Enum.Font.GothamBold, TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8,
-        }, infoFrame)
-
-        New("TextLabel", {
-            Size=UDim2.new(1,0,0,14), Position=UDim2.new(0,0,0,18),
-            Text=d.code:gsub("%s+"," "):sub(1,45)..(#d.code>45 and "..." or ""),
-            BackgroundTransparency=1, TextColor3=Color3.fromRGB(120,120,120),
-            Font=Enum.Font.GothamMedium, TextSize=8, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8,
-        }, infoFrame)
-
-        local ind = New("TextButton", {
-            Size=UDim2.new(0,20,0,20), Position=UDim2.new(1,-50,0,4), Text="▶",
-            BackgroundColor3=C.GREEN, BackgroundTransparency=0.1, TextColor3=C.WHITE,
-            Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
-        }, row)
-        Corner(ind,UDim.new(1,0))
-
-        local edit = New("TextButton", {
-            Size=UDim2.new(0,20,0,20), Position=UDim2.new(1,-50,0,26), Text="✏",
-            BackgroundColor3=C.BLUE, BackgroundTransparency=0.1, TextColor3=C.WHITE,
-            Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
-        }, row)
-        Corner(edit,UDim.new(1,0))
-
-        local del = New("TextButton", {
-            Size=UDim2.new(0,20,0,20), Position=UDim2.new(1,-26,0,4), Text="✕",
-            BackgroundColor3=C.RED, BackgroundTransparency=0.1, TextColor3=C.WHITE,
-            Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
-        }, row)
-        Corner(del,UDim.new(1,0))
-
-        local idx=i
-        ind.MouseButton1Click:Connect(function()
-            if curIndicator==ind then Cancel() return end
-            RunCode(d.code,d.name,ind,1,0)
-            statusLbl.Text="⏳ Đang chạy: "..d.name
-        end)
-        
-        edit.MouseButton1Click:Connect(function()
-            nameIn.Text=d.name
-            codeIn.Text=d.code
-            if tabButtons["Code"] then tabButtons["Code"]() end
-        end)
-
-        del.MouseButton1Click:Connect(function()
-            if curIndicator==ind then Cancel() end
-            table.remove(scripts,idx)
-            RebuildScripts()
-        end)
-
-        rn.MouseEnter:Connect(function() Tween(row,{BackgroundTransparency=0},0.15) end)
-        rn.MouseLeave:Connect(function() Tween(row,{BackgroundTransparency=0.1},0.15) end)
-    end
-
-    local listH = #disp>0 and #disp*49 or 33
-    scriptList.Size=UDim2.new(1,-16,0,listH)
-    
-    configFrame.Position = UDim2.new(0,0,0,sy+listH+10)
-    savedScriptsTab.CanvasSize=UDim2.new(0,0,0,sy+listH+120)
-end
-
-searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
-
-stopBtn.MouseButton1Click:Connect(function() Cancel(); statusLbl.Text="⏹️ Đã dừng" end)
-
-runBtn.MouseButton1Click:Connect(function()
+runBtn.Activated:Connect(function()
     local t=math.clamp(tonumber(repIn.Text)or 1,1,1000)
     local d=math.max(tonumber(delIn.Text)or 0,0)
     if unitBtn.Text:find("Phút") then d=d*60 end
@@ -1325,7 +1194,10 @@ runBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-saveBtn.MouseButton1Click:Connect(function()
+-- Forward declaration cho RebuildScripts
+local RebuildScripts
+
+saveBtn.Activated:Connect(function()
     local n=nameIn.Text
     local c=codeIn.Text
     if #c==0 then statusLbl.Text="⚠️ Vui lòng nhập code!"; return end
@@ -1339,9 +1211,129 @@ saveBtn.MouseButton1Click:Connect(function()
         cnt+=1; n=bn.." ("..cnt..")"
     end
     table.insert(scripts,{name=n,code=c})
-    RebuildScripts()
-    statusLbl.Text="✅ Đã lưu vào Tab Script Lưu!"
+    if RebuildScripts then RebuildScripts() end
+    statusLbl.Text="✅ Đã lưu vào Tab 'Code Đã Lưu'!"
 end)
+
+-- ==================== TAB 2: CODE ĐÃ LƯU (THÊM VÀO GIỮA) ====================
+local sy = 8
+Label(savedCodeTab, "💾 Danh Sách Script Đã Lưu (▶ Chạy | ✏ Sửa | ✕ Xóa)", sy)
+sy = sy + 18
+
+local searchIn = New("TextBox", {
+    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,sy), Text="",
+    PlaceholderText="🔍 Tìm kiếm script theo tên...", PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
+    Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
+}, savedCodeTab)
+Corner(searchIn, UDim.new(0,5))
+Stroke(searchIn, Color3.fromRGB(180,180,200), 1.2)
+New("UIPadding", {PaddingLeft=UDim.new(0,6)}, searchIn)
+sy = sy + 32
+
+local scriptList = New("Frame", {
+    Size=UDim2.new(1,-16,0,0), Position=UDim2.new(0,8,0,sy),
+    BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
+}, savedCodeTab)
+New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,4)}, scriptList)
+
+RebuildScripts = function()
+    for _,c in ipairs(scriptList:GetChildren()) do
+        if not c:IsA("UIListLayout") then c:Destroy() end
+    end
+
+    local term=searchIn.Text:lower()
+    local disp={}
+    for _,d in ipairs(scripts) do
+        if term=="" or d.name:lower():find(term,1,true) then table.insert(disp,d) end
+    end
+
+    if #disp==0 then
+        New("TextLabel", {
+            Size=UDim2.new(1,0,0,40),
+            Text=term~="" and "📭 Không tìm thấy script phù hợp" or "📭 Chưa có script nào được lưu",
+            BackgroundTransparency=1, TextColor3=C.GRAY, Font=Enum.Font.GothamMedium, TextSize=11,
+            TextXAlignment=Enum.TextXAlignment.Center, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
+        }, scriptList)
+    end
+
+    for i,d in ipairs(disp) do
+        local row = New("Frame", {
+            Size=UDim2.new(1,0,0,46), BackgroundColor3=Color3.fromRGB(255,255,255),
+            BackgroundTransparency=0.1, BorderSizePixel=0, ZIndex=6,
+        }, scriptList)
+        Corner(row,UDim.new(0,5)); Stroke(row)
+
+        local infoFrame = New("Frame", {
+            Size=UDim2.new(1,-90,0,38), Position=UDim2.new(0,8,0,4), BackgroundTransparency=1, ZIndex=7,
+        }, row)
+
+        local rn = New("TextButton", {
+            Size=UDim2.new(1,0,1,0), Text="", BackgroundTransparency=1, BorderSizePixel=0, ZIndex=7,
+        }, infoFrame)
+
+        New("TextLabel", {
+            Size=UDim2.new(1,0,0,16), Text=d.name, BackgroundTransparency=1, TextColor3=C.DARK,
+            Font=Enum.Font.GothamBold, TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8,
+        }, infoFrame)
+
+        New("TextLabel", {
+            Size=UDim2.new(1,0,0,14), Position=UDim2.new(0,0,0,18),
+            Text=d.code:gsub("%s+"," "):sub(1,45)..(#d.code>45 and "..." or ""),
+            BackgroundTransparency=1, TextColor3=Color3.fromRGB(120,120,120),
+            Font=Enum.Font.GothamMedium, TextSize=8, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8,
+        }, infoFrame)
+
+        local ind = New("TextButton", {
+            Size=UDim2.new(0,24,0,24), Position=UDim2.new(1,-80,0,11), Text="▶",
+            BackgroundColor3=C.GREEN, BackgroundTransparency=0.1, TextColor3=C.WHITE,
+            Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(ind,UDim.new(1,0))
+
+        local edit = New("TextButton", {
+            Size=UDim2.new(0,24,0,24), Position=UDim2.new(1,-52,0,11), Text="✏",
+            BackgroundColor3=C.BLUE, BackgroundTransparency=0.1, TextColor3=C.WHITE,
+            Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(edit,UDim.new(1,0))
+
+        local del = New("TextButton", {
+            Size=UDim2.new(0,24,0,24), Position=UDim2.new(1,-24,0,11), Text="✕",
+            BackgroundColor3=C.RED, BackgroundTransparency=0.1, TextColor3=C.WHITE,
+            Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(del,UDim.new(1,0))
+
+        local idx=i
+        ind.Activated:Connect(function()
+            if curIndicator==ind then Cancel() return end
+            RunCode(d.code,d.name,ind,1,0)
+            statusLbl.Text="⏳ Đang chạy: "..d.name
+        end)
+        edit.Activated:Connect(function()
+            nameIn.Text=d.name
+            codeIn.Text=d.code
+            SwitchTab(1) -- Chuyển về Tab Code để chỉnh sửa
+        end)
+        del.Activated:Connect(function()
+            if curIndicator==ind then Cancel() end
+            table.remove(scripts,idx)
+            RebuildScripts()
+        end)
+
+        rn.MouseEnter:Connect(function() Tween(row,{BackgroundTransparency=0},0.15) end)
+        rn.MouseLeave:Connect(function() Tween(row,{BackgroundTransparency=0.1},0.15) end)
+    end
+
+    local listH = #disp>0 and #disp*50 or 40
+    scriptList.Size=UDim2.new(1,-16,0,listH)
+    savedCodeTab.CanvasSize=UDim2.new(0,0,0,sy+listH+20)
+end
+
+searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
+RebuildScripts()
 
 -- ==================== TAB 3: DI CHUYỂN ====================
 local my = 8
@@ -1349,7 +1341,7 @@ local my = 8
 Label(moveTab, "⚡ Tốc độ bay", my)
 my = my + 14
 
-flySpdIn = New("TextBox", {
+local flySpdIn = New("TextBox", {
     Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="50",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1357,15 +1349,16 @@ flySpdIn = New("TextBox", {
 }, moveTab)
 Corner(flySpdIn,UDim.new(0,5)); Stroke(flySpdIn)
 
-flyBtn = Button(moveTab, "🕊️ Bay: TẮT", 72, my, 130, 24, C.GRAY)
+local flyBtn = Button(moveTab, "🕊️ Bay: TẮT", 72, my, 130, 24, C.GRAY)
 my = my + 30
 
 Label(moveTab, "🪩 Thảm kính", my)
 my = my + 14
-carpBtn = Button(moveTab, "🪩 Thảm kính: TẮT", 8, my, 130, 24, C.GRAY)
-flyRunBtn = Button(moveTab, "🕹️ Bay chạy bộ: TẮT", 148, my, 130, 24, C.GRAY)
+local carpBtn = Button(moveTab, "🪩 Thảm kính: TẮT", 8, my, 130, 24, C.GRAY)
+local flyRunBtn = Button(moveTab, "🕹️ Bay chạy bộ: TẮT", 148, my, 130, 24, C.GRAY)
 my = my + 30
 
+-- ĐIỀU CHỈNH 3 CHIỀU THẢM
 Label(moveTab, "📐 Kích thước thảm kính (Rộng x Dày x Dài)", my)
 my = my + 16
 
@@ -1375,7 +1368,7 @@ New("TextLabel", {
     Font=Enum.Font.GothamBold, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8
 }, moveTab)
 
-carpWIn = New("TextBox", {
+local carpWIn = New("TextBox", {
     Size=UDim2.new(0,42,0,24), Position=UDim2.new(0,48,0,my), Text=tostring(S.carpetWidth),
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1389,7 +1382,7 @@ New("TextLabel", {
     Font=Enum.Font.GothamBold, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8
 }, moveTab)
 
-carpTIn = New("TextBox", {
+local carpTIn = New("TextBox", {
     Size=UDim2.new(0,42,0,24), Position=UDim2.new(0,130,0,my), Text=tostring(S.carpetThickness),
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1403,7 +1396,7 @@ New("TextLabel", {
     Font=Enum.Font.GothamBold, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8
 }, moveTab)
 
-carpLIn = New("TextBox", {
+local carpLIn = New("TextBox", {
     Size=UDim2.new(0,42,0,24), Position=UDim2.new(0,212,0,my), Text=tostring(S.carpetLength),
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1415,11 +1408,11 @@ my = my + 32
 
 Label(moveTab, "🚪 Bổ trợ di chuyển đặc biệt", my)
 my = my + 14
-noclipBtn = Button(moveTab, "🚶 NoClip: TẮT", 8, my, 130, 24, C.GRAY)
-infJumpBtn = Button(moveTab, "🦘 Nhảy Vô Hạn: TẮT", 148, my, 130, 24, C.GRAY)
+local noclipBtn = Button(moveTab, "🚶 NoClip: TẮT", 8, my, 130, 24, C.GRAY)
+local infJumpBtn = Button(moveTab, "🦘 Nhảy Vô Hạn: TẮT", 148, my, 130, 24, C.GRAY)
 my = my + 30
 
-clickTpBtn = Button(moveTab, "🎯 Click TP (Ctrl+Click): TẮT", 8, my, 210, 24, C.GRAY)
+local clickTpBtn = Button(moveTab, "🎯 Click TP (Ctrl+Click): TẮT", 8, my, 210, 24, C.GRAY)
 my = my + 32
 
 Label(moveTab, "━━━━━━━━━━━━━━━━━━━━━━", my)
@@ -1428,7 +1421,7 @@ my = my + 16
 Label(moveTab, "🏃 Tốc độ chạy (WalkSpeed)", my)
 my = my + 14
 
-wsIn = New("TextBox", {
+local wsIn = New("TextBox", {
     Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="16",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1445,7 +1438,7 @@ my = my + 30
 Label(moveTab, "📦 Lực nhảy (JumpPower)", my)
 my = my + 14
 
-jpIn = New("TextBox", {
+local jpIn = New("TextBox", {
     Size=UDim2.new(0,55,0,24), Position=UDim2.new(0,8,0,my), Text="50",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1457,6 +1450,7 @@ local jpLbl = Label(moveTab, "Hiện tại: 50", my)
 jpLbl.Position=UDim2.new(0,72,0,my); jpLbl.Size=UDim2.new(0,120,0,14)
 jpLbl.TextColor3=C.GREEN; jpLbl.TextSize=9
 
+-- Connect controls
 flySpdIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(flySpdIn.Text); if n and n>=0 then S.flySpeed=n else flySpdIn.Text=tostring(S.flySpeed) end end)
 
 carpWIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(carpWIn.Text); if n and n>=0.1 then S.carpetWidth=n else carpWIn.Text=tostring(S.carpetWidth) end end)
@@ -1466,36 +1460,36 @@ carpLIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber
 wsIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(wsIn.Text); if n and n>0 then S.walkSpeed=n; UpdChar() else wsIn.Text=tostring(S.walkSpeed) end; wsLbl.Text="Hiện tại: "..S.walkSpeed end)
 jpIn.FocusLost:Connect(function(e) if not e then return end; local n=tonumber(jpIn.Text); if n and n>0 then S.jumpPower=n; UpdChar() else jpIn.Text=tostring(S.jumpPower) end; jpLbl.Text="Hiện tại: "..S.jumpPower end)
 
-flyBtn.MouseButton1Click:Connect(function()
+flyBtn.Activated:Connect(function()
     S.flying = not S.flying
     TogFly()
     flyBtn.Text=S.flying and "🕊️ Bay: BẬT" or "🕊️ Bay: TẮT"
     flyBtn.BackgroundColor3=S.flying and Color3.fromRGB(70,130,180) or C.GRAY
 end)
-carpBtn.MouseButton1Click:Connect(function()
+carpBtn.Activated:Connect(function()
     S.carpet = not S.carpet
     TogCarpet()
     carpBtn.Text=S.carpet and "🪩 Thảm kính: BẬT" or "🪩 Thảm kính: TẮT"
     carpBtn.BackgroundColor3=S.carpet and Color3.fromRGB(160,100,200) or C.GRAY
 end)
-flyRunBtn.MouseButton1Click:Connect(function()
+flyRunBtn.Activated:Connect(function()
     S.flyRun = not S.flyRun
     TogFlyRun()
     flyRunBtn.Text=S.flyRun and "🕹️ Bay chạy bộ: BẬT" or "🕹️ Bay chạy bộ: TẮT"
     flyRunBtn.BackgroundColor3=S.flyRun and C.ORANGE or C.GRAY
 end)
-noclipBtn.MouseButton1Click:Connect(function()
+noclipBtn.Activated:Connect(function()
     S.noClip=not S.noClip
     noclipBtn.Text=S.noClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
     noclipBtn.BackgroundColor3=S.noClip and Color3.fromRGB(0,180,100) or C.GRAY
     if S.noClip then EnNC() else DisNC() end
 end)
-infJumpBtn.MouseButton1Click:Connect(function()
+infJumpBtn.Activated:Connect(function()
     S.infJump=not S.infJump
     infJumpBtn.Text=S.infJump and "🦘 Nhảy Vô Hạn: BẬT" or "🦘 Nhảy Vô Hạn: TẮT"
     infJumpBtn.BackgroundColor3=S.infJump and C.GREEN or C.GRAY
 end)
-clickTpBtn.MouseButton1Click:Connect(function()
+clickTpBtn.Activated:Connect(function()
     S.clickTp=not S.clickTp
     clickTpBtn.Text=S.clickTp and "🎯 Click TP (Ctrl+Click): BẬT" or "🎯 Click TP (Ctrl+Click): TẮT"
     clickTpBtn.BackgroundColor3=S.clickTp and C.GREEN or C.GRAY
@@ -1509,8 +1503,8 @@ local py = 8
 Label(playerTab, "👁️ Quan sát & Nhìn xuyên tường", py)
 py = py + 14
 
-espBtn = Button(playerTab, "👁️ ESP Người Chơi: TẮT", 8, py, 200, 24, C.GRAY)
-espBtn.MouseButton1Click:Connect(function()
+local espBtn = Button(playerTab, "👁️ ESP Người Chơi: TẮT", 8, py, 200, 24, C.GRAY)
+espBtn.Activated:Connect(function()
     S.esp = not S.esp
     espBtn.Text = S.esp and "👁️ ESP Người Chơi: BẬT" or "👁️ ESP Người Chơi: TẮT"
     espBtn.BackgroundColor3 = S.esp and C.GREEN or C.GRAY
@@ -1521,8 +1515,8 @@ py = py + 30
 Label(playerTab, "🛡️ Treo máy & Hệ thống", py)
 py = py + 14
 
-antiAfkBtn = Button(playerTab, "🛡️ Anti-AFK (Treo máy): BẬT", 8, py, 200, 24, C.GREEN)
-antiAfkBtn.MouseButton1Click:Connect(function()
+local antiAfkBtn = Button(playerTab, "🛡️ Anti-AFK (Treo máy): BẬT", 8, py, 200, 24, C.GREEN)
+antiAfkBtn.Activated:Connect(function()
     S.antiAfk = not S.antiAfk
     antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
     antiAfkBtn.BackgroundColor3 = S.antiAfk and C.GREEN or C.GRAY
@@ -1538,25 +1532,23 @@ py = py + 14
 local rejoinBtn = Button(playerTab, "🔄 Vào Lại Server", 8, py, 110, 24, C.BLUE)
 local serverHopBtn = Button(playerTab, "🌐 Đổi Server Khác", 126, py, 110, 24, C.PURPLE)
 
-rejoinBtn.MouseButton1Click:Connect(function()
+rejoinBtn.Activated:Connect(function()
     TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, player)
 end)
 
-serverHopBtn.MouseButton1Click:Connect(function()
+serverHopBtn.Activated:Connect(function()
     local servers = {}
     local req = request or http_request or (syn and syn.request)
     if req then
-        pcall(function()
-            local res = req({Url = string.format("https://games.roblox.com/v1/games/%d/servers/0?sortOrder=Desc&limit=100", game.PlaceId)})
-            local body = HttpService:JSONDecode(res.Body)
-            if body and body.data then
-                for _, s in ipairs(body.data) do
-                    if type(s) == "table" and s.playing < s.maxPlayers and s.id ~= game.JobId then
-                        table.insert(servers, s.id)
-                    end
+        local res = req({Url = string.format("https://games.roblox.com/v1/games/%d/servers/0?sortOrder=Desc&limit=100", game.PlaceId)})
+        local body = HttpService:JSONDecode(res.Body)
+        if body and body.data then
+            for _, s in ipairs(body.data) do
+                if type(s) == "table" and s.playing < s.maxPlayers and s.id ~= game.JobId then
+                    table.insert(servers, s.id)
                 end
             end
-        end)
+        end
     end
     if #servers > 0 then
         TeleportService:TeleportToPlaceInstance(game.PlaceId, servers[math.random(1, #servers)], player)
@@ -1576,8 +1568,8 @@ local darkBtn = Button(envTab, "🌙 Trời tối", 8, ey, 130, 24, Color3.fromR
 local brightBtn = Button(envTab, "☀️ Trời sáng", 148, ey, 130, 24, C.YELLOW)
 ey = ey + 30
 
-fogBtn = Button(envTab, "🌫️ Sương mù: TẮT", 8, ey, 130, 24, C.GRAY)
-fullBrightBtn = Button(envTab, "💡 Sáng Đêm: TẮT", 148, ey, 130, 24, C.GRAY)
+local fogBtn = Button(envTab, "🌫️ Sương mù: TẮT", 8, ey, 130, 24, C.GRAY)
+local fullBrightBtn = Button(envTab, "💡 Sáng Đêm: TẮT", 148, ey, 130, 24, C.GRAY)
 ey = ey + 30
 
 local resetEnvBtn = Button(envTab, "🔄 Đặt lại mặc định", 8, ey, 130, 24, C.GRAY)
@@ -1586,7 +1578,7 @@ ey = ey + 36
 Label(envTab, "💡 Độ sáng (0.5 - 3.0)", ey)
 ey = ey + 14
 
-brightIn = New("TextBox", {
+local brightIn = New("TextBox", {
     Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,ey), Text="1.2",
     BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1608,21 +1600,21 @@ local aB = New("TextBox", {Size=UDim2.new(0,40,0,24), Position=UDim2.new(0,100,0
 Corner(aB,UDim.new(0,5)); Stroke(aB)
 local applyAmbBtn = Button(envTab, "✔ Áp dụng", 150, ey, 80, 24, C.BLUE)
 
-darkBtn.MouseButton1Click:Connect(function()
+darkBtn.Activated:Connect(function()
     TweenL({ClockTime=0, Brightness=0.3, OutdoorAmbient=Color3.fromRGB(20,20,40), Ambient=Color3.fromRGB(20,20,40)})
 end)
-brightBtn.MouseButton1Click:Connect(function()
+brightBtn.Activated:Connect(function()
     TweenL({ClockTime=14, Brightness=2.5, OutdoorAmbient=C.WHITE, Ambient=C.WHITE, EnvironmentDiffuseScale=1, EnvironmentSpecularScale=1})
     if S.fog then S.fog=false; fogBtn.Text="🌫️ Sương mù: TẮT"; fogBtn.BackgroundColor3=C.GRAY; Tween(Lighting,{FogEnd=100000,FogStart=0,FogColor=Color3.new(1,1,1)}) end
 end)
-fogBtn.MouseButton1Click:Connect(function()
+fogBtn.Activated:Connect(function()
     S.fog=not S.fog
     fogBtn.Text=S.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
     fogBtn.BackgroundColor3=S.fog and Color3.fromRGB(70,70,70) or C.GRAY
     TweenL(S.fog and {FogStart=0,FogEnd=80,FogColor=Color3.fromRGB(180,180,180)} or {FogStart=0,FogEnd=100000,FogColor=Color3.new(1,1,1)})
 end)
 
-fullBrightBtn.MouseButton1Click:Connect(function()
+fullBrightBtn.Activated:Connect(function()
     S.fullBright = not S.fullBright
     fullBrightBtn.Text = S.fullBright and "💡 Sáng Đêm: BẬT" or "💡 Sáng Đêm: TẮT"
     fullBrightBtn.BackgroundColor3 = S.fullBright and C.GREEN or C.GRAY
@@ -1635,16 +1627,16 @@ fullBrightBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-resetEnvBtn.MouseButton1Click:Connect(function()
+resetEnvBtn.Activated:Connect(function()
     TweenL(DEFAULT_LIGHTING)
     S.fog=false; fogBtn.Text="🌫️ Sương mù: TẮT"; fogBtn.BackgroundColor3=C.GRAY
     S.fullBright=false; fullBrightBtn.Text="💡 Sáng Đêm: TẮT"; fullBrightBtn.BackgroundColor3=C.GRAY
 end)
-applyBrightBtn.MouseButton1Click:Connect(function()
+applyBrightBtn.Activated:Connect(function()
     local n=tonumber(brightIn.Text)
     if n and n>=0.5 and n<=3 then TweenL({Brightness=n}) else brightIn.Text=string.format("%.1f",Lighting.Brightness) end
 end)
-applyAmbBtn.MouseButton1Click:Connect(function()
+applyAmbBtn.Activated:Connect(function()
     local r=math.clamp(tonumber(aR.Text)or 128,0,255)
     local g=math.clamp(tonumber(aG.Text)or 128,0,255)
     local b=math.clamp(tonumber(aB.Text)or 128,0,255)
@@ -1658,27 +1650,27 @@ local cy = 8
 
 Label(camTab, "📷 Camera Tùy Chỉnh (Bám nhân vật)", cy)
 cy = cy + 14
-ccBtn = Button(camTab, "📷 Camera tùy chỉnh: TẮT", 8, cy, 200, 24, C.GRAY)
+local ccBtn = Button(camTab, "📷 Camera tùy chỉnh: TẮT", 8, cy, 200, 24, C.GRAY)
 cy = cy + 30
 
 Label(camTab, "Góc nhìn FOV (30-120)", cy)
 cy = cy + 14
 
-fovIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="70", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
+local fovIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="70", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
 Corner(fovIn,UDim.new(0,5)); Stroke(fovIn)
 cy = cy + 30
 
 Label(camTab, "Độ lệch ngang (Offset X)", cy)
 cy = cy + 14
 
-offXIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="0", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
+local offXIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="0", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
 Corner(offXIn,UDim.new(0,5)); Stroke(offXIn)
 cy = cy + 30
 
 Label(camTab, "Độ lệch dọc (Offset Y)", cy)
 cy = cy + 14
 
-offYIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="0", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
+local offYIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="0", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
 Corner(offYIn,UDim.new(0,5)); Stroke(offYIn)
 cy = cy + 34
 
@@ -1687,13 +1679,13 @@ cy = cy + 16
 
 Label(camTab, "🎥 Camera Tự Do (Xuyên tường)", cy)
 cy = cy + 14
-fcBtn = Button(camTab, "🎥 Camera tự do: TẮT", 8, cy, 200, 24, C.GRAY)
+local fcBtn = Button(camTab, "🎥 Camera tự do: TẮT", 8, cy, 200, 24, C.GRAY)
 cy = cy + 30
 
 Label(camTab, "⚡ Tốc độ di chuyển camera", cy)
 cy = cy + 14
 
-fcSpdIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="30", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
+local fcSpdIn = New("TextBox", {Size=UDim2.new(0,60,0,24), Position=UDim2.new(0,8,0,cy), Text="30", BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=8}, camTab)
 Corner(fcSpdIn,UDim.new(0,5)); Stroke(fcSpdIn)
 cy = cy + 32
 
@@ -1709,13 +1701,13 @@ New("TextLabel", {
     TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top, BorderSizePixel=0, ZIndex=7,
 }, helpFrame)
 
-ccBtn.MouseButton1Click:Connect(function()
+ccBtn.Activated:Connect(function()
     S.customCam = not S.customCam
     TogCC()
     ccBtn.Text=S.customCam and "📷 Camera tùy chỉnh: BẬT" or "📷 Camera tùy chỉnh: TẮT"
     ccBtn.BackgroundColor3=S.customCam and C.ORANGE or C.GRAY
 end)
-fcBtn.MouseButton1Click:Connect(function()
+fcBtn.Activated:Connect(function()
     S.freeCam = not S.freeCam
     TogFC()
     fcBtn.Text=S.freeCam and "🎥 Camera tự do: BẬT" or "🎥 Camera tự do: TẮT"
@@ -1745,7 +1737,7 @@ local presetBtns = {
 }
 for i,d in ipairs(presetBtns) do
     local btn = Button(gfxTab, d.n, 8+(i-1)*72, gy, 64, 22, d.c)
-    btn.MouseButton1Click:Connect(function()
+    btn.Activated:Connect(function()
         local pr=PRESETS[d.p]
         if not pr then return end
         pcall(function() settings().Rendering.QualityLevel=pr.level end)
@@ -1759,7 +1751,7 @@ end
 gy = gy + 28
 
 local ulBtn = Button(gfxTab, "⚡ Siêu thấp - Tối đa FPS", 8, gy, 220, 22, Color3.fromRGB(100,60,60))
-ulBtn.MouseButton1Click:Connect(function()
+ulBtn.Activated:Connect(function()
     local pr=PRESETS.UltraLow
     pcall(function() settings().Rendering.QualityLevel=pr.level end)
     Lighting.ShadowSoftness=pr.shadow; Lighting.GlobalShadows=pr.shadows
@@ -1773,7 +1765,7 @@ gy = gy + 30
 Label(gfxTab, "🌑 Bóng đổ", gy)
 gy = gy + 14
 local shadowBtn = Button(gfxTab, "🌑 Bóng đổ: BẬT", 8, gy, 160, 22, C.GREEN)
-shadowBtn.MouseButton1Click:Connect(function()
+shadowBtn.Activated:Connect(function()
     S.shadows=not S.shadows
     Lighting.GlobalShadows=S.shadows
     shadowBtn.Text=S.shadows and "🌑 Bóng đổ: BẬT" or "🌑 Bóng đổ: TẮT"
@@ -1801,7 +1793,7 @@ for i,d in ipairs(effects) do
     local yy = gy + (i-1)//2 * 28
     local isOn = not d.t:find("TẮT")
     local btn = Button(gfxTab, d.t, x, yy, 130, 22, isOn and d.on or d.off)
-    btn.MouseButton1Click:Connect(function()
+    btn.Activated:Connect(function()
         S[d.s]=not S[d.s]
         d.e.Enabled=S[d.s]
         if S[d.s] then
@@ -1828,7 +1820,7 @@ local fpsLbl = New("TextLabel", {
 Corner(fpsLbl,UDim.new(0,6))
 
 local fpsBuf={}
-fpsBtn.MouseButton1Click:Connect(function()
+fpsBtn.Activated:Connect(function()
     S.fpsCounter=not S.fpsCounter
     fpsLbl.Visible=S.fpsCounter
     fpsBtn.Text=S.fpsCounter and "📈 Hiện FPS: BẬT" or "📈 Hiện FPS: TẮT"
@@ -1868,9 +1860,9 @@ local function setTextures(mode)
         end
     end
 end
-texHighBtn.MouseButton1Click:Connect(function() setTextures("High") end)
-texLowBtn.MouseButton1Click:Connect(function() setTextures("Low") end)
-texOffBtn.MouseButton1Click:Connect(function() setTextures("Off") end)
+texHighBtn.Activated:Connect(function() setTextures("High") end)
+texLowBtn.Activated:Connect(function() setTextures("Low") end)
+texOffBtn.Activated:Connect(function() setTextures("Off") end)
 
 gy = gy + 30
 Label(gfxTab, "💨 Hiệu ứng hạt & Hình dán", gy)
@@ -1893,13 +1885,13 @@ local function setDecals(enabled)
     end
 end
 
-partBtn.MouseButton1Click:Connect(function()
+partBtn.Activated:Connect(function()
     S.particles=not S.particles
     setParticles(S.particles)
     partBtn.Text=S.particles and "💨 Hạt: BẬT" or "💨 Hạt: TẮT"
     partBtn.BackgroundColor3=S.particles and C.GREEN or C.GRAY
 end)
-decalBtn.MouseButton1Click:Connect(function()
+decalBtn.Activated:Connect(function()
     S.decals=not S.decals
     setDecals(S.decals)
     decalBtn.Text=S.decals and "🖼 Hình dán: BẬT" or "🖼 Hình dán: TẮT"
@@ -1908,7 +1900,7 @@ end)
 
 gy = gy + 32
 local resetGfxBtn = Button(gfxTab, "🔄 Đặt lại đồ họa về mặc định", 8, gy, 240, 24, Color3.fromRGB(150,60,60))
-resetGfxBtn.MouseButton1Click:Connect(function()
+resetGfxBtn.Activated:Connect(function()
     local pr=PRESETS.Ultra
     pcall(function() settings().Rendering.QualityLevel=pr.level end)
     Lighting.ShadowSoftness=pr.shadow; Lighting.GlobalShadows=pr.shadows
@@ -1925,124 +1917,6 @@ end)
 
 gfxTab.CanvasSize=UDim2.new(0,0,0,gy+40)
 
--- ==================== CẤU HÌNH HỆ THỐNG (SAVE / LOAD CONFIG) ====================
-Label(configFrame, "━━━━━━━━━━━━━━━━━━━━━━", 0)
-Label(configFrame, "⚙️ Quản Lý Cấu Hình Toàn Bộ Menu", 16)
-
-local cfgSaveBtn = Button(configFrame, "💾 Lưu Cấu Hình", 8, 34, 110, 24, C.BLUE)
-local cfgLoadBtn = Button(configFrame, "📂 Tải Cấu Hình", 124, 34, 110, 24, C.GREEN)
-local cfgResetBtn = Button(configFrame, "🔄 Đặt Lại Gốc", 240, 34, 90, 24, C.RED)
-
-local cfgStatusLbl = Label(configFrame, "", 64)
-cfgStatusLbl.TextColor3 = C.YELLOW
-cfgStatusLbl.TextSize = 9
-
-local function ApplyAllUIFromState()
-    pcall(function()
-        flySpdIn.Text = tostring(S.flySpeed)
-        carpWIn.Text = tostring(S.carpetWidth)
-        carpTIn.Text = tostring(S.carpetThickness)
-        carpLIn.Text = tostring(S.carpetLength)
-        wsIn.Text = tostring(S.walkSpeed)
-        jpIn.Text = tostring(S.jumpPower)
-        fovIn.Text = tostring(S.fov)
-        offXIn.Text = tostring(S.camOffX)
-        offYIn.Text = tostring(S.camOffY)
-        fcSpdIn.Text = tostring(S.freeCamSpeed)
-        
-        noclipBtn.Text = S.noClip and "🚶 NoClip: BẬT" or "🚶 NoClip: TẮT"
-        noclipBtn.BackgroundColor3 = S.noClip and Color3.fromRGB(0,180,100) or C.GRAY
-        if S.noClip then EnNC() else DisNC() end
-
-        infJumpBtn.Text = S.infJump and "🦘 Nhảy Vô Hạn: BẬT" or "🦘 Nhảy Vô Hạn: TẮT"
-        infJumpBtn.BackgroundColor3 = S.infJump and C.GREEN or C.GRAY
-
-        clickTpBtn.Text = S.clickTp and "🎯 Click TP (Ctrl+Click): BẬT" or "🎯 Click TP (Ctrl+Click): TẮT"
-        clickTpBtn.BackgroundColor3 = S.clickTp and C.GREEN or C.GRAY
-
-        espBtn.Text = S.esp and "👁️ ESP Người Chơi: BẬT" or "👁️ ESP Người Chơi: TẮT"
-        espBtn.BackgroundColor3 = S.esp and C.GREEN or C.GRAY
-        UpdateESP()
-
-        antiAfkBtn.Text = S.antiAfk and "🛡️ Anti-AFK (Treo máy): BẬT" or "🛡️ Anti-AFK (Treo máy): TẮT"
-        antiAfkBtn.BackgroundColor3 = S.antiAfk and C.GREEN or C.GRAY
-
-        fogBtn.Text = S.fog and "🌫️ Sương mù: BẬT" or "🌫️ Sương mù: TẮT"
-        fogBtn.BackgroundColor3 = S.fog and Color3.fromRGB(70,70,70) or C.GRAY
-
-        fullBrightBtn.Text = S.fullBright and "💡 Sáng Đêm: BẬT" or "💡 Sáng Đêm: TẮT"
-        fullBrightBtn.BackgroundColor3 = S.fullBright and C.GREEN or C.GRAY
-
-        UpdChar()
-        RebuildScripts()
-    end)
-end
-
-local configFile = "BananaCatHub_Config.json"
-
-local function SaveConfig()
-    local data = {
-        State = S,
-        Scripts = scripts
-    }
-    local success, json = pcall(function() return HttpService:JSONEncode(data) end)
-    if success and json then
-        if typeof(writefile) == "function" then
-            pcall(function() writefile(configFile, json) end)
-            cfgStatusLbl.Text = "✅ Đã lưu cấu hình vào máy!"
-        else
-            cfgStatusLbl.Text = "⚠️ Executor không hỗ trợ writefile!"
-        end
-    else
-        cfgStatusLbl.Text = "❌ Lỗi mã hóa dữ liệu!"
-    end
-end
-
-local function LoadConfig()
-    if typeof(isfile) == "function" and isfile(configFile) and typeof(readfile) == "function" then
-        local success, content = pcall(function() return readfile(configFile) end)
-        if success and content then
-            local pSuccess, data = pcall(function() return HttpService:JSONDecode(content) end)
-            if pSuccess and data then
-                if data.State then
-                    for k, v in pairs(data.State) do S[k] = v end
-                end
-                if data.Scripts then scripts = data.Scripts end
-                ApplyAllUIFromState()
-                cfgStatusLbl.Text = "✅ Đã tải cấu hình thành công!"
-                return
-            end
-        end
-    end
-    cfgStatusLbl.Text = "📭 Chưa có file cấu hình được lưu!"
-end
-
-cfgSaveBtn.MouseButton1Click:Connect(SaveConfig)
-cfgLoadBtn.MouseButton1Click:Connect(LoadConfig)
-cfgResetBtn.MouseButton1Click:Connect(function()
-    S.walkSpeed = 16
-    S.jumpPower = 50
-    S.flySpeed = 50
-    S.carpetWidth = 1.5
-    S.carpetThickness = 0.2
-    S.carpetLength = 1.5
-    S.noClip = false
-    S.infJump = false
-    S.clickTp = false
-    S.esp = false
-    S.fov = 70
-    ApplyAllUIFromState()
-    cfgStatusLbl.Text = "🔄 Đã reset cấu hình về mặc định!"
-end)
-
--- Tự động Load khi vừa bật Menu
-task.defer(function()
-    RebuildScripts()
-    if typeof(isfile) == "function" and isfile(configFile) then
-        LoadConfig()
-    end
-end)
-
 -- ==================== TOGGLE MENU LOGIC ====================
 local function ToggleMainFrame()
     if S.flyRun then
@@ -2053,12 +1927,12 @@ local function ToggleMainFrame()
     togBtn.Text = main.Visible and "✕" or "🍌"
 end
 
-closeBtn.MouseButton1Click:Connect(function()
+closeBtn.Activated:Connect(function()
     main.Visible = false
     togBtn.Text = "🍌"
 end)
 
-togBtn.MouseButton1Click:Connect(ToggleMainFrame)
+togBtn.Activated:Connect(ToggleMainFrame)
 
 UserInputService.InputBegan:Connect(function(i, gp)
     if not gp and i.KeyCode == Enum.KeyCode.RightControl then
@@ -2086,4 +1960,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Banana Cat Hub đã tải thành công và sẵn sàng sử dụng!")
+print("✅ Banana Cat Hub đã bổ sung Tab 'Code Đã Lưu' ở giữa thành công!")
