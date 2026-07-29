@@ -3,7 +3,6 @@
 -- (Banana Cat Hub Style + Caro Pattern + Chỉnh kích thước 4 góc + Chỉnh Rộng/Dày/Dài Thảm Kính)
 -- + Tab "Code Đã Lưu" CẬP NHẬT: Sổ code có nút "📋 Sao Chép Code" + Đổi vị trí Nút Xóa (Trái) & Nút Chạy (Phải)
 -- + ĐỐNG BĂNG NGƯỜI CHƠI KHÁC (FREEZE OTHERS) & ANTI-KICK BẢO VỆ BẢN THÂN
--- + BAY TỚI NGƯỜI CHƠI TRONG SERVER
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -391,7 +390,6 @@ local S = {
     fpsCounter=false, particles=true, decals=true,
     infJump=false, clickTp=false, esp=false, antiAfk=true, fullBright=false,
     blockServer=false, freezeOthers=false,
-    flyTarget=nil, -- BIẾN MỚI: LƯU NGƯỜI CHƠI CẦN BAY TỚI
 }
 
 local scripts = {}
@@ -659,30 +657,14 @@ local function TogFly()
             local curR = Root()
             local curH = Hum()
             if not S.flying or not curR or not bv then return end
-            
-            -- LOGIC BAY TỚI NGƯỜI CHƠI
-            if S.flyTarget and S.flyTarget.Character and S.flyTarget.Character:FindFirstChild("HumanoidRootPart") then
-                local tPart = S.flyTarget.Character.HumanoidRootPart
-                local dir = (tPart.Position - curR.Position)
-                if dir.Magnitude > 5 then
-                    bv.Velocity = dir.Unit * S.flySpeed
-                else
-                    bv.Velocity = Vector3.zero
-                end
-                bg.CFrame = CFrame.new(curR.Position, tPart.Position)
-            else
-                -- Nếu mục tiêu không hợp lệ thì xóa và bay thủ công
-                if S.flyTarget then S.flyTarget = nil end
-                
-                local d=curH and curH.MoveDirection or Vector3.zero
-                local t=curR.CFrame:VectorToWorldSpace(d)
-                if t.Magnitude>0 then t=t.Unit end
-                local u,dn=VInput()
-                local vv=(u and 1 or 0)-(dn and 1 or 0)
-                bv.Velocity=(t+Vector3.new(0,vv,0))*S.flySpeed
-                bg.CFrame=CFrame.new(curR.Position,curR.Position+workspace.CurrentCamera.CFrame.LookVector)
-            end
-            if fp then fp.Position=curR.Position-Vector3.new(0,3.5,0) end
+            local d=curH and curH.MoveDirection or Vector3.zero
+            local t=curR.CFrame:VectorToWorldSpace(d)
+            if t.Magnitude>0 then t=t.Unit end
+            local u,dn=VInput()
+            local vv=(u and 1 or 0)-(dn and 1 or 0)
+            bv.Velocity=(t+Vector3.new(0,vv,0))*S.flySpeed
+            bg.CFrame=CFrame.new(curR.Position,curR.Position+workspace.CurrentCamera.CFrame.LookVector)
+            fp.Position=curR.Position-Vector3.new(0,3.5,0)
         end)
     else
         StopFly()
@@ -1524,29 +1506,6 @@ my = my + 30
 local clickTpBtn = Button(moveTab, "🎯 Click TP (Ctrl+Click): TẮT", 8, my, 210, 24, C.GRAY)
 my = my + 32
 
--- ==================================================
--- BAY TỚI NGƯỜI CHƠI (NẰM Ở GIỮA PHẦN DI CHUYỂN)
--- ==================================================
-Label(moveTab, "🎯 Bay Tới Người Chơi Trong Server", my)
-my = my + 14
-
-local flyTargetIn = New("TextBox", {
-    Size=UDim2.new(0,130,0,24), Position=UDim2.new(0,8,0,my), Text="",
-    PlaceholderText="Tên người chơi...", PlaceholderColor3=Color3.fromRGB(160,160,160),
-    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
-    Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
-    Active=true, Selectable=true, ZIndex=8, TextXAlignment=Enum.TextXAlignment.Left,
-}, moveTab)
-Corner(flyTargetIn,UDim.new(0,5)); Stroke(flyTargetIn)
-New("UIPadding", {PaddingLeft=UDim.new(0,6)}, flyTargetIn)
-
-local flyToBtn = Button(moveTab, "🚀 Bay Tới", 146, my, 100, 24, C.BLUE)
-my = my + 30
-
-local stopFlyToBtn = Button(moveTab, "🛑 Dừng Theo Dõi", 8, my, 150, 24, C.RED)
-my = my + 32
--- ==================================================
-
 Label(moveTab, "━━━━━━━━━━━━━━━━━━━━━━", my)
 my = my + 16
 
@@ -1623,44 +1582,6 @@ clickTpBtn.Activated:Connect(function()
     S.clickTp=not S.clickTp
     clickTpBtn.Text=S.clickTp and "🎯 Click TP (Ctrl+Click): BẬT" or "🎯 Click TP (Ctrl+Click): TẮT"
     clickTpBtn.BackgroundColor3=S.clickTp and C.GREEN or C.GRAY
-end)
-
--- XỬ LÝ BAY TỚI NGƯỜI CHƠI
-flyToBtn.Activated:Connect(function()
-    local tName = flyTargetIn.Text
-    if #tName == 0 then return end
-    
-    local target = nil
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p.Name:lower() == tName:lower() or p.DisplayName:lower() == tName:lower() then
-            target = p; break
-        end
-    end
-    
-    if target then
-        S.flyTarget = target
-        if not S.flying then
-            S.flying = true
-            TogFly()
-            flyBtn.Text = "🕊️ Bay: BẬT"
-            flyBtn.BackgroundColor3 = Color3.fromRGB(70,130,180)
-        end
-        flyTargetIn.Text = "Đang bay: " .. target.Name
-    else
-        flyTargetIn.Text = "❌ Không tìm thấy!"
-        task.delay(2, function()
-            if flyTargetIn and flyTargetIn.Parent and flyTargetIn.Text == "❌ Không tìm thấy!" then
-                flyTargetIn.Text = ""
-            end
-        end)
-    end
-end)
-
-stopFlyToBtn.Activated:Connect(function()
-    S.flyTarget = nil
-    if flyTargetIn and flyTargetIn.Parent then
-        flyTargetIn.Text = ""
-    end
 end)
 
 moveTab.CanvasSize=UDim2.new(0,0,0,my+40)
@@ -2150,4 +2071,4 @@ end)
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Đã cập nhật Tab 'Code Đã Lưu' thành công + Thêm tính năng Bay Tới Người Chơi!")
+print("✅ Đã cập nhật Tab 'Code Đã Lưu' thành công: Thêm nút '📋 Sao Chép Code' + Đổi nút '🗑 Xóa' bên Trái và '▶ Chạy' bên Phải!") 
