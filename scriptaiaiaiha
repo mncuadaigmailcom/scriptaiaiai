@@ -7,6 +7,7 @@
 -- + Tab Niệm Tâm: Vòng tròn trên màn hình + Tự động ngắm người trong vòng (Aimbot)
 -- + FIX 2026-09-10: Định Vị Lẻ tự bật ESP khi dùng (sửa lỗi chọn tên mà không định vị)
 -- + FIX 2026-09-10 (2): ESP Tọa Độ dùng Part vô hình làm móc treo + All/Lẻ loại trừ nhau
+-- + FIX 2026-09-10 (3): Cứng hóa khởi động (chờ LocalPlayer, DisplayOrder 999, pcall hook, báo khi game xóa menu)
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -20,9 +21,23 @@ local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+-- FIX-STARTUP: chờ LocalPlayer sẵn sàng (tránh execute quá sớm lúc game chưa load xong)
+local _waitT = tick()
+while not player and tick() - _waitT < 15 do
+    task.wait(0.25)
+    player = Players.LocalPlayer
+end
+if not player then
+    warn("⛔ [BananaCat] Không tìm thấy LocalPlayer, hãy vào hẳn trong game rồi Execute lại!")
+    return
+end
+local playerGui = player:WaitForChild("PlayerGui", 15)
+if not playerGui then
+    warn("⛔ [BananaCat] Không tìm thấy PlayerGui, hãy Execute lại!")
+    return
+end
 
--- Xác định Parent an toàn cho UI
+-- Xác định Parent an toàn cho UI (ưu tiên gethui để game không quét/xóa được)
 local targetGui = playerGui
 pcall(function()
     if gethui then
@@ -32,6 +47,11 @@ pcall(function()
         targetGui = game:GetService("CoreGui")
     end
 end)
+-- FIX-STARTUP: đảm bảo luôn có chỗ bám GUI hợp lệ
+if typeof(targetGui) ~= "Instance" then
+    targetGui = playerGui
+end
+print("🍌 [BananaCat] Đang khởi động, UI parent:", targetGui:GetFullName())
 
 -- ==================== DỌN DẸP KẾT NỐI CŨ (ANTI-MEMORY LEAK) ====================
 if _G.BananaCatHub_Connections then
@@ -130,7 +150,19 @@ local gui = New("ScreenGui", {
     IgnoreGuiInset=true,
     ResetOnSpawn=false,
     ZIndexBehavior=Enum.ZIndexBehavior.Sibling,
+    DisplayOrder=999,
+    Enabled=true,
 }, targetGui)
+-- FIX-STARTUP: xác nhận GUI đã bám thành công, nếu không thử lại PlayerGui
+if not gui.Parent then
+    pcall(function() gui.Parent = playerGui end)
+end
+-- FIX-STARTUP: phát hiện game xóa menu (anti-cheat) để báo cho người dùng
+gui.Destroying:Connect(function()
+    if MY_RUN == _G.BananaCatHub_RunId then
+        warn("⛔ [BananaCat] Menu vừa bị xóa khỏi game (nghi anti-cheat của game). Hãy Execute lại script!")
+    end
+end)
 
 -- Toggle Button
 local togBtn = New("TextButton", {
@@ -472,15 +504,18 @@ local xrayStroke = New("UIStroke", {
 -- ==================== CHẶN SERVER TÁC ĐỘNG BẢO VỆ BẢN THÂN ====================
 local oldNamecall
 if hookmetamethod then
-    oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
-        local method = getnamecallmethod()
-        if S.blockServer and self == player then
-            if method == "Kick" or method == "kick" then
-                warn("[Banana Cat Hub] Đã chặn thành công lệnh Kick từ Máy chủ!")
-                return nil
+    -- FIX-STARTUP: bọc pcall để nếu hook lỗi thì menu vẫn hiện (chỉ mất anti-kick)
+    pcall(function()
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            if S.blockServer and self == player then
+                if method == "Kick" or method == "kick" then
+                    warn("[Banana Cat Hub] Đã chặn thành công lệnh Kick từ Máy chủ!")
+                    return nil
+                end
             end
-        end
-        return oldNamecall(self, ...)
+            return oldNamecall(self, ...)
+        end)
     end)
 end
 
@@ -990,6 +1025,7 @@ local espGui = New("ScreenGui", {
     Name = "ExMenu_ESP",
     ResetOnSpawn = false,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    DisplayOrder = 999,
 }, targetGui)
 
 -- GUI riêng cho ESP tọa độ để không bị xóa nhầm khi rebuild ESP người chơi
@@ -997,6 +1033,7 @@ local locEspGui = New("ScreenGui", {
     Name = "ExMenu_LocESP",
     ResetOnSpawn = false,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+    DisplayOrder = 999,
 }, targetGui)
 
 local activeESPs = {}
@@ -2566,4 +2603,4 @@ end))
 UpdChar()
 if S.noClip then EnNC() end
 
-print("✅ Đã thêm Tính Năng Tự Ngắm Người Trong Vòng Tròn Niệm Tâm!")
+print("✅ [BananaCat] Menu đã load xong! Nếu không thấy menu, hãy xem console có lỗi đỏ không.")
