@@ -384,13 +384,14 @@ local S = {
     blockServer=false, freezeOthers=false,
     flyToTarget=nil, flyToSpeed=150, 
     dragMenu=false, 
-    soloTrack=false, soloTarget=nil, 
+    selectedPlayer=nil, -- Người chơi đang định vị riêng (nhấn tên trong danh sách để chọn)
     locEspAll=false, locEspSingle=false, locTarget=nil, flyToLocTarget=nil, 
     xrayCircle=false, xrayCircleSize=150, -- Niệm Tâm Vòng Tròn
     aimLock=false, -- Tự ngắm người trong vòng
 }
 
 local noclipBtn
+local selPlayerBtn
 local RebuildTPList
 local RebuildLocList
 
@@ -983,7 +984,7 @@ local function CreatePlayerESP(p)
     RemovePlayerESP(p)
 
     if not S.esp or p == player then return end
-    if S.soloTrack and p ~= S.soloTarget then return end
+    if S.selectedPlayer and p ~= S.selectedPlayer then return end
 
     local pChar = p.Character
     if not pChar then return end
@@ -1031,7 +1032,7 @@ local function CreatePlayerESP(p)
         local downStart = 0
         
         while S.esp and pChar and pChar.Parent and hum and hum.Parent do
-            if S.soloTrack and p ~= S.soloTarget then
+            if S.selectedPlayer and p ~= S.selectedPlayer then
                 break
             end
 
@@ -1120,10 +1121,9 @@ local function UpdateESP()
     ClearAllESP()
     if not S.esp then return end
     
-    if S.soloTrack then
-        if S.soloTarget then
-            CreatePlayerESP(S.soloTarget)
-        end
+    if S.selectedPlayer then
+        -- Định vị riêng: chỉ hiện ESP của người chơi được chọn
+        CreatePlayerESP(S.selectedPlayer)
     else
         for _, p in ipairs(Players:GetPlayers()) do
             if p ~= player then
@@ -1149,9 +1149,13 @@ trackConn(Players.PlayerAdded:Connect(function(p)
 end))
 
 trackConn(Players.PlayerRemoving:Connect(function(p) 
-    if S.soloTarget == p then 
-        S.soloTarget = nil 
-        if S.soloTrack then UpdateESP() end
+    if S.selectedPlayer == p then 
+        S.selectedPlayer = nil 
+        if selPlayerBtn then
+            selPlayerBtn.Text = "🎯 Định Vị Chọn: Chưa chọn"
+            selPlayerBtn.BackgroundColor3 = C.GRAY
+        end
+        if S.esp then UpdateESP() end
     end
     RemovePlayerESP(p)
     friendCache[p.UserId] = nil
@@ -1756,14 +1760,17 @@ espBtn.Activated:Connect(function()
     UpdateESP()
 end)
 
-local soloTrackBtn = Button(tpPlayerTab, "🎯 Định Vị Lẻ: TẮT", 152, ty, 170, 24, C.GRAY)
-soloTrackBtn.Activated:Connect(function()
-    S.soloTrack = not S.soloTrack
-    soloTrackBtn.Text = S.soloTrack and "🎯 Định Vị Lẻ: BẬT" or "🎯 Định Vị Lẻ: TẮT"
-    soloTrackBtn.BackgroundColor3 = S.soloTrack and C.PURPLE or C.GRAY
-    if not S.soloTrack then S.soloTarget = nil end
-    UpdateESP()
-    RebuildTPList()
+-- ĐỊNH VỊ NGƯỜI CHƠI CHỌN: nhấn tên người chơi trong danh sách bên dưới để chọn
+-- → ESP chỉ hiện riêng người đó; nhấn lại tên (hoặc nhấn nút này) để bỏ chọn
+selPlayerBtn = Button(tpPlayerTab, "🎯 Định Vị Chọn: Chưa chọn", 152, ty, 170, 24, C.GRAY)
+selPlayerBtn.Activated:Connect(function()
+    if S.selectedPlayer then
+        S.selectedPlayer = nil
+        selPlayerBtn.Text = "🎯 Định Vị Chọn: Chưa chọn"
+        selPlayerBtn.BackgroundColor3 = C.GRAY
+        UpdateESP()
+        RebuildTPList()
+    end
 end)
 ty = ty + 30
 
@@ -1782,7 +1789,7 @@ Stroke(searchTPIn, Color3.fromRGB(180,180,200), 1.2)
 New("UIPadding", {PaddingLeft=UDim.new(0,6)}, searchTPIn)
 ty = ty + 32
 
-Label(tpPlayerTab, "👤 Danh sách người chơi (Nhấn tên để định vị lẻ)", ty)
+Label(tpPlayerTab, "👤 Danh sách người chơi (Nhấn tên để định vị riêng — nhấn lại để bỏ chọn)", ty)
 ty = ty + 14
 
 local tpList = New("ScrollingFrame", {
@@ -1814,17 +1821,31 @@ RebuildTPList = function()
                 AutoButtonColor=false, TextTruncate=Enum.TextTruncate.AtEnd
             }, row)
 
-            if S.soloTrack and S.soloTarget == p then
+            if S.selectedPlayer == p then
                 nameBtn.TextColor3 = C.PURPLE
                 nameBtn.Text = "🎯 " .. p.Name
             end
 
             nameBtn.Activated:Connect(function()
-                if S.soloTrack then
-                    S.soloTarget = p
-                    UpdateESP()
-                    RebuildTPList()
+                if S.selectedPlayer == p then
+                    -- Nhấn lại tên đang chọn → bỏ chọn (trở về hiện tất cả)
+                    S.selectedPlayer = nil
+                    selPlayerBtn.Text = "🎯 Định Vị Chọn: Chưa chọn"
+                    selPlayerBtn.BackgroundColor3 = C.GRAY
+                else
+                    -- Chọn người chơi mới → ESP chỉ hiện riêng người đó
+                    S.selectedPlayer = p
+                    selPlayerBtn.Text = "🎯 Định Vị Chọn: " .. p.Name
+                    selPlayerBtn.BackgroundColor3 = C.PURPLE
+                    -- Tự bật ESP để người được chọn hiện ngay
+                    if not S.esp then
+                        S.esp = true
+                        espBtn.Text = "👁️ ESP: BẬT"
+                        espBtn.BackgroundColor3 = C.GREEN
+                    end
                 end
+                UpdateESP()
+                RebuildTPList()
             end)
 
             local flyToBtn = Button(row, "🚀 Bay Đến", -90, 5, 80, 24, C.BLUE)
@@ -2487,3 +2508,4 @@ UpdChar()
 if S.noClip then EnNC() end
 
 print("✅ Đã thêm Tính Năng Tự Ngắm Người Trong Vòng Tròn Niệm Tâm!")
+print("✅ Đã thay Định Vị Lẻ bằng Định Vị Người Chơi Chọn (nhấn tên để chọn riêng)!")
