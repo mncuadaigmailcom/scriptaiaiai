@@ -5,8 +5,6 @@
 -- + Định Vị Lẻ: Bật tính năng -> Nhấn tên người chơi -> Chỉ định vị 1 người đó
 -- + Tab Tọa Độ: Lưu, Đặt tên, ESP All/Lẻ, Xóa, Bay tới Tọa Độ
 -- + Tab Niệm Tâm: Vòng tròn trên màn hình + Tự động ngắm người trong vòng (Aimbot)
--- + FIX 2026-09-10: Định Vị Lẻ tự bật ESP khi dùng (sửa lỗi chọn tên mà không định vị)
--- + FIX 2026-09-10 (2): ESP Tọa Độ dùng Part vô hình làm móc treo + All/Lẻ loại trừ nhau
 -- StarterGui -> LocalScript hoặc Executor
 -- ============================================
 
@@ -40,10 +38,6 @@ if _G.BananaCatHub_Connections then
     end
 end
 _G.BananaCatHub_Connections = {}
-
--- Mỗi lần execute tăng RunId để các thread ESP cũ tự dừng (tránh nhân đôi ESP)
-_G.BananaCatHub_RunId = (_G.BananaCatHub_RunId or 0) + 1
-local MY_RUN = _G.BananaCatHub_RunId
 
 local function trackConn(conn)
     table.insert(_G.BananaCatHub_Connections, conn)
@@ -109,21 +103,6 @@ end
 if targetGui:FindFirstChild("ExMenu") then
     targetGui.ExMenu:Destroy()
 end
--- Dọn GUI ESP cũ còn sót từ lần execute trước (tránh nhân đôi ESP)
-if targetGui:FindFirstChild("ExMenu_ESP") then
-    targetGui.ExMenu_ESP:Destroy()
-end
-if targetGui:FindFirstChild("ExMenu_LocESP") then
-    targetGui.ExMenu_LocESP:Destroy()
-end
-pcall(function()
-    for _, d in ipairs(workspace.Terrain:GetChildren()) do
-        if d.Name == "LocESP_Att" then d:Destroy() end
-    end
-    for _, d in ipairs(workspace:GetChildren()) do
-        if d.Name == "LocESP_Holder" then d:Destroy() end
-    end
-end)
 
 local gui = New("ScreenGui", {
     Name="ExMenu",
@@ -992,13 +971,6 @@ local espGui = New("ScreenGui", {
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
 }, targetGui)
 
--- GUI riêng cho ESP tọa độ để không bị xóa nhầm khi rebuild ESP người chơi
-local locEspGui = New("ScreenGui", {
-    Name = "ExMenu_LocESP",
-    ResetOnSpawn = false,
-    ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-}, targetGui)
-
 local activeESPs = {}
 
 local function RemovePlayerESP(p)
@@ -1011,15 +983,10 @@ local function RemovePlayerESP(p)
 end
 
 local function ClearAllESP()
-    -- FIX: gom key trước rồi mới xóa (tránh sửa bảng trong lúc duyệt pairs)
-    -- Không dùng ClearAllChildren nữa vì mỗi RemovePlayerESP đã tự hủy HL/BB của nó
-    local keys = {}
     for p, _ in pairs(activeESPs) do
-        table.insert(keys, p)
-    end
-    for _, p in ipairs(keys) do
         RemovePlayerESP(p)
     end
+    espGui:ClearAllChildren()
 end
 
 local function CreatePlayerESP(p)
@@ -1073,7 +1040,7 @@ local function CreatePlayerESP(p)
         local wasDown = false
         local downStart = 0
         
-        while S.esp and MY_RUN == _G.BananaCatHub_RunId and pChar and pChar.Parent and hum and hum.Parent do
+        while S.esp and pChar and pChar.Parent and hum and hum.Parent do
             if S.soloTrack and p ~= S.soloTarget then
                 break
             end
@@ -1805,12 +1772,6 @@ soloTrackBtn.Activated:Connect(function()
     soloTrackBtn.Text = S.soloTrack and "🎯 Định Vị Lẻ: BẬT" or "🎯 Định Vị Lẻ: TẮT"
     soloTrackBtn.BackgroundColor3 = S.soloTrack and C.PURPLE or C.GRAY
     if not S.soloTrack then S.soloTarget = nil end
-    -- FIX: Định vị lẻ hiển thị bằng ESP nên phải tự bật ESP, nếu không chọn tên xong vẫn không thấy gì
-    if S.soloTrack and not S.esp then
-        S.esp = true
-        espBtn.Text = "👁️ ESP: BẬT"
-        espBtn.BackgroundColor3 = C.GREEN
-    end
     UpdateESP()
     RebuildTPList()
 end)
@@ -1871,12 +1832,6 @@ RebuildTPList = function()
             nameBtn.Activated:Connect(function()
                 if S.soloTrack then
                     S.soloTarget = p
-                    -- FIX: đảm bảo ESP đang bật thì mới thấy định vị người vừa chọn
-                    if not S.esp then
-                        S.esp = true
-                        espBtn.Text = "👁️ ESP: BẬT"
-                        espBtn.BackgroundColor3 = C.GREEN
-                    end
                     UpdateESP()
                     RebuildTPList()
                 end
@@ -2205,26 +2160,12 @@ locEspAllBtn.Activated:Connect(function()
     S.locEspAll = not S.locEspAll
     locEspAllBtn.Text = S.locEspAll and "📍 Loc ESP: BẬT" or "📍 Loc ESP: TẮT"
     locEspAllBtn.BackgroundColor3 = S.locEspAll and C.GREEN or C.GRAY
-    -- FIX: 2 chế độ All/Lẻ loại trừ nhau để khỏi xung đột
-    if S.locEspAll and S.locEspSingle then
-        S.locEspSingle = false
-        S.locTarget = nil
-        locEspSingleBtn.Text = "🎯 Loc ESP Lẻ: TẮT"
-        locEspSingleBtn.BackgroundColor3 = C.GRAY
-    end
-    RebuildLocList()
 end)
 
 locEspSingleBtn.Activated:Connect(function()
     S.locEspSingle = not S.locEspSingle
     locEspSingleBtn.Text = S.locEspSingle and "🎯 Loc ESP Lẻ: BẬT" or "🎯 Loc ESP Lẻ: TẮT"
     locEspSingleBtn.BackgroundColor3 = S.locEspSingle and C.PURPLE or C.GRAY
-    -- FIX: bật Lẻ thì tắt All để khỏi xung đột
-    if S.locEspSingle and S.locEspAll then
-        S.locEspAll = false
-        locEspAllBtn.Text = "📍 Loc ESP: TẮT"
-        locEspAllBtn.BackgroundColor3 = C.GRAY
-    end
     if not S.locEspSingle then S.locTarget = nil end
     RebuildLocList()
 end)
@@ -2237,7 +2178,7 @@ trackConn(RunService.RenderStepped:Connect(function()
     if not S.locEspAll and not S.locEspSingle then
         if next(locEspObjs) then
             for loc, obj in pairs(locEspObjs) do
-                if obj.Holder then obj.Holder:Destroy() end
+                if obj.Att then obj.Att:Destroy() end
                 if obj.BB then obj.BB:Destroy() end
             end
             locEspObjs = {}
@@ -2253,50 +2194,39 @@ trackConn(RunService.RenderStepped:Connect(function()
         table.insert(activeLocs, S.locTarget)
     end
 
-    -- Clean up removed/unused (gom trước rồi mới xóa)
-    local toRemove = {}
+    -- Clean up removed/unused
     for loc, obj in pairs(locEspObjs) do
         local stillActive = false
         for _, aloc in ipairs(activeLocs) do
             if aloc == loc then stillActive = true break end
         end
         if not stillActive then
-            table.insert(toRemove, loc)
-        end
-    end
-    for _, loc in ipairs(toRemove) do
-        local obj = locEspObjs[loc]
-        if obj then
-            if obj.Holder then obj.Holder:Destroy() end
+            if obj.Att then obj.Att:Destroy() end
             if obj.BB then obj.BB:Destroy() end
+            locEspObjs[loc] = nil
         end
-        locEspObjs[loc] = nil
     end
 
     -- Create/Update active
     for _, loc in ipairs(activeLocs) do
         if not locEspObjs[loc] then
-            -- FIX: dùng Part vô hình làm móc treo (Attachment gắn vào Terrain hiển thị không ổn định)
-            local holder = New("Part", {
-                Name="LocESP_Holder", Size=Vector3.new(2,1,2), CFrame=CFrame.new(loc.pos),
-                Anchored=true, CanCollide=false, Transparency=1,
-            }, workspace)
-            pcall(function() holder.CanQuery = false end)
-            pcall(function() holder.CanTouch = false end)
+            local att = Instance.new("Attachment")
+            att.Name = "LocESP_Att"
+            att.Parent = workspace.Terrain
             
             local bb = New("BillboardGui", {
-                Name="LocESP_BB", Size=UDim2.new(0,150,0,40), AlwaysOnTop=true, Adornee=holder, StudsOffset=Vector3.new(0,3,0), ZIndex=5, MaxDistance=9e9, LightInfluence=0
-            }, locEspGui)
+                Name="LocESP_BB", Size=UDim2.new(0,150,0,40), AlwaysOnTop=true, Adornee=att, StudsOffset=Vector3.new(0,3,0), ZIndex=5
+            }, espGui)
             local lbl = New("TextLabel", {
                 Size=UDim2.new(1,0,1,0), BackgroundTransparency=1, TextColor3=Color3.fromRGB(255,215,0),
                 Font=Enum.Font.GothamBold, TextSize=11, TextStrokeTransparency=0.2, ZIndex=6
             }, bb)
             
-            locEspObjs[loc] = {Holder=holder, BB=bb, Lbl=lbl}
+            locEspObjs[loc] = {Att=att, BB=bb, Lbl=lbl}
         end
         
         local obj = locEspObjs[loc]
-        if obj.Holder then obj.Holder.CFrame = CFrame.new(loc.pos) end
+        obj.Att.WorldPosition = loc.pos
         local dist = r and math.floor((r.Position - loc.pos).Magnitude) or 0
         obj.Lbl.Text = string.format("📍 %s\n📏 %dm", loc.name, dist)
         
