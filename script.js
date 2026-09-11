@@ -1,9 +1,9 @@
 --[[
-    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU
-    - Tab "Tạo Tính Năng" giờ cho phép dán NGUYÊN MỘT SCRIPT HOÀN CHỈNH.
+    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
+    - Tab "Tạo Tính Năng" cho phép dán NGUYÊN một script hoàn chỉnh HOẶC link raw.
     - Script đó sẽ được chạy trong môi trường riêng, và nếu nó tạo GUI riêng,
       GUI đó sẽ được gắn vào menu chính (không tạo cửa sổ rời).
-    - Giữ nguyên: Tab Code, Code Đã Lưu, kéo thả, resize.
+    - FIX: hỗ trợ link raw, chờ GUI lâu hơn, quét cả CoreGui.
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -766,53 +766,82 @@ end
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 RebuildScripts()
 
--- ==================== TAB 3: TẠO TÍNH NĂNG (TÍCH HỢP SCRIPT CON) ====================
+-- ==================== TAB 3: TẠO TÍNH NĂNG ====================
 local featureTabs = {}
 local featureTabIndex = 3
 
--- Hàm chạy script con trong môi trường "cô lập GUI".
--- Cách làm: đổi parent tạm thời của PlayerGui thành frame của tab.
--- Script con nếu tạo ScreenGui mới thì vẫn nằm trong PlayerGui.
--- Nếu script con tạo GUI bằng Instance.new("ScreenGui") và Parent = PlayerGui,
--- nó sẽ hiện lên toàn màn hình. Ta sẽ chuyển nó vào frame tab nếu có thể.
+-- Chuẩn hóa input: nếu là link raw thì tự bọc loadstring(game:HttpGet(...))()
+local function NormalizeCode(c)
+    if type(c) ~= "string" then return "" end
+    c = c:gsub("^%s+", ""):gsub("%s+$", "")
+    if c:match("^https?://") then
+        return 'loadstring(game:HttpGet("'..c..'"))()'
+    end
+    return c
+end
+
+-- Quét GUI mới, trả về danh sách ScreenGui/Frame mới chưa có trong beforeGuis
+local function ScanNewGuis(beforeGuis)
+    local found = {}
+    local function scan(container)
+        if not container then return end
+        for _, g in ipairs(container:GetChildren()) do
+            if not beforeGuis[g] then
+                beforeGuis[g] = true
+                table.insert(found, g)
+            end
+        end
+    end
+    scan(playerGui)
+    scan(targetGui)
+    pcall(function()
+        local cg = game:GetService("CoreGui")
+        if cg and cg ~= targetGui then scan(cg) end
+    end)
+    return found
+end
+
 local function RunFeatureScript(code, name, containerFrame, indicator, statusLabel)
     if #code == 0 then
         if statusLabel then statusLabel.Text = "⚠️ Vui lòng nhập code!" end
-        return false
+        return false, "empty"
     end
+
+    code = NormalizeCode(code)
 
     if indicator then indicator.BackgroundColor3 = C.RED end
     if statusLabel then statusLabel.Text = "⏳ Đang thực thi..." end
 
     local ok, err = pcall(function()
-        local fn = loadstring(code)
-        if not fn then error("loadstring thất bại") end
+        local fn, lerr = loadstring(code)
+        if not fn then error("loadstring thất bại: "..tostring(lerr)) end
 
-        -- Ghi lại các ScreenGui hiện có trước khi chạy
+        -- Ghi lại GUI hiện có
         local beforeGuis = {}
-        for _, g in ipairs(playerGui:GetChildren()) do
-            beforeGuis[g] = true
-        end
-        for _, g in ipairs(targetGui:GetChildren()) do
-            beforeGuis[g] = true
-        end
+        for _, g in ipairs(playerGui:GetChildren()) do beforeGuis[g] = true end
+        for _, g in ipairs(targetGui:GetChildren()) do beforeGuis[g] = true end
+        pcall(function()
+            local cg = game:GetService("CoreGui")
+            if cg and cg ~= targetGui then
+                for _, g in ipairs(cg:GetChildren()) do beforeGuis[g] = true end
+            end
+        end)
 
+        -- Chạy script con
         fn()
 
-        -- Sau khi chạy, tìm ScreenGui mới được tạo
-        task.wait(0.1)
+        -- Chờ + quét lặp để bắt GUI tạo trễ (tối đa ~2.5s)
         local newGuis = {}
-        for _, g in ipairs(playerGui:GetChildren()) do
-            if not beforeGuis[g] then table.insert(newGuis, g) end
-        end
-        for _, g in ipairs(targetGui:GetChildren()) do
-            if not beforeGuis[g] then table.insert(newGuis, g) end
+        for i = 1, 12 do
+            task.wait(0.2)
+            local found = ScanNewGuis(beforeGuis)
+            for _, g in ipairs(found) do table.insert(newGuis, g) end
+            if #newGuis > 0 then break end
         end
 
-        -- Nếu script con tạo ScreenGui mới, gắn nó vào frame tab
+        -- Nhúng GUI mới vào frame tab
         for _, g in ipairs(newGuis) do
-            if g:IsA("ScreenGui") then
-                -- Chuyển ScreenGui thành Frame để nhét vào tab
+            if g:IsA("ScreenGui") or g:IsA("Folder") then
                 local host = New("Frame", {
                     Size = UDim2.new(1,0,1,0),
                     Position = UDim2.new(0,0,0,0),
@@ -822,15 +851,16 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
                     Name = "Embedded_"..g.Name,
                 }, containerFrame)
 
-                -- Di chuyển toàn bộ con của ScreenGui vào Frame
                 for _, child in ipairs(g:GetChildren()) do
-                    pcall(function()
-                        child.Parent = host
-                    end)
+                    pcall(function() child.Parent = host end)
                 end
-
-                -- Xóa ScreenGui gốc
                 pcall(function() g:Destroy() end)
+            elseif g:IsA("GuiObject") then
+                -- Nếu script parent trực tiếp vào PlayerGui (không phải ScreenGui)
+                pcall(function()
+                    g.Parent = containerFrame
+                    g.ZIndex = 5
+                end)
             end
         end
     end)
@@ -842,6 +872,7 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
     else
         if indicator then indicator.BackgroundColor3 = C.RED end
         if statusLabel then statusLabel.Text = "❌ Lỗi: "..tostring(err) end
+        warn("[BananaCatHub] Feature script error:", err)
         return false, err
     end
 end
@@ -849,6 +880,8 @@ end
 local function CreateFeatureTab(name, icon, codeContent)
     if not name or #name == 0 then name = "Tính Năng " .. (#featureTabs + 1) end
     if not icon or #icon == 0 then icon = "⚙️" end
+
+    codeContent = NormalizeCode(codeContent)
 
     local sf = New("ScrollingFrame", {
         Size=UDim2.new(1,0,1,0),
@@ -892,16 +925,16 @@ local function CreateFeatureTab(name, icon, codeContent)
     local featureData = {
         name = name,
         icon = icon,
-        code = codeContent or "",
+        code = codeContent,
         btn = btn,
         frame = sf,
         tabIdx = tabIdx,
     }
     table.insert(featureTabs, featureData)
 
-    -- ===== KHU VỰC CHỨA GUI CỦA SCRIPT CON =====
+    -- Khu vực chứa GUI script con
     local embedHost = New("Frame", {
-        Size = UDim2.new(1,0,1,0),
+        Size = UDim2.new(1,0,1,-36),
         Position = UDim2.new(0,0,0,0),
         BackgroundTransparency = 1,
         BorderSizePixel = 0,
@@ -910,7 +943,7 @@ local function CreateFeatureTab(name, icon, codeContent)
         Visible = true,
     }, sf)
 
-    -- ===== CÔNG CỤ ĐIỀU KHIỂN =====
+    -- Toolbar điều khiển
     local toolbar = New("Frame", {
         Size = UDim2.new(1,0,0,36),
         Position = UDim2.new(0,0,1,-36),
@@ -951,12 +984,12 @@ local function CreateFeatureTab(name, icon, codeContent)
     Corner(closeFeatureBtn, UDim.new(0,5))
 
     local fStatus = New("TextLabel", {
-        Size=UDim2.new(0,200,0,26), Position=UDim2.new(0,324,0,5),
+        Size=UDim2.new(0,180,0,26), Position=UDim2.new(0,324,0,5),
         Text="", BackgroundTransparency=1, TextColor3=Color3.fromRGB(220,170,0),
         Font=Enum.Font.GothamMedium, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=21,
     }, toolbar)
 
-    -- ===== KHU VỰC NHẬP CODE (ẩn/hiện khi sửa) =====
+    -- Editor (ẩn/hiện khi sửa)
     local editorFrame = New("Frame", {
         Size=UDim2.new(1,0,1,-36),
         Position=UDim2.new(0,0,0,0),
@@ -969,8 +1002,8 @@ local function CreateFeatureTab(name, icon, codeContent)
 
     local editorBox = New("TextBox", {
         Size=UDim2.new(1,-16,1,-70), Position=UDim2.new(0,8,0,8),
-        Text=codeContent or "",
-        PlaceholderText="Dán script hoàn chỉnh vào đây...\nScript có thể tạo GUI riêng, GUI đó sẽ được nhúng vào tab này.",
+        Text=codeContent,
+        PlaceholderText="Dán script hoàn chỉnh HOẶC link raw vào đây...\nScript có thể tạo GUI riêng, GUI đó sẽ được nhúng vào tab này.",
         PlaceholderColor3=Color3.fromRGB(160,160,160),
         BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0,
         TextColor3=Color3.fromRGB(20,20,20),
@@ -996,21 +1029,18 @@ local function CreateFeatureTab(name, icon, codeContent)
     }, editorFrame)
     Corner(cancelEditBtn, UDim.new(0,5))
 
-    -- Hàm dọn dẹp host cũ trước khi chạy script mới
     local function ClearHost()
         for _, child in ipairs(embedHost:GetChildren()) do
             pcall(function() child:Destroy() end)
         end
     end
 
-    -- Chạy script
     runFeatureBtn.Activated:Connect(function()
         ClearHost()
         fStatus.Text = "⏳ Đang chạy..."
         RunFeatureScript(codeContent, name, embedHost, runFeatureBtn, fStatus)
     end)
 
-    -- Lưu vào danh sách Code Đã Lưu chung
     saveFeatureBtn.Activated:Connect(function()
         local c = codeContent
         if #c == 0 then
@@ -1034,27 +1064,23 @@ local function CreateFeatureTab(name, icon, codeContent)
         fStatus.Text = "✅ Đã lưu!"
     end)
 
-    -- Mở editor
     editFeatureBtn.Activated:Connect(function()
         editorBox.Text = codeContent
         editorFrame.Visible = true
     end)
 
-    -- Áp dụng sửa
     applyEditBtn.Activated:Connect(function()
-        codeContent = editorBox.Text
+        codeContent = NormalizeCode(editorBox.Text)
         featureData.code = codeContent
         editorFrame.Visible = false
         ClearHost()
         fStatus.Text = "✏️ Đã cập nhật code"
     end)
 
-    -- Hủy sửa
     cancelEditBtn.Activated:Connect(function()
         editorFrame.Visible = false
     end)
 
-    -- Đóng tab
     closeFeatureBtn.Activated:Connect(function()
         ClearHost()
         SwitchTab(1)
@@ -1069,7 +1095,7 @@ local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 3)
 local cy = 8
 Label(createFeatureTab, "➕ Tạo Tab Tính Năng Tích Hợp", cy)
 cy = cy + 16
-Label(createFeatureTab, "Dán NGUYÊN một script hoàn chỉnh (có GUI riêng).", cy)
+Label(createFeatureTab, "Dán NGUYÊN một script hoàn chỉnh HOẶC link raw.", cy)
 cy = cy + 14
 Label(createFeatureTab, "Script sẽ chạy trong tab, GUI sẽ được nhúng vào menu này.", cy)
 cy = cy + 18
@@ -1104,12 +1130,12 @@ Corner(featureIconIn, UDim.new(0,5))
 Stroke(featureIconIn, Color3.fromRGB(180,180,200), 1.2)
 
 cy = cy + 32
-Label(createFeatureTab, "📜 Dán Script Hoàn Chỉnh (có GUI riêng):", cy)
+Label(createFeatureTab, "📜 Dán Script Hoàn Chỉnh HOẶC link raw:", cy)
 cy = cy + 14
 
 local featureCodeIn = New("TextBox", {
     Size=UDim2.new(1,-16,0,140), Position=UDim2.new(0,8,0,cy), Text="",
-    PlaceholderText="Dán toàn bộ script vào đây...\nScript có thể tạo ScreenGui riêng, GUI đó sẽ được nhúng vào tab.",
+    PlaceholderText="Dán script hoặc link raw (https://...) vào đây...\nScript có thể tạo ScreenGui riêng, GUI đó sẽ được nhúng vào tab.",
     PlaceholderColor3=Color3.fromRGB(160,160,160),
     BackgroundColor3=Color3.fromRGB(245,245,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.Code, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1359,4 +1385,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub (tích hợp script con): Code + Code Đã Lưu + Tạo Tính Năng — đã sẵn sàng!")
+print("✅ Banana Cat Hub (FIX v2): hỗ trợ link raw + chờ GUI + quét CoreGui — sẵn sàng!")
