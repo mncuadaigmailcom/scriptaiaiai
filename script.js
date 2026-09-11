@@ -1,8 +1,9 @@
 --[[
-    🍌 Banana Cat Hub — BẢN MỞ RỘNG (CÓ TAB TÍNH NĂNG ĐỘNG)
-    Thêm: Tab "Tạo Tính Năng" — cho phép tạo tab riêng, đặt tên,
-    nhập link loadstring hoặc code Lua trực tiếp.
-    Giữ nguyên: Tab "Code" + Tab "Code Đã Lưu".
+    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU
+    - Tab "Tạo Tính Năng" giờ cho phép dán NGUYÊN MỘT SCRIPT HOÀN CHỈNH.
+    - Script đó sẽ được chạy trong môi trường riêng, và nếu nó tạo GUI riêng,
+      GUI đó sẽ được gắn vào menu chính (không tạo cửa sổ rời).
+    - Giữ nguyên: Tab Code, Code Đã Lưu, kéo thả, resize.
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -272,6 +273,7 @@ local contentArea = New("Frame", {
     BackgroundTransparency=1,
     BorderSizePixel=0,
     ZIndex=3,
+    ClipsDescendants=true,
 }, main)
 
 local activeTab = nil
@@ -415,7 +417,7 @@ local function Button(parent, text, x, y, w, h, color)
     return btn
 end
 
--- ==================== TAB 1: CODE (giữ nguyên) ====================
+-- ==================== TAB 1: CODE ====================
 local y = 8
 Label(codeTab, "⚡ Code Nhanh - Nhấn để chạy ngay", y)
 y = y + 16
@@ -601,7 +603,7 @@ saveBtn.Activated:Connect(function()
     statusLbl.Text="✅ Đã lưu vào Tab 'Code Đã Lưu'!"
 end)
 
--- ==================== TAB 2: CODE ĐÃ LƯU (giữ nguyên) ====================
+-- ==================== TAB 2: CODE ĐÃ LƯU ====================
 local sy = 8
 Label(savedCodeTab, "💾 Danh Sách Script Đã Lưu", sy)
 sy = sy + 18
@@ -764,19 +766,90 @@ end
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 RebuildScripts()
 
--- ==================== TAB 3: TẠO TÍNH NĂNG (MỚI) ====================
--- Mục đích: tạo tab tính năng động, mỗi tab có tên + code hoặc link loadstring.
--- Người dùng có thể tạo nhiều tab, mỗi tab chạy code riêng.
+-- ==================== TAB 3: TẠO TÍNH NĂNG (TÍCH HỢP SCRIPT CON) ====================
+local featureTabs = {}
+local featureTabIndex = 3
 
-local featureTabs = {}   -- lưu {name, icon, code, btn, frame}
-local featureTabIndex = 3 -- bắt đầu sau 2 tab cố định
+-- Hàm chạy script con trong môi trường "cô lập GUI".
+-- Cách làm: đổi parent tạm thời của PlayerGui thành frame của tab.
+-- Script con nếu tạo ScreenGui mới thì vẫn nằm trong PlayerGui.
+-- Nếu script con tạo GUI bằng Instance.new("ScreenGui") và Parent = PlayerGui,
+-- nó sẽ hiện lên toàn màn hình. Ta sẽ chuyển nó vào frame tab nếu có thể.
+local function RunFeatureScript(code, name, containerFrame, indicator, statusLabel)
+    if #code == 0 then
+        if statusLabel then statusLabel.Text = "⚠️ Vui lòng nhập code!" end
+        return false
+    end
 
--- Hàm tạo tab tính năng động
-local function CreateFeatureTab(name, icon, codeContent, autoRun)
+    if indicator then indicator.BackgroundColor3 = C.RED end
+    if statusLabel then statusLabel.Text = "⏳ Đang thực thi..." end
+
+    local ok, err = pcall(function()
+        local fn = loadstring(code)
+        if not fn then error("loadstring thất bại") end
+
+        -- Ghi lại các ScreenGui hiện có trước khi chạy
+        local beforeGuis = {}
+        for _, g in ipairs(playerGui:GetChildren()) do
+            beforeGuis[g] = true
+        end
+        for _, g in ipairs(targetGui:GetChildren()) do
+            beforeGuis[g] = true
+        end
+
+        fn()
+
+        -- Sau khi chạy, tìm ScreenGui mới được tạo
+        task.wait(0.1)
+        local newGuis = {}
+        for _, g in ipairs(playerGui:GetChildren()) do
+            if not beforeGuis[g] then table.insert(newGuis, g) end
+        end
+        for _, g in ipairs(targetGui:GetChildren()) do
+            if not beforeGuis[g] then table.insert(newGuis, g) end
+        end
+
+        -- Nếu script con tạo ScreenGui mới, gắn nó vào frame tab
+        for _, g in ipairs(newGuis) do
+            if g:IsA("ScreenGui") then
+                -- Chuyển ScreenGui thành Frame để nhét vào tab
+                local host = New("Frame", {
+                    Size = UDim2.new(1,0,1,0),
+                    Position = UDim2.new(0,0,0,0),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    ZIndex = 5,
+                    Name = "Embedded_"..g.Name,
+                }, containerFrame)
+
+                -- Di chuyển toàn bộ con của ScreenGui vào Frame
+                for _, child in ipairs(g:GetChildren()) do
+                    pcall(function()
+                        child.Parent = host
+                    end)
+                end
+
+                -- Xóa ScreenGui gốc
+                pcall(function() g:Destroy() end)
+            end
+        end
+    end)
+
+    if ok then
+        if indicator then indicator.BackgroundColor3 = C.GREEN end
+        if statusLabel then statusLabel.Text = "✅ Hoàn thành!" end
+        return true
+    else
+        if indicator then indicator.BackgroundColor3 = C.RED end
+        if statusLabel then statusLabel.Text = "❌ Lỗi: "..tostring(err) end
+        return false, err
+    end
+end
+
+local function CreateFeatureTab(name, icon, codeContent)
     if not name or #name == 0 then name = "Tính Năng " .. (#featureTabs + 1) end
     if not icon or #icon == 0 then icon = "⚙️" end
 
-    -- Tạo ScrollingFrame nội dung cho tab
     local sf = New("ScrollingFrame", {
         Size=UDim2.new(1,0,1,0),
         BackgroundTransparency=1,
@@ -792,7 +865,6 @@ local function CreateFeatureTab(name, icon, codeContent, autoRun)
         ZIndex=4,
     }, contentArea)
 
-    -- Tạo nút tab
     local btn = New("TextButton", {
         Size=UDim2.new(1,-8,0,30),
         Text=icon.." "..name,
@@ -817,7 +889,6 @@ local function CreateFeatureTab(name, icon, codeContent, autoRun)
     table.insert(tabContent, sf)
     tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 34 + 10)
 
-    -- Lưu thông tin
     local featureData = {
         name = name,
         icon = icon,
@@ -828,89 +899,122 @@ local function CreateFeatureTab(name, icon, codeContent, autoRun)
     }
     table.insert(featureTabs, featureData)
 
-    -- Xây dựng nội dung tab
-    local fy = 8
-    Label(sf, "⚙️ Tính Năng: "..name, fy)
-    fy = fy + 18
-    Label(sf, "📝 Code / Link Loadstring:", fy)
-    fy = fy + 14
+    -- ===== KHU VỰC CHỨA GUI CỦA SCRIPT CON =====
+    local embedHost = New("Frame", {
+        Size = UDim2.new(1,0,1,0),
+        Position = UDim2.new(0,0,0,0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Name = "ScriptHost",
+        Visible = true,
+    }, sf)
 
-    local codeBox = New("TextBox", {
-        Size=UDim2.new(1,-16,0,80), Position=UDim2.new(0,8,0,fy), Text=codeContent or "",
-        PlaceholderText="Nhập code Lua hoặc link loadstring(game:HttpGet(...))()...",
+    -- ===== CÔNG CỤ ĐIỀU KHIỂN =====
+    local toolbar = New("Frame", {
+        Size = UDim2.new(1,0,0,36),
+        Position = UDim2.new(0,0,1,-36),
+        BackgroundColor3 = Color3.fromRGB(230,233,242),
+        BackgroundTransparency = 0.1,
+        BorderSizePixel = 0,
+        ZIndex = 20,
+    }, sf)
+    Corner(toolbar, UDim.new(0,6))
+    Stroke(toolbar, Color3.fromRGB(180,185,200), 1)
+
+    local runFeatureBtn = New("TextButton", {
+        Size=UDim2.new(0,110,0,26), Position=UDim2.new(0,6,0,5),
+        Text="▶ Chạy Script", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=21,
+    }, toolbar)
+    Corner(runFeatureBtn, UDim.new(0,5))
+
+    local saveFeatureBtn = New("TextButton", {
+        Size=UDim2.new(0,110,0,26), Position=UDim2.new(0,122,0,5),
+        Text="💾 Lưu Vào DS", BackgroundColor3=C.BLUE, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=21,
+    }, toolbar)
+    Corner(saveFeatureBtn, UDim.new(0,5))
+
+    local editFeatureBtn = New("TextButton", {
+        Size=UDim2.new(0,80,0,26), Position=UDim2.new(0,238,0,5),
+        Text="✏️ Sửa", BackgroundColor3=C.ORANGE, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=21,
+    }, toolbar)
+    Corner(editFeatureBtn, UDim.new(0,5))
+
+    local closeFeatureBtn = New("TextButton", {
+        Size=UDim2.new(0,40,0,26), Position=UDim2.new(1,-46,0,5),
+        Text="✕", BackgroundColor3=C.RED, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=12, BorderSizePixel=0, ZIndex=21,
+    }, toolbar)
+    Corner(closeFeatureBtn, UDim.new(0,5))
+
+    local fStatus = New("TextLabel", {
+        Size=UDim2.new(0,200,0,26), Position=UDim2.new(0,324,0,5),
+        Text="", BackgroundTransparency=1, TextColor3=Color3.fromRGB(220,170,0),
+        Font=Enum.Font.GothamMedium, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=21,
+    }, toolbar)
+
+    -- ===== KHU VỰC NHẬP CODE (ẩn/hiện khi sửa) =====
+    local editorFrame = New("Frame", {
+        Size=UDim2.new(1,0,1,-36),
+        Position=UDim2.new(0,0,0,0),
+        BackgroundColor3=Color3.fromRGB(245,247,252),
+        BackgroundTransparency=0,
+        BorderSizePixel=0,
+        ZIndex=30,
+        Visible=false,
+    }, sf)
+
+    local editorBox = New("TextBox", {
+        Size=UDim2.new(1,-16,1,-70), Position=UDim2.new(0,8,0,8),
+        Text=codeContent or "",
+        PlaceholderText="Dán script hoàn chỉnh vào đây...\nScript có thể tạo GUI riêng, GUI đó sẽ được nhúng vào tab này.",
         PlaceholderColor3=Color3.fromRGB(160,160,160),
-        BackgroundColor3=Color3.fromRGB(245,245,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
+        BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0,
+        TextColor3=Color3.fromRGB(20,20,20),
         Font=Enum.Font.Code, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
         MultiLine=true, TextWrapped=true, TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top,
-        Active=true, Selectable=true, ZIndex=10,
-    }, sf)
-    Corner(codeBox, UDim.new(0,5))
-    Stroke(codeBox, Color3.fromRGB(100,120,200), 1.5)
-    New("UIPadding", {PaddingLeft=UDim.new(0,6), PaddingTop=UDim.new(0,4)}, codeBox)
+        Active=true, Selectable=true, ZIndex=31,
+    }, editorFrame)
+    Corner(editorBox, UDim.new(0,5))
+    Stroke(editorBox, Color3.fromRGB(100,120,200), 1.5)
+    New("UIPadding", {PaddingLeft=UDim.new(0,6), PaddingTop=UDim.new(0,4)}, editorBox)
 
-    fy = fy + 86
+    local applyEditBtn = New("TextButton", {
+        Size=UDim2.new(0,120,0,26), Position=UDim2.new(0,8,1,-34),
+        Text="✅ Áp Dụng", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=31,
+    }, editorFrame)
+    Corner(applyEditBtn, UDim.new(0,5))
 
-    local runFeatureBtn = Button(sf, "▶ Chạy Tính Năng", 8, fy, 140, 26, Color3.fromRGB(0,160,90))
-    local stopFeatureBtn = Button(sf, "⏹ Dừng", 156, fy, 80, 26, C.RED)
-    fy = fy + 32
+    local cancelEditBtn = New("TextButton", {
+        Size=UDim2.new(0,120,0,26), Position=UDim2.new(0,134,1,-34),
+        Text="❌ Hủy", BackgroundColor3=C.RED, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=31,
+    }, editorFrame)
+    Corner(cancelEditBtn, UDim.new(0,5))
 
-    local saveFeatureBtn = Button(sf, "💾 Lưu Vào Danh Sách", 8, fy, 160, 26, C.BLUE)
-    local clearFeatureBtn = Button(sf, "🧹 Xóa Code", 176, fy, 100, 26, C.ORANGE)
-    fy = fy + 32
+    -- Hàm dọn dẹp host cũ trước khi chạy script mới
+    local function ClearHost()
+        for _, child in ipairs(embedHost:GetChildren()) do
+            pcall(function() child:Destroy() end)
+        end
+    end
 
-    local fStatus = Label(sf, "", fy)
-    fStatus.TextColor3=Color3.fromRGB(220,170,0); fStatus.TextSize=9; fStatus.ZIndex=6
-    fy = fy + 14
-
-    local fCount = Label(sf, "🔄 Đã chạy: 0 lần", fy)
-    fCount.TextColor3=C.GREEN; fCount.TextSize=9; fCount.ZIndex=6
-    fy = fy + 14
-
-    sf.CanvasSize = UDim2.new(0, 0, 0, fy + 30)
-
-    -- Đếm riêng cho tab này
-    local localCount = 0
-
-    -- Chạy code của tab này
+    -- Chạy script
     runFeatureBtn.Activated:Connect(function()
-        local code = codeBox.Text
-        if #code == 0 then
-            fStatus.Text = "⚠️ Vui lòng nhập code!"
-            return
-        end
-        fStatus.Text = "⏳ Đang thực thi..."
-        local ok, err = RunCode(code, name, runFeatureBtn, 1, 0)
-        if not ok then
-            fStatus.Text = err or "❌ Lỗi không xác định"
-        else
-            task.spawn(function()
-                while curThread do
-                    if cancelled then
-                        fStatus.Text = "⏹️ Đã dừng"
-                        return
-                    end
-                    task.wait(0.1)
-                end
-                if not cancelled then
-                    fStatus.Text = "✅ Hoàn thành!"
-                    localCount += 1
-                    fCount.Text = "🔄 Đã chạy: "..localCount.." lần"
-                end
-            end)
-        end
-    end)
-
-    -- Dừng
-    stopFeatureBtn.Activated:Connect(function()
-        Cancel()
-        fStatus.Text = "⏹️ Đã dừng"
+        ClearHost()
+        fStatus.Text = "⏳ Đang chạy..."
+        RunFeatureScript(codeContent, name, embedHost, runFeatureBtn, fStatus)
     end)
 
     -- Lưu vào danh sách Code Đã Lưu chung
     saveFeatureBtn.Activated:Connect(function()
-        local c = codeBox.Text
+        local c = codeContent
         if #c == 0 then
-            fStatus.Text = "⚠️ Không có code để lưu!"
+            fStatus.Text = "⚠️ Không có code!"
             return
         end
         local n = name
@@ -927,35 +1031,47 @@ local function CreateFeatureTab(name, icon, codeContent, autoRun)
         end
         table.insert(scripts, {name = n, code = c, expanded = false})
         if RebuildScripts then RebuildScripts() end
-        fStatus.Text = "✅ Đã lưu vào Tab 'Code Đã Lưu'!"
+        fStatus.Text = "✅ Đã lưu!"
     end)
 
-    -- Xóa code trong ô
-    clearFeatureBtn.Activated:Connect(function()
-        codeBox.Text = ""
-        fStatus.Text = "🧹 Đã xóa code"
+    -- Mở editor
+    editFeatureBtn.Activated:Connect(function()
+        editorBox.Text = codeContent
+        editorFrame.Visible = true
     end)
 
-    -- Nếu autoRun thì chạy luôn
-    if autoRun and codeContent and #codeContent > 0 then
-        task.spawn(function()
-            task.wait(0.5)
-            RunCode(codeContent, name, runFeatureBtn, 1, 0)
-        end)
-    end
+    -- Áp dụng sửa
+    applyEditBtn.Activated:Connect(function()
+        codeContent = editorBox.Text
+        featureData.code = codeContent
+        editorFrame.Visible = false
+        ClearHost()
+        fStatus.Text = "✏️ Đã cập nhật code"
+    end)
+
+    -- Hủy sửa
+    cancelEditBtn.Activated:Connect(function()
+        editorFrame.Visible = false
+    end)
+
+    -- Đóng tab
+    closeFeatureBtn.Activated:Connect(function()
+        ClearHost()
+        SwitchTab(1)
+    end)
 
     return featureData
 end
 
--- ==================== TAB TẠO TÍNH NĂNG (GIAO DIỆN CHÍNH) ====================
+-- ==================== TAB TẠO TÍNH NĂNG ====================
 local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 3)
 
 local cy = 8
-Label(createFeatureTab, "➕ Tạo Tab Tính Năng Mới", cy)
+Label(createFeatureTab, "➕ Tạo Tab Tính Năng Tích Hợp", cy)
 cy = cy + 16
-Label(createFeatureTab, "Nhập tên tab và code/link, sau đó nhấn 'Tạo Tab'.", cy)
+Label(createFeatureTab, "Dán NGUYÊN một script hoàn chỉnh (có GUI riêng).", cy)
 cy = cy + 14
-Label(createFeatureTab, "Tab mới sẽ xuất hiện bên phải và có thể chạy độc lập.", cy)
+Label(createFeatureTab, "Script sẽ chạy trong tab, GUI sẽ được nhúng vào menu này.", cy)
 cy = cy + 18
 
 Label(createFeatureTab, "🏷️ Tên Tính Năng:", cy)
@@ -988,12 +1104,12 @@ Corner(featureIconIn, UDim.new(0,5))
 Stroke(featureIconIn, Color3.fromRGB(180,180,200), 1.2)
 
 cy = cy + 32
-Label(createFeatureTab, "💻 Code hoặc Link Loadstring:", cy)
+Label(createFeatureTab, "📜 Dán Script Hoàn Chỉnh (có GUI riêng):", cy)
 cy = cy + 14
 
 local featureCodeIn = New("TextBox", {
-    Size=UDim2.new(1,-16,0,90), Position=UDim2.new(0,8,0,cy), Text="",
-    PlaceholderText="VD: loadstring(game:HttpGet('https://...'))()\nHoặc code Lua trực tiếp...",
+    Size=UDim2.new(1,-16,0,140), Position=UDim2.new(0,8,0,cy), Text="",
+    PlaceholderText="Dán toàn bộ script vào đây...\nScript có thể tạo ScreenGui riêng, GUI đó sẽ được nhúng vào tab.",
     PlaceholderColor3=Color3.fromRGB(160,160,160),
     BackgroundColor3=Color3.fromRGB(245,245,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
     Font=Enum.Font.Code, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
@@ -1004,28 +1120,7 @@ Corner(featureCodeIn, UDim.new(0,5))
 Stroke(featureCodeIn, Color3.fromRGB(100,120,200), 1.5)
 New("UIPadding", {PaddingLeft=UDim.new(0,6), PaddingTop=UDim.new(0,4)}, featureCodeIn)
 
-cy = cy + 96
-
--- Tùy chọn tự động chạy
-local autoRunToggle = New("TextButton", {
-    Size=UDim2.new(0,20,0,20), Position=UDim2.new(0,8,0,cy),
-    Text="", BackgroundColor3=Color3.fromRGB(220,225,240), BorderSizePixel=0, ZIndex=10,
-}, createFeatureTab)
-Corner(autoRunToggle, UDim.new(0,4))
-local autoRunCheck = New("TextLabel", {
-    Size=UDim2.new(1,0,1,0), Text="", BackgroundTransparency=1,
-    TextColor3=C.GREEN, Font=Enum.Font.GothamBold, TextSize=14, ZIndex=11,
-}, autoRunToggle)
-
-local autoRunState = false
-autoRunToggle.Activated:Connect(function()
-    autoRunState = not autoRunState
-    autoRunCheck.Text = autoRunState and "✓" or ""
-    autoRunToggle.BackgroundColor3 = autoRunState and C.GREEN or Color3.fromRGB(220,225,240)
-end)
-
-Label(createFeatureTab, "Tự động chạy khi tạo tab", cy + 2)
-cy = cy + 26
+cy = cy + 146
 
 local createTabBtn = Button(createFeatureTab, "➕ Tạo Tab Tính Năng", 8, cy, 180, 28, Color3.fromRGB(0,150,200))
 local clearFormBtn = Button(createFeatureTab, "🧹 Xóa Form", 196, cy, 100, 28, C.ORANGE)
@@ -1054,7 +1149,7 @@ local function RebuildFeatureList()
     if #featureTabs == 0 then
         New("TextLabel", {
             Size=UDim2.new(1,0,0,30),
-            Text="📭 Chưa có tab tính năng nào. Tạo tab đầu tiên ở trên!",
+            Text="📭 Chưa có tab tính năng nào.",
             BackgroundTransparency=1, TextColor3=C.GRAY, Font=Enum.Font.GothamMedium, TextSize=10,
             TextXAlignment=Enum.TextXAlignment.Center, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
         }, featureListFrame)
@@ -1093,20 +1188,17 @@ local function RebuildFeatureList()
         }, row)
         Corner(delBtn, UDim.new(0,4))
         delBtn.Activated:Connect(function()
-            -- Xóa tab khỏi hệ thống
             local idx = nil
             for j, t in ipairs(tabs) do
                 if t == ft.btn then idx = j; break end
             end
             if idx then
-                -- Nếu đang xem tab này thì chuyển về tab Code
                 if activeTab == ft.frame then SwitchTab(1) end
                 ft.btn:Destroy()
                 ft.frame:Destroy()
                 table.remove(tabs, idx)
                 table.remove(tabContent, idx)
                 table.remove(featureTabs, i)
-                -- Cập nhật lại LayoutOrder và tabIdx
                 for j, t in ipairs(tabs) do
                     t.LayoutOrder = j
                 end
@@ -1136,11 +1228,10 @@ createTabBtn.Activated:Connect(function()
         return
     end
     if #c == 0 then
-        createStatus.Text = "⚠️ Vui lòng nhập code hoặc link loadstring!"
+        createStatus.Text = "⚠️ Vui lòng dán script!"
         return
     end
 
-    -- Kiểm tra trùng tên
     for _, ft in ipairs(featureTabs) do
         if ft.name == n then
             createStatus.Text = "⚠️ Tên tính năng đã tồn tại!"
@@ -1148,18 +1239,14 @@ createTabBtn.Activated:Connect(function()
         end
     end
 
-    CreateFeatureTab(n, ic, c, autoRunState)
+    CreateFeatureTab(n, ic, c)
     RebuildFeatureList()
 
     createStatus.Text = "✅ Đã tạo tab: "..n
     featureNameIn.Text = ""
     featureIconIn.Text = "⚙️"
     featureCodeIn.Text = ""
-    autoRunState = false
-    autoRunCheck.Text = ""
-    autoRunToggle.BackgroundColor3 = Color3.fromRGB(220,225,240)
 
-    -- Chuyển sang tab vừa tạo
     SwitchTab(#tabs)
 end)
 
@@ -1167,9 +1254,6 @@ clearFormBtn.Activated:Connect(function()
     featureNameIn.Text = ""
     featureIconIn.Text = "⚙️"
     featureCodeIn.Text = ""
-    autoRunState = false
-    autoRunCheck.Text = ""
-    autoRunToggle.BackgroundColor3 = Color3.fromRGB(220,225,240)
     createStatus.Text = "🧹 Đã xóa form"
 end)
 
@@ -1275,4 +1359,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub (mở rộng): Code + Code Đã Lưu + Tạo Tính Năng — đã sẵn sàng!")
+print("✅ Banana Cat Hub (tích hợp script con): Code + Code Đã Lưu + Tạo Tính Năng — đã sẵn sàng!")
