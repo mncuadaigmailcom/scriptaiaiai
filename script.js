@@ -1,9 +1,10 @@
 --[[
-    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
-    - Tab "Tạo Tính Năng" cho phép dán NGUYÊN một script hoàn chỉnh HOẶC link raw.
-    - Script đó sẽ được chạy trong môi trường riêng, và nếu nó tạo GUI riêng,
-      GUI đó sẽ được gắn vào menu chính (không tạo cửa sổ rời).
-    - FIX: hỗ trợ link raw, chờ GUI lâu hơn, quét cả CoreGui.
+    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (FIX v3)
+    - Hỗ trợ dán code Lua HOẶC link raw.
+    - Chạy script con trong môi trường riêng, nhúng GUI vào tab.
+    - FIX v3: ÉP GUI CON KHỚP KÍCH THƯỚC VỚI KHUNG HIỂN THỊ (embedHost).
+             + Tự động fit sau khi chạy.
+             + Thêm nút "📐 Khớp Khung" để fit lại thủ công.
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -780,6 +781,46 @@ local function NormalizeCode(c)
     return c
 end
 
+-- Ép GUI con khớp kích thước với host (full 1,0,1,0)
+local function FitGuiToHost(guiObject, host)
+    if not guiObject or not host then return end
+    if not guiObject:IsA("GuiObject") then return end
+    if guiObject:IsA("ScreenGui") or guiObject:IsA("BillboardGui") or guiObject:IsA("SurfaceGui") then
+        return
+    end
+    pcall(function()
+        guiObject.Size = UDim2.new(1, 0, 1, 0)
+        guiObject.Position = UDim2.new(0, 0, 0, 0)
+        guiObject.AnchorPoint = Vector2.new(0, 0)
+    end)
+end
+
+-- Hàm fit đệ quy: fit cả host con bên trong
+local function FitGuiTree(root)
+    if not root then return 0 end
+    local count = 0
+    local function rec(node)
+        for _, child in ipairs(node:GetChildren()) do
+            if child:IsA("GuiObject") then
+                if child:IsA("ScreenGui") or child:IsA("BillboardGui") or child:IsA("SurfaceGui") then
+                    -- đệ quy vào con
+                    rec(child)
+                else
+                    FitGuiToHost(child, root)
+                    count += 1
+                    -- Nếu là Frame chứa con thì đệ quy để fit con của nó theo frame đó
+                    if #child:GetChildren() > 0 then
+                        local subCount = FitGuiTree(child)
+                        count += subCount
+                    end
+                end
+            end
+        end
+    end
+    rec(root)
+    return count
+end
+
 -- Quét GUI mới, trả về danh sách ScreenGui/Frame mới chưa có trong beforeGuis
 local function ScanNewGuis(beforeGuis)
     local found = {}
@@ -849,17 +890,29 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
                     BorderSizePixel = 0,
                     ZIndex = 5,
                     Name = "Embedded_"..g.Name,
+                    ClipsDescendants = false,
                 }, containerFrame)
 
                 for _, child in ipairs(g:GetChildren()) do
                     pcall(function() child.Parent = host end)
                 end
+
+                -- Ép mọi GuiObject cấp 1 khớp với host (đệ quy)
+                for _, child in ipairs(host:GetChildren()) do
+                    if child:IsA("GuiObject") then
+                        FitGuiToHost(child, host)
+                        if #child:GetChildren() > 0 then
+                            FitGuiTree(child)
+                        end
+                    end
+                end
+
                 pcall(function() g:Destroy() end)
             elseif g:IsA("GuiObject") then
-                -- Nếu script parent trực tiếp vào PlayerGui (không phải ScreenGui)
                 pcall(function()
                     g.Parent = containerFrame
                     g.ZIndex = 5
+                    FitGuiToHost(g, containerFrame)
                 end)
             end
         end
@@ -941,6 +994,7 @@ local function CreateFeatureTab(name, icon, codeContent)
         ZIndex = 5,
         Name = "ScriptHost",
         Visible = true,
+        ClipsDescendants = false,
     }, sf)
 
     -- Toolbar điều khiển
@@ -969,8 +1023,15 @@ local function CreateFeatureTab(name, icon, codeContent)
     }, toolbar)
     Corner(saveFeatureBtn, UDim.new(0,5))
 
+    local fitFeatureBtn = New("TextButton", {
+        Size=UDim2.new(0,95,0,26), Position=UDim2.new(0,238,0,5),
+        Text="📐 Khớp Khung", BackgroundColor3=C.PURPLE, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=21,
+    }, toolbar)
+    Corner(fitFeatureBtn, UDim.new(0,5))
+
     local editFeatureBtn = New("TextButton", {
-        Size=UDim2.new(0,80,0,26), Position=UDim2.new(0,238,0,5),
+        Size=UDim2.new(0,60,0,26), Position=UDim2.new(0,339,0,5),
         Text="✏️ Sửa", BackgroundColor3=C.ORANGE, BackgroundTransparency=0.1,
         TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=21,
     }, toolbar)
@@ -984,7 +1045,7 @@ local function CreateFeatureTab(name, icon, codeContent)
     Corner(closeFeatureBtn, UDim.new(0,5))
 
     local fStatus = New("TextLabel", {
-        Size=UDim2.new(0,180,0,26), Position=UDim2.new(0,324,0,5),
+        Size=UDim2.new(0,150,0,26), Position=UDim2.new(0,405,0,5),
         Text="", BackgroundTransparency=1, TextColor3=Color3.fromRGB(220,170,0),
         Font=Enum.Font.GothamMedium, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=21,
     }, toolbar)
@@ -1041,6 +1102,24 @@ local function CreateFeatureTab(name, icon, codeContent)
         RunFeatureScript(codeContent, name, embedHost, runFeatureBtn, fStatus)
     end)
 
+    -- Nút Khớp Khung thủ công
+    fitFeatureBtn.Activated:Connect(function()
+        local count = 0
+        for _, child in ipairs(embedHost:GetChildren()) do
+            if child:IsA("GuiObject") then
+                FitGuiToHost(child, embedHost)
+                count += 1
+                if #child:GetChildren() > 0 then
+                    count += FitGuiTree(child)
+                end
+            end
+        end
+        fStatus.Text = "📐 Đã khớp "..count.." GUI"
+        task.delay(2, function()
+            if fStatus and fStatus.Parent then fStatus.Text = "" end
+        end)
+    end)
+
     saveFeatureBtn.Activated:Connect(function()
         local c = codeContent
         if #c == 0 then
@@ -1085,6 +1164,16 @@ local function CreateFeatureTab(name, icon, codeContent)
         ClearHost()
         SwitchTab(1)
     end)
+
+    -- Đảm bảo khi resize menu, GUI con tự khớp lại
+    trackConn(main:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+        task.wait(0.05)
+        for _, child in ipairs(embedHost:GetChildren()) do
+            if child:IsA("GuiObject") then
+                FitGuiToHost(child, embedHost)
+            end
+        end
+    end))
 
     return featureData
 end
@@ -1385,4 +1474,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub (FIX v2): hỗ trợ link raw + chờ GUI + quét CoreGui — sẵn sàng!")
+print("✅ Banana Cat Hub (FIX v3): hỗ trợ link raw + chờ GUI + quét CoreGui + ÉP GUI KHỚP KHUNG — sẵn sàng!")
