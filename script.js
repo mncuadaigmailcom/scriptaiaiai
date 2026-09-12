@@ -1,9 +1,9 @@
 --[[
-    🍌 Banana Cat Hub v4.3 — FULL CODE
-    + THÊM: Highlight viền tím khi click vật thể (dùng Highlight instance)
-    + THÊM: Tự động xóa highlight cũ khi click vật mới
-    + THÊM: Nút bật/tắt highlight
-    + GIỮ NGUYÊN toàn bộ tính năng cũ
+    🍌 Banana Cat Hub v4.5 — FULL CODE
+    + THÊM TAB "GITHUB": Nhập token ghp_, lưu token
+    + THÊM: "Code Đã Lưu" lấy từ repo/file chứa "111"
+    + THÊM: "Tạo Tính Năng" lấy từ repo/file chứa "112"
+    + GIỮ NGUYÊN toàn bộ tính năng cũ của v4.3
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -140,7 +140,7 @@ Corner(titleBar, UDim.new(0,10))
 New("TextLabel", {
     Size=UDim2.new(1,-90,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="🍌 Banana Cat Executor Hub v4.3",
+    Text="🍌 Banana Cat Executor Hub v4.5",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -420,6 +420,215 @@ local function Button(parent, text, x, y, w, h, color)
     return btn
 end
 
+-- ==================== HỆ THỐNG GITHUB ====================
+-- Lưu trữ token GitHub và các hàm gọi API
+-- Quy ước: 
+--   - "Code Đã Lưu" lấy từ repo/file chứa "111"
+--   - "Tạo Tính Năng" lấy từ repo/file chứa "112"
+local GITHUB_TOKEN_FILE = "banana_cat_github_token.txt"
+local GITHUB_OWNER_FILE = "banana_cat_github_owner.txt"
+local GITHUB_REPO_FILE  = "banana_cat_github_repo.txt"
+
+local function SaveGithubToken(token)
+    if writefile then pcall(writefile, GITHUB_TOKEN_FILE, token) end
+    _G.BananaCatHub_GithubToken = token
+end
+
+local function LoadGithubToken()
+    if _G.BananaCatHub_GithubToken then return _G.BananaCatHub_GithubToken end
+    if readfile and isfile then
+        local ok, data = pcall(function()
+            if isfile(GITHUB_TOKEN_FILE) then return readfile(GITHUB_TOKEN_FILE) end
+            return nil
+        end)
+        if ok and data and #data > 0 then
+            _G.BananaCatHub_GithubToken = data
+            return data
+        end
+    end
+    return nil
+end
+
+local function SaveGithubOwner(owner)
+    if writefile then pcall(writefile, GITHUB_OWNER_FILE, owner) end
+    _G.BananaCatHub_GithubOwner = owner
+end
+
+local function LoadGithubOwner()
+    if _G.BananaCatHub_GithubOwner then return _G.BananaCatHub_GithubOwner end
+    if readfile and isfile then
+        local ok, data = pcall(function()
+            if isfile(GITHUB_OWNER_FILE) then return readfile(GITHUB_OWNER_FILE) end
+            return nil
+        end)
+        if ok and data and #data > 0 then
+            _G.BananaCatHub_GithubOwner = data
+            return data
+        end
+    end
+    return nil
+end
+
+local function SaveGithubRepo(repo)
+    if writefile then pcall(writefile, GITHUB_REPO_FILE, repo) end
+    _G.BananaCatHub_GithubRepo = repo
+end
+
+local function LoadGithubRepo()
+    if _G.BananaCatHub_GithubRepo then return _G.BananaCatHub_GithubRepo end
+    if readfile and isfile then
+        local ok, data = pcall(function()
+            if isfile(GITHUB_REPO_FILE) then return readfile(GITHUB_REPO_FILE) end
+            return nil
+        end)
+        if ok and data and #data > 0 then
+            _G.BananaCatHub_GithubRepo = data
+            return data
+        end
+    end
+    return nil
+end
+
+-- Hàm gọi GitHub API
+-- Trả về: ok (bool), data (table hoặc string lỗi)
+local function GithubRequest(method, path, body)
+    local token = LoadGithubToken()
+    if not token or #token == 0 then
+        return false, "⚠️ Chưa có GitHub token. Vui lòng nhập trong Tab GitHub."
+    end
+
+    pcall(function()
+        if HttpService.HttpEnabled == false then
+            HttpService.HttpEnabled = true
+        end
+    end)
+
+    local url = "https://api.github.com" .. path
+    local headers = {
+        ["Authorization"] = "token " .. token,
+        ["Accept"] = "application/vnd.github.v3+json",
+        ["User-Agent"] = "BananaCatHub"
+    }
+    local requestBody = nil
+    if body then
+        headers["Content-Type"] = "application/json"
+        requestBody = HttpService:JSONEncode(body)
+    end
+
+    local ok, result = pcall(function()
+        return HttpService:RequestAsync({
+            Url = url,
+            Method = method,
+            Headers = headers,
+            Body = requestBody
+        })
+    end)
+
+    if not ok then
+        return false, "❌ Lỗi kết nối GitHub: "..tostring(result)
+    end
+
+    if not result.Success then
+        local preview = result.Body and tostring(result.Body):sub(1, 300) or ""
+        return false, string.format("❌ GitHub HTTP %d: %s\n%s",
+            result.StatusCode or 0, tostring(result.StatusMessage), preview)
+    end
+
+    if #result.Body == 0 then
+        return true, {}
+    end
+
+    local parseOk, data = pcall(function()
+        return HttpService:JSONDecode(result.Body)
+    end)
+
+    if not parseOk then
+        return false, "❌ Không parse được JSON từ GitHub"
+    end
+
+    return true, data
+end
+
+-- Tìm file trong repo chứa chuỗi keyword (mặc định "111" hoặc "112")
+-- Trả về: ok, {path = ..., content = ...} hoặc lỗi
+local function FindFileByKeyword(owner, repo, keyword)
+    if not owner or #owner == 0 then return false, "⚠️ Chưa có owner GitHub" end
+    if not repo or #repo == 0 then return false, "⚠️ Chưa có repo GitHub" end
+
+    -- Bước 1: Lấy cây file của repo (recursive)
+    local ok, tree = GithubRequest("GET", string.format("/repos/%s/%s/git/trees/HEAD?recursive=1", owner, repo))
+    if not ok then return false, tree end
+
+    if not tree.tree or type(tree.tree) ~= "table" then
+        return false, "❌ Không lấy được danh sách file từ repo"
+    end
+
+    -- Bước 2: Tìm file có tên chứa keyword
+    local candidates = {}
+    for _, item in ipairs(tree.tree) do
+        if item.type == "blob" and item.path and item.path:lower():find(keyword:lower(), 1, true) then
+            table.insert(candidates, item.path)
+        end
+    end
+
+    if #candidates == 0 then
+        return false, string.format("📭 Không tìm thấy file nào chứa '%s' trong repo", keyword)
+    end
+
+    -- Bước 3: Lấy nội dung file đầu tiên tìm được
+    local targetPath = candidates[1]
+    local ok2, fileData = GithubRequest("GET", string.format("/repos/%s/%s/contents/%s", owner, repo, targetPath))
+    if not ok2 then return false, fileData end
+
+    if not fileData.content then
+        return false, "❌ File không có nội dung"
+    end
+
+    -- Bước 4: Giải mã base64
+    local content = fileData.content:gsub("\n", ""):gsub("\r", "")
+    local decoded = nil
+    pcall(function()
+        decoded = HttpService:Base64Decode(content)
+    end)
+
+    if not decoded then
+        return false, "❌ Không giải mã được nội dung file"
+    end
+
+    return true, {
+        path = targetPath,
+        content = decoded,
+        sha = fileData.sha,
+        allCandidates = candidates
+    }
+end
+
+-- Lưu nội dung lên file GitHub (tạo mới hoặc cập nhật)
+local function SaveFileToGithub(owner, repo, path, content, message)
+    if not owner or #owner == 0 then return false, "⚠️ Chưa có owner" end
+    if not repo or #repo == 0 then return false, "⚠️ Chưa có repo" end
+    if not path or #path == 0 then return false, "⚠️ Chưa có đường dẫn file" end
+
+    -- Kiểm tra file đã tồn tại chưa để lấy sha
+    local ok, existing = GithubRequest("GET", string.format("/repos/%s/%s/contents/%s", owner, repo, path))
+    local sha = nil
+    if ok and type(existing) == "table" and existing.sha then
+        sha = existing.sha
+    end
+
+    local encoded = HttpService:Base64Encode(content)
+    local body = {
+        message = message or ("Update "..path),
+        content = encoded,
+        branch = "main"
+    }
+    if sha then body.sha = sha end
+
+    local ok2, result = GithubRequest("PUT", string.format("/repos/%s/%s/contents/%s", owner, repo, path), body)
+    if not ok2 then return false, result end
+    return true, result
+end
+
 -- ==================== TAB 1: CODE ====================
 local y = 8
 Label(codeTab, "💻 Nhập Code Tùy Chỉnh", y)
@@ -583,6 +792,14 @@ local sy = 8
 Label(savedCodeTab, "💾 Danh Sách Script Đã Lưu", sy)
 sy = sy + 18
 
+-- Nút tải từ GitHub (file chứa "111")
+local loadFromGithubBtn = Button(savedCodeTab, "☁️ Tải Từ GitHub (file chứa '111')", 8, sy, 280, 28, C.PURPLE)
+sy = sy + 34
+
+local githubLoadStatus = Label(savedCodeTab, "", sy)
+githubLoadStatus.TextColor3=C.YELLOW; githubLoadStatus.TextSize=9; githubLoadStatus.ZIndex=6
+sy = sy + 16
+
 local searchIn = New("TextBox", {
     Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,sy), Text="",
     PlaceholderText="🔍 Tìm kiếm script...", PlaceholderColor3=Color3.fromRGB(160,160,160),
@@ -741,8 +958,216 @@ end
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 RebuildScripts()
 
--- ==================== TAB 3: HỖ TRỢ — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ ====================
-local supportTab = AddTab("Hỗ Trợ", "🛠", 3)
+-- Xử lý nút tải từ GitHub (file chứa "111")
+loadFromGithubBtn.Activated:Connect(function()
+    local owner = LoadGithubOwner()
+    local repo = LoadGithubRepo()
+    if not owner or not repo then
+        githubLoadStatus.Text = "⚠️ Chưa cấu hình owner/repo GitHub. Vào Tab GitHub để nhập."
+        return
+    end
+
+    githubLoadStatus.Text = "⏳ Đang tải từ GitHub..."
+    loadFromGithubBtn.Text = "⏳ Đang tải..."
+
+    task.spawn(function()
+        local ok, result = FindFileByKeyword(owner, repo, "111")
+        if not ok then
+            githubLoadStatus.Text = tostring(result)
+            loadFromGithubBtn.Text = "☁️ Tải Từ GitHub (file chứa '111')"
+            return
+        end
+
+        -- Parse nội dung file: mỗi dòng là 1 script theo format "name|||code"
+        -- Hoặc file JSON. Thử JSON trước, fallback sang format đơn giản.
+        local loaded = 0
+        local parseOk, data = pcall(function()
+            return HttpService:JSONDecode(result.content)
+        end)
+
+        if parseOk and type(data) == "table" then
+            -- Định dạng JSON: [{name=..., code=...}, ...]
+            for _, item in ipairs(data) do
+                if item.name and item.code then
+                    table.insert(scripts, {name = item.name, code = item.code, expanded = false})
+                    loaded = loaded + 1
+                end
+            end
+        else
+            -- Định dạng text: mỗi dòng "name|||code" (code có thể có \n nếu escape)
+            for line in result.content:gmatch("[^\r\n]+") do
+                local sep = line:find("|||", 1, true)
+                if sep then
+                    local n = line:sub(1, sep - 1)
+                    local c = line:sub(sep + 3)
+                    c = c:gsub("\\n", "\n")
+                    if #n > 0 and #c > 0 then
+                        table.insert(scripts, {name = n, code = c, expanded = false})
+                        loaded = loaded + 1
+                    end
+                end
+            end
+        end
+
+        if RebuildScripts then RebuildScripts() end
+        githubLoadStatus.Text = string.format("✅ Đã tải %d script từ: %s", loaded, result.path)
+        loadFromGithubBtn.Text = "☁️ Tải Từ GitHub (file chứa '111')"
+    end)
+end)
+
+-- ==================== TAB GITHUB ====================
+local githubTab = AddTab("GitHub", "🐙", 3)
+
+local gy = 8
+Label(githubTab, "🐙 Cấu Hình GitHub", gy)
+gy = gy + 18
+Label(githubTab, "Nhập token GitHub (bắt đầu bằng ghp_), owner và repo.", gy)
+gy = gy + 14
+Label(githubTab, "Code Đã Lưu sẽ lấy từ file chứa '111'.", gy)
+gy = gy + 14
+Label(githubTab, "Tạo Tính Năng sẽ lấy từ file chứa '112'.", gy)
+gy = gy + 18
+
+Label(githubTab, "🔑 Token GitHub (ghp_...):", gy)
+gy = gy + 14
+
+local ghTokenIn = New("TextBox", {
+    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,gy), Text="",
+    PlaceholderText="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.Code, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
+    Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
+}, githubTab)
+Corner(ghTokenIn, UDim.new(0,5))
+Stroke(ghTokenIn, Color3.fromRGB(100,120,200), 1.5)
+New("UIPadding", {PaddingLeft=UDim.new(0,6)}, ghTokenIn)
+gy = gy + 32
+
+Label(githubTab, "👤 Owner (username hoặc org):", gy)
+gy = gy + 14
+
+local ghOwnerIn = New("TextBox", {
+    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,gy), Text="",
+    PlaceholderText="VD: nhatanhdev",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
+    Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
+}, githubTab)
+Corner(ghOwnerIn, UDim.new(0,5))
+Stroke(ghOwnerIn, Color3.fromRGB(100,120,200), 1.5)
+New("UIPadding", {PaddingLeft=UDim.new(0,6)}, ghOwnerIn)
+gy = gy + 32
+
+Label(githubTab, "📦 Repo (tên repository):", gy)
+gy = gy + 14
+
+local ghRepoIn = New("TextBox", {
+    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,gy), Text="",
+    PlaceholderText="VD: banana-cat-scripts",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.GothamMedium, TextSize=12, BorderSizePixel=0, ClearTextOnFocus=false,
+    Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
+}, githubTab)
+Corner(ghRepoIn, UDim.new(0,5))
+Stroke(ghRepoIn, Color3.fromRGB(100,120,200), 1.5)
+New("UIPadding", {PaddingLeft=UDim.new(0,6)}, ghRepoIn)
+gy = gy + 32
+
+local ghSaveBtn = Button(githubTab, "💾 Lưu Cấu Hình", 8, gy, 140, 26, C.GREEN)
+local ghClearBtn = Button(githubTab, "🗑 Xóa Cấu Hình", 156, gy, 140, 26, C.RED)
+local ghTestBtn = Button(githubTab, "🔍 Kiểm Tra Kết Nối", 304, gy, 160, 26, C.BLUE)
+gy = gy + 34
+
+local ghStatus = Label(githubTab, "", gy)
+ghStatus.TextColor3=C.YELLOW; ghStatus.TextSize=9; ghStatus.ZIndex=6
+gy = gy + 16
+
+-- Load giá trị đã lưu
+local savedToken = LoadGithubToken()
+local savedOwner = LoadGithubOwner()
+local savedRepo  = LoadGithubRepo()
+if savedToken then ghTokenIn.Text = savedToken end
+if savedOwner then ghOwnerIn.Text = savedOwner end
+if savedRepo  then ghRepoIn.Text  = savedRepo  end
+
+ghSaveBtn.Activated:Connect(function()
+    local token = ghTokenIn.Text
+    local owner = ghOwnerIn.Text
+    local repo  = ghRepoIn.Text
+
+    if #token == 0 then
+        ghStatus.Text = "⚠️ Vui lòng nhập token GitHub!"
+        return
+    end
+    if not token:match("^ghp_") and not token:match("^github_pat_") then
+        ghStatus.Text = "⚠️ Token phải bắt đầu bằng 'ghp_' hoặc 'github_pat_'"
+        return
+    end
+    if #owner == 0 then
+        ghStatus.Text = "⚠️ Vui lòng nhập owner!"
+        return
+    end
+    if #repo == 0 then
+        ghStatus.Text = "⚠️ Vui lòng nhập repo!"
+        return
+    end
+
+    SaveGithubToken(token)
+    SaveGithubOwner(owner)
+    SaveGithubRepo(repo)
+    ghStatus.Text = string.format("✅ Đã lưu! Owner: %s, Repo: %s", owner, repo)
+    ghStatus.TextColor3 = C.GREEN
+end)
+
+ghClearBtn.Activated:Connect(function()
+    ghTokenIn.Text = ""
+    ghOwnerIn.Text = ""
+    ghRepoIn.Text = ""
+    _G.BananaCatHub_GithubToken = nil
+    _G.BananaCatHub_GithubOwner = nil
+    _G.BananaCatHub_GithubRepo = nil
+    if delfile then
+        pcall(delfile, GITHUB_TOKEN_FILE)
+        pcall(delfile, GITHUB_OWNER_FILE)
+        pcall(delfile, GITHUB_REPO_FILE)
+    end
+    ghStatus.Text = "🗑 Đã xóa cấu hình GitHub"
+    ghStatus.TextColor3 = C.YELLOW
+end)
+
+ghTestBtn.Activated:Connect(function()
+    ghStatus.Text = "⏳ Đang kiểm tra kết nối GitHub..."
+    ghStatus.TextColor3 = C.YELLOW
+
+    task.spawn(function()
+        local ok, data = GithubRequest("GET", "/user")
+        if ok and type(data) == "table" and data.login then
+            ghStatus.Text = string.format("✅ Kết nối OK! Đăng nhập: %s", data.login)
+            ghStatus.TextColor3 = C.GREEN
+
+            -- Thử tìm file chứa 111 và 112
+            local owner = LoadGithubOwner()
+            local repo = LoadGithubRepo()
+            if owner and repo then
+                task.wait(0.5)
+                local ok1, r1 = FindFileByKeyword(owner, repo, "111")
+                local ok2, r2 = FindFileByKeyword(owner, repo, "112")
+                local msg1 = ok1 and ("✅ File '111': "..r1.path) or ("⚠️ "..tostring(r1))
+                local msg2 = ok2 and ("✅ File '112': "..r2.path) or ("⚠️ "..tostring(r2))
+                ghStatus.Text = string.format("✅ Kết nối OK (%s)\n%s\n%s", data.login, msg1, msg2)
+            end
+        else
+            ghStatus.Text = "❌ Kết nối thất bại: "..tostring(data)
+            ghStatus.TextColor3 = C.RED
+        end
+    end)
+end)
+
+-- ==================== TAB 4: HỖ TRỢ ====================
+local supportTab = AddTab("Hỗ Trợ", "🛠", 4)
 
 local posY = 8
 
@@ -780,7 +1205,6 @@ posY = posY + 18
 Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
 posY = posY + 16
 
--- ===== NÚT BẬT/TẮT PHÂN TÍCH VẬT THỂ + HIGHLIGHT =====
 local analyzeObjectEnabled = false
 local highlightEnabled = true
 
@@ -795,7 +1219,6 @@ posY = posY + 32
 Label(supportTab, "💡 Bật 'Phân Tích' rồi click vào vật thể (tường, đất, part...)", posY)
 posY = posY + 16
 
--- ===== PANEL HIỂN THỊ KẾT QUẢ VẬT THỂ =====
 local objResultPanel = New("Frame", {
     Size=UDim2.new(1,-16,0,190),
     Position=UDim2.new(0,8,0,posY),
@@ -808,7 +1231,7 @@ local objResultPanel = New("Frame", {
 Corner(objResultPanel, UDim.new(0,6))
 Stroke(objResultPanel, C.PURPLE, 1.5)
 
-local objTitleLbl = New("TextLabel", {
+New("TextLabel", {
     Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,4),
     Text="🎯 VẬT THỂ ĐƯỢC CHỌN", BackgroundTransparency=1,
     TextColor3=Color3.fromRGB(180, 130, 255),
@@ -908,7 +1331,6 @@ posY = posY + 198
 Label(supportTab, "📍 Tọa Độ Hiện Tại (Real-time)", posY)
 posY = posY + 16
 
--- ===== PANEL TỌA ĐỘ ĐẦY ĐỦ (POS + SIZE + ROTATION + LOOK + STATE + HP) =====
 local coordDisplay = New("Frame", {
     Size=UDim2.new(1,-16,0,290),
     Position=UDim2.new(0,8,0,posY),
@@ -1138,7 +1560,6 @@ local coordUpdateConn = RunService.RenderStepped:Connect(function()
 end)
 trackConn(coordUpdateConn)
 
--- ===== HIGHLIGHT VẬT THỂ =====
 local currentHighlight = nil
 
 local function RemoveCurrentHighlight()
@@ -1166,7 +1587,6 @@ local function CreateHighlight(target)
     currentHighlight = hl
 end
 
--- ===== XỬ LÝ CLICK VẬT THỂ =====
 local function GetFullPath(obj)
     if not obj then return "nil" end
     local parts = {}
@@ -1230,7 +1650,6 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
             objColorLbl.Text = string.format("Color: R=%d G=%d B=%d",
                 math.floor(color.R*255), math.floor(color.G*255), math.floor(color.B*255))
 
-            -- Tạo highlight tím nếu bật
             if highlightEnabled then
                 CreateHighlight(inst)
             end
@@ -1514,8 +1933,8 @@ end
 
 RebuildWaypoints()
 
--- ==================== TAB 4: AI AI — MINI WEB CHAT ====================
-local aiTab = AddTab("AI AI", "🤖", 4)
+-- ==================== TAB 5: AI AI ====================
+local aiTab = AddTab("AI AI", "🤖", 5)
 
 aiTab.BackgroundTransparency = 1
 aiTab.ScrollingDirection = Enum.ScrollingDirection.Y
@@ -2338,9 +2757,9 @@ task.defer(function()
     aiTab.CanvasSize = UDim2.new(0, 0, 0, aiInner.AbsoluteSize.Y + 20)
 end)
 
--- ==================== TAB 5: TẠO TÍNH NĂNG ====================
+-- ==================== TAB 6: TẠO TÍNH NĂNG ====================
 local featureTabs = {}
-local featureTabIndex = 5
+local featureTabIndex = 6
 
 local function NormalizeCode(c)
     if type(c) ~= "string" then return "" end
@@ -2707,7 +3126,7 @@ task.spawn(function()
     end
 end)
 
-local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 5)
+local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 6)
 
 local cy = 8
 Label(createFeatureTab, "➕ Tạo Tab Tính Năng Tích Hợp", cy)
@@ -2716,6 +3135,14 @@ Label(createFeatureTab, "Dán NGUYÊN một script hoàn chỉnh HOẶC link raw
 cy = cy + 14
 Label(createFeatureTab, "Script sẽ chạy trong tab, GUI sẽ được nhúng vào menu này.", cy)
 cy = cy + 18
+
+-- Nút tải từ GitHub (file chứa "112")
+local loadFeatureFromGithubBtn = Button(createFeatureTab, "☁️ Tải Từ GitHub (file chứa '112')", 8, cy, 280, 28, C.PURPLE)
+cy = cy + 34
+
+local githubFeatureLoadStatus = Label(createFeatureTab, "", cy)
+githubFeatureLoadStatus.TextColor3=C.YELLOW; githubFeatureLoadStatus.TextSize=9; githubFeatureLoadStatus.ZIndex=6
+cy = cy + 16
 
 Label(createFeatureTab, "🏷️ Tên Tính Năng:", cy)
 cy = cy + 14
@@ -2775,6 +3202,70 @@ cy = cy + 32
 local createStatus = Label(createFeatureTab, "", cy)
 createStatus.TextColor3=C.YELLOW; createStatus.TextSize=9; createStatus.ZIndex=6
 cy = cy + 14
+
+-- Xử lý nút tải từ GitHub (file chứa "112")
+loadFeatureFromGithubBtn.Activated:Connect(function()
+    local owner = LoadGithubOwner()
+    local repo = LoadGithubRepo()
+    if not owner or not repo then
+        githubFeatureLoadStatus.Text = "⚠️ Chưa cấu hình owner/repo GitHub. Vào Tab GitHub để nhập."
+        return
+    end
+
+    githubFeatureLoadStatus.Text = "⏳ Đang tải từ GitHub..."
+    loadFeatureFromGithubBtn.Text = "⏳ Đang tải..."
+
+    task.spawn(function()
+        local ok, result = FindFileByKeyword(owner, repo, "112")
+        if not ok then
+            githubFeatureLoadStatus.Text = tostring(result)
+            loadFeatureFromGithubBtn.Text = "☁️ Tải Từ GitHub (file chứa '112')"
+            return
+        end
+
+        -- Parse tương tự như file 111: JSON array [{name, icon, code}] hoặc text "name|||icon|||code"
+        local loaded = 0
+        local parseOk, data = pcall(function()
+            return HttpService:JSONDecode(result.content)
+        end)
+
+        if parseOk and type(data) == "table" then
+            for _, item in ipairs(data) do
+                if item.name and item.code then
+                    CreateFeatureTab(item.name, item.icon or "⚙️", item.code)
+                    loaded = loaded + 1
+                end
+            end
+        else
+            for line in result.content:gmatch("[^\r\n]+") do
+                -- Format: name|||icon|||code
+                local p1 = line:find("|||", 1, true)
+                if p1 then
+                    local n = line:sub(1, p1 - 1)
+                    local rest = line:sub(p1 + 3)
+                    local p2 = rest:find("|||", 1, true)
+                    local ic, c
+                    if p2 then
+                        ic = rest:sub(1, p2 - 1)
+                        c = rest:sub(p2 + 3)
+                    else
+                        ic = "⚙️"
+                        c = rest
+                    end
+                    c = c:gsub("\\n", "\n")
+                    if #n > 0 and #c > 0 then
+                        CreateFeatureTab(n, ic, c)
+                        loaded = loaded + 1
+                    end
+                end
+            end
+        end
+
+        RebuildFeatureList()
+        githubFeatureLoadStatus.Text = string.format("✅ Đã tải %d tính năng từ: %s", loaded, result.path)
+        loadFeatureFromGithubBtn.Text = "☁️ Tải Từ GitHub (file chứa '112')"
+    end)
+end)
 
 grabSizeCodeBtn.Activated:Connect(function()
     local currentCode = featureCodeIn.Text
@@ -3071,4 +3562,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v4.3: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + AI AI + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v4.5: Code + Code Đã Lưu + GitHub + Hỗ Trợ + AI AI + Tạo Tính Năng — sẵn sàng!")
