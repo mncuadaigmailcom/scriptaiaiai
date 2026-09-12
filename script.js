@@ -1,9 +1,8 @@
 --[[
-    🍌 Banana Cat Hub v4.2 — FULL CODE
-    + THÊM: Phân Tích Tọa Độ Vị Trí (Dưới Chân)
-    + THÊM: Phân Tích Tọa Độ Vật Thể (Click vào vật thể)
-    + THÊM: Raycast từ camera → chuột để lấy vật thể
-    + THÊM: Hiển thị Position + Size + Rotation + Look + Material + Name của vật thể
+    🍌 Banana Cat Hub v4.3 — FULL CODE
+    + THÊM: Highlight viền tím khi click vật thể (dùng Highlight instance)
+    + THÊM: Tự động xóa highlight cũ khi click vật mới
+    + THÊM: Nút bật/tắt highlight
     + GIỮ NGUYÊN toàn bộ tính năng cũ
 --]]
 local Players = game:GetService("Players")
@@ -49,7 +48,7 @@ local C = {
     BLUE = Color3.fromRGB(0, 130, 220),
     RED = Color3.fromRGB(220, 60, 60),
     YELLOW = Color3.fromRGB(255, 200, 0),
-    PURPLE = Color3.fromRGB(130, 60, 200),
+    PURPLE = Color3.fromRGB(160, 60, 255),
     ORANGE = Color3.fromRGB(220, 130, 50),
     PINK = Color3.fromRGB(230, 100, 180),
     BG = Color3.fromRGB(240, 242, 248),
@@ -141,7 +140,7 @@ Corner(titleBar, UDim.new(0,10))
 New("TextLabel", {
     Size=UDim2.new(1,-90,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="🍌 Banana Cat Executor Hub v4.2",
+    Text="🍌 Banana Cat Executor Hub v4.3",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -781,13 +780,19 @@ posY = posY + 18
 Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
 posY = posY + 16
 
--- ===== NÚT BẬT/TẮT PHÂN TÍCH VẬT THỂ =====
+-- ===== NÚT BẬT/TẮT PHÂN TÍCH VẬT THỂ + HIGHLIGHT =====
 local analyzeObjectEnabled = false
-local objectAnalyzeBtn = Button(supportTab, "🎯 Phân Tích Vật Thể: TẮT", 8, posY, 220, 26, C.GRAY)
-local clearObjectBtn = Button(supportTab, "🧹 Xóa Kết Quả", 234, posY, 100, 26, C.RED)
+local highlightEnabled = true
+
+local objectAnalyzeBtn = Button(supportTab, "🎯 Phân Tích Vật Thể: TẮT", 8, posY, 200, 26, C.GRAY)
+local clearObjectBtn = Button(supportTab, "🧹 Xóa KQ", 214, posY, 90, 26, C.RED)
 posY = posY + 32
 
-Label(supportTab, "💡 Bật lên rồi click vào vật thể (tường, đất, part...)", posY)
+local highlightToggleBtn = Button(supportTab, "💜 Highlight Tím: BẬT", 8, posY, 200, 26, C.PURPLE)
+local removeHighlightBtn = Button(supportTab, "❌ Xóa Highlight", 214, posY, 90, 26, C.RED)
+posY = posY + 32
+
+Label(supportTab, "💡 Bật 'Phân Tích' rồi click vào vật thể (tường, đất, part...)", posY)
 posY = posY + 16
 
 -- ===== PANEL HIỂN THỊ KẾT QUẢ VẬT THỂ =====
@@ -801,12 +806,12 @@ local objResultPanel = New("Frame", {
     Visible=false,
 }, supportTab)
 Corner(objResultPanel, UDim.new(0,6))
-Stroke(objResultPanel, C.GREEN, 1.5)
+Stroke(objResultPanel, C.PURPLE, 1.5)
 
 local objTitleLbl = New("TextLabel", {
     Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,4),
     Text="🎯 VẬT THỂ ĐƯỢC CHỌN", BackgroundTransparency=1,
-    TextColor3=Color3.fromRGB(100, 255, 150),
+    TextColor3=Color3.fromRGB(180, 130, 255),
     Font=Enum.Font.GothamBold, TextSize=10,
     TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
 }, objResultPanel)
@@ -1028,7 +1033,6 @@ local function GetRootPart()
     return rootPart
 end
 
--- Hàm lấy tọa độ DƯỚI CHÂN (raycast xuống từ nhân vật)
 local function GetGroundPosition()
     local char = player.Character
     if not char then return nil end
@@ -1072,8 +1076,7 @@ local coordUpdateConn = RunService.RenderStepped:Connect(function()
         return
     end
 
-    -- Lấy vị trí DƯỚI CHÂN qua raycast
-    local groundPos, groundInst, groundNormal, groundMat = GetGroundPosition()
+    local groundPos = GetGroundPosition()
     local displayPos = groundPos or rootPart.CFrame.Position
 
     local cf = rootPart.CFrame
@@ -1135,6 +1138,34 @@ local coordUpdateConn = RunService.RenderStepped:Connect(function()
 end)
 trackConn(coordUpdateConn)
 
+-- ===== HIGHLIGHT VẬT THỂ =====
+local currentHighlight = nil
+
+local function RemoveCurrentHighlight()
+    if currentHighlight then
+        pcall(function() currentHighlight:Destroy() end)
+        currentHighlight = nil
+    end
+end
+
+local function CreateHighlight(target)
+    RemoveCurrentHighlight()
+    if not target then return end
+    if not target:IsA("BasePart") then return end
+
+    local hl = Instance.new("Highlight")
+    hl.Name = "BananaCatHub_Highlight"
+    hl.Adornee = target
+    hl.FillColor = Color3.fromRGB(160, 60, 255)
+    hl.FillTransparency = 0.7
+    hl.OutlineColor = Color3.fromRGB(200, 100, 255)
+    hl.OutlineTransparency = 0
+    hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    hl.Parent = target
+
+    currentHighlight = hl
+end
+
 -- ===== XỬ LÝ CLICK VẬT THỂ =====
 local function GetFullPath(obj)
     if not obj then return "nil" end
@@ -1154,13 +1185,11 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
         return
     end
 
-    -- Kiểm tra click có nằm trên GUI hub không
     local objs = playerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
     for _, o in ipairs(objs) do
         if o:IsDescendantOf(gui) then return end
     end
 
-    -- Raycast từ camera qua vị trí chuột
     local mousePos = input.Position
     local unitRay = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
 
@@ -1200,17 +1229,22 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
             objMatLbl.Text = "Material: "..tostring(material):gsub("Enum.Material.", "")
             objColorLbl.Text = string.format("Color: R=%d G=%d B=%d",
                 math.floor(color.R*255), math.floor(color.G*255), math.floor(color.B*255))
+
+            -- Tạo highlight tím nếu bật
+            if highlightEnabled then
+                CreateHighlight(inst)
+            end
         else
             objSizeLbl.Text = "Size: N/A (không phải BasePart)"
             objRotLbl.Text = "Rotation: N/A"
             objLookLbl.Text = "Look: N/A"
             objMatLbl.Text = "Material: N/A"
             objColorLbl.Text = "Color: N/A"
+            RemoveCurrentHighlight()
         end
 
         objPathLbl.Text = "Path: "..GetFullPath(inst)
 
-        -- Lưu để copy
         objResultPanel:SetAttribute("LastHitPos", tostring(hitPos))
         objResultPanel:SetAttribute("LastPath", GetFullPath(inst))
         objResultPanel:SetAttribute("LastNormal", tostring(hitNormal))
@@ -1226,6 +1260,7 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
         objMatLbl.Text = "Material: N/A"
         objColorLbl.Text = "Color: N/A"
         objPathLbl.Text = "Path: N/A"
+        RemoveCurrentHighlight()
     end
 end))
 
@@ -1237,11 +1272,29 @@ objectAnalyzeBtn.Activated:Connect(function()
     else
         objectAnalyzeBtn.Text = "🎯 Phân Tích Vật Thể: TẮT"
         objectAnalyzeBtn.BackgroundColor3 = C.GRAY
+        RemoveCurrentHighlight()
     end
+end)
+
+highlightToggleBtn.Activated:Connect(function()
+    highlightEnabled = not highlightEnabled
+    if highlightEnabled then
+        highlightToggleBtn.Text = "💜 Highlight Tím: BẬT"
+        highlightToggleBtn.BackgroundColor3 = C.PURPLE
+    else
+        highlightToggleBtn.Text = "💜 Highlight Tím: TẮT"
+        highlightToggleBtn.BackgroundColor3 = C.GRAY
+        RemoveCurrentHighlight()
+    end
+end)
+
+removeHighlightBtn.Activated:Connect(function()
+    RemoveCurrentHighlight()
 end)
 
 clearObjectBtn.Activated:Connect(function()
     objResultPanel.Visible = false
+    RemoveCurrentHighlight()
 end)
 
 copyObjBtn.Activated:Connect(function()
@@ -2143,7 +2196,8 @@ local function AskGemini(question)
                 end
             end
 
-            if #fullText == 0 then                if finishReason == "SAFETY" then
+            if #fullText == 0 then
+                if finishReason == "SAFETY" then
                     return false, "⚠️ Gemini từ chối trả lời vì lý do an toàn (SAFETY). Hãy thử diễn đạt lại câu hỏi."
                 elseif finishReason == "RECITATION" then
                     return false, "⚠️ Gemini dừng vì lý do bản quyền (RECITATION)."
@@ -3017,4 +3071,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v4.2: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ) + AI AI + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v4.3: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + AI AI + Tạo Tính Năng — sẵn sàng!")
