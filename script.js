@@ -1,7 +1,7 @@
 --[[
     🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
     + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
-    + TAB "AI AI" — GIAO DIỆN MINI WEB CHAT (đã fix cuộn)
+    + TAB "AI AI" — MINI WEB CHAT + RENDER CODE BLOCK (đã fix)
     + FIX HTTP 404: gemini-2.5-flash
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
@@ -1074,10 +1074,9 @@ end
 
 RebuildWaypoints()
 
--- ==================== TAB 4: AI AI — GIAO DIỆN MINI WEB CHAT ====================
+-- ==================== TAB 4: AI AI — MINI WEB CHAT ====================
 local aiTab = AddTab("AI AI", "🤖", 4)
 
--- Cấu hình tab AI thành dạng cuộn dọc tự động theo nội dung
 aiTab.BackgroundTransparency = 1
 aiTab.ScrollingDirection = Enum.ScrollingDirection.Y
 aiTab.ScrollingEnabled = true
@@ -1087,7 +1086,6 @@ aiTab.CanvasSize = UDim2.new(0, 0, 0, 0)
 aiTab.ScrollBarThickness = 5
 aiTab.ScrollBarImageColor3 = Color3.fromRGB(100, 120, 180)
 
--- Nền tối giống web AI mini (đặt trực tiếp trong aiTab)
 local aiBG = New("Frame", {
     Size=UDim2.new(1, 0, 0, 0),
     Position=UDim2.new(0, 0, 0, 0),
@@ -1098,7 +1096,6 @@ local aiBG = New("Frame", {
     AutomaticSize=Enum.AutomaticSize.Y,
 }, aiTab)
 
--- Nội dung bên trong nền tối
 local aiInner = New("Frame", {
     Size=UDim2.new(1, 0, 0, 0),
     Position=UDim2.new(0, 0, 0, 0),
@@ -1119,7 +1116,7 @@ New("UIPadding", {
     PaddingRight=UDim.new(0,8),
 }, aiInner)
 
--- ===== HEADER: Logo + Tên giống web AI =====
+-- HEADER
 local headerFrame = New("Frame", {
     Size=UDim2.new(1,-16,0,56),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1185,7 +1182,7 @@ local statusText = New("TextLabel", {
     ZIndex=7,
 }, headerFrame)
 
--- ===== API KEY PANEL =====
+-- API KEY PANEL
 local keyPanel = New("Frame", {
     Size=UDim2.new(1,-16,0,86),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1285,9 +1282,9 @@ local keyStatus = New("TextLabel", {
     ZIndex=7,
 }, keyPanel)
 
--- ===== KHUNG CHAT =====
+-- KHUNG CHAT
 local chatPanel = New("Frame", {
-    Size=UDim2.new(1,-16,0,200),
+    Size=UDim2.new(1,-16,0,340),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
     BackgroundTransparency=0,
     BorderSizePixel=0,
@@ -1298,7 +1295,7 @@ Corner(chatPanel, UDim.new(0,10))
 Stroke(chatPanel, Color3.fromRGB(60, 70, 100), 1)
 
 local chatScroll = New("ScrollingFrame", {
-    Size=UDim2.new(1,-16,1,-52),
+    Size=UDim2.new(1,-16,1,-16),
     Position=UDim2.new(0,8,0,8),
     BackgroundColor3=Color3.fromRGB(15, 17, 22),
     BackgroundTransparency=0,
@@ -1323,12 +1320,50 @@ New("UIListLayout", {
     HorizontalAlignment=Enum.HorizontalAlignment.Left,
 }, chatScroll)
 
+-- Phát hiện tin nhắn có code
+local function LooksLikeCode(text)
+    if not text then return false end
+    if text:find("```") then return true end
+    if text:find("\n    ") or text:find("\n\t") then return true end
+    return false
+end
+
+-- Tách text thành các đoạn: text thường và code block
+local function ParseSegments(text)
+    local segments = {}
+    local remaining = text
+    while true do
+        local startIdx, endIdx = remaining:find("```")
+        if not startIdx then
+            if #remaining > 0 then
+                table.insert(segments, {type = "text", content = remaining})
+            end
+            break
+        end
+        local before = remaining:sub(1, startIdx - 1)
+        if #before > 0 then
+            table.insert(segments, {type = "text", content = before})
+        end
+        local rest = remaining:sub(endIdx + 1)
+        local closeStart, closeEnd = rest:find("```")
+        if not closeStart then
+            table.insert(segments, {type = "code", content = rest})
+            break
+        end
+        local codeContent = rest:sub(1, closeStart - 1)
+        codeContent = codeContent:gsub("^%s*%a+%s*\n", "")
+        table.insert(segments, {type = "code", content = codeContent})
+        remaining = rest:sub(closeEnd + 1)
+    end
+    return segments
+end
+
 -- Hàm thêm tin nhắn vào khung chat
 local function AddMessage(sender, text, isUser)
     local bubbleColor = isUser and Color3.fromRGB(50, 120, 220) or Color3.fromRGB(35, 40, 55)
     local textColor = isUser and C.WHITE or Color3.fromRGB(230, 235, 245)
     local align = isUser and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left
-    local sizeScale = isUser and 0.75 or 0.85
+    local sizeScale = isUser and 0.75 or 0.9
 
     local holder = New("Frame", {
         Size=UDim2.new(1,0,0,0),
@@ -1352,21 +1387,6 @@ local function AddMessage(sender, text, isUser)
         bubble.Position = UDim2.new(1-sizeScale, 0, 0, 0)
     end
 
-    local msgLbl = New("TextLabel", {
-        Size=UDim2.new(1,-16,0,0),
-        Position=UDim2.new(0,8,0,6),
-        Text=text,
-        BackgroundTransparency=1,
-        TextColor3=textColor,
-        Font=Enum.Font.GothamMedium,
-        TextSize=11,
-        TextXAlignment=align,
-        TextYAlignment=Enum.TextYAlignment.Top,
-        TextWrapped=true,
-        ZIndex=10,
-        AutomaticSize=Enum.AutomaticSize.Y,
-    }, bubble)
-
     local senderLbl = New("TextLabel", {
         Size=UDim2.new(1,-16,0,12),
         Position=UDim2.new(0,8,0,-14),
@@ -1379,9 +1399,90 @@ local function AddMessage(sender, text, isUser)
         ZIndex=10,
     }, bubble)
 
+    -- Container nội dung
+    local contentContainer = New("Frame", {
+        Size=UDim2.new(1,-16,0,0),
+        Position=UDim2.new(0,8,0,4),
+        BackgroundTransparency=1,
+        BorderSizePixel=0,
+        ZIndex=10,
+        AutomaticSize=Enum.AutomaticSize.Y,
+    }, bubble)
+    New("UIListLayout", {
+        SortOrder=Enum.SortOrder.LayoutOrder,
+        Padding=UDim.new(0,4),
+    }, contentContainer)
+    New("UIPadding", {
+        PaddingBottom=UDim.new(0,6),
+    }, contentContainer)
+
+    -- Phân đoạn
+    local segments
+    if isUser then
+        segments = {{type = "text", content = text}}
+    else
+        segments = ParseSegments(text)
+    end
+
+    for idx, seg in ipairs(segments) do
+        if seg.type == "code" then
+            -- Đoạn code block
+            local codeFrame = New("Frame", {
+                Size=UDim2.new(1,0,0,0),
+                BackgroundColor3=Color3.fromRGB(12, 14, 18),
+                BackgroundTransparency=0,
+                BorderSizePixel=0,
+                ZIndex=11,
+                LayoutOrder=idx,
+                AutomaticSize=Enum.AutomaticSize.Y,
+            }, contentContainer)
+            Corner(codeFrame, UDim.new(0,6))
+            Stroke(codeFrame, Color3.fromRGB(70, 90, 150), 1)
+
+            local codeLbl = New("TextBox", {
+                Size=UDim2.new(1,-16,0,0),
+                Position=UDim2.new(0,8,0,8),
+                Text=seg.content,
+                BackgroundTransparency=1,
+                TextColor3=Color3.fromRGB(180, 230, 180),
+                Font=Enum.Font.Code,
+                TextSize=11,
+                TextXAlignment=Enum.TextXAlignment.Left,
+                TextYAlignment=Enum.TextYAlignment.Top,
+                TextWrapped=true,
+                MultiLine=true,
+                TextEditable=false,
+                ClearTextOnFocus=false,
+                Active=true,
+                Selectable=true,
+                ZIndex=12,
+                AutomaticSize=Enum.AutomaticSize.Y,
+            }, codeFrame)
+            New("UIPadding", {
+                PaddingBottom=UDim.new(0,8),
+            }, codeFrame)
+        else
+            -- Đoạn text thường
+            local textLbl = New("TextLabel", {
+                Size=UDim2.new(1,0,0,0),
+                BackgroundTransparency=1,
+                Text=seg.content,
+                TextColor3=textColor,
+                Font=Enum.Font.GothamMedium,
+                TextSize=11,
+                TextXAlignment=align,
+                TextYAlignment=Enum.TextYAlignment.Top,
+                TextWrapped=true,
+                ZIndex=10,
+                LayoutOrder=idx,
+                AutomaticSize=Enum.AutomaticSize.Y,
+            }, contentContainer)
+        end
+    end
+
     -- Tự cuộn xuống cuối sau khi thêm tin nhắn
     task.defer(function()
-        task.wait(0.05)
+        task.wait(0.1)
         local maxY = math.max(0, chatScroll.AbsoluteCanvasSize.Y - chatScroll.AbsoluteWindowSize.Y)
         chatScroll.CanvasPosition = Vector2.new(0, maxY)
     end)
@@ -1391,7 +1492,7 @@ end
 
 AddMessage("🤖 Gemini", "Xin chào! Tôi là AI Mini. Hãy nhập API key ở trên (nếu chưa có) rồi đặt câu hỏi bên dưới nhé!", false)
 
--- ===== Ô NHẬP CÂU HỎI + NÚT GỬI =====
+-- Ô NHẬP CÂU HỎI
 local inputBar = New("Frame", {
     Size=UDim2.new(1,-16,0,36),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1437,7 +1538,7 @@ local sendBtn = New("TextButton", {
 }, inputBar)
 Corner(sendBtn, UDim.new(0,6))
 
--- ===== THANH CÔNG CỤ DƯỚI =====
+-- THANH CÔNG CỤ
 local toolBar = New("Frame", {
     Size=UDim2.new(1,-16,0,30),
     BackgroundTransparency=1,
@@ -1477,7 +1578,7 @@ local clearChatBtn = New("TextButton", {
 }, toolBar)
 Corner(clearChatBtn, UDim.new(0,6))
 
--- ===== XỬ LÝ API KEY =====
+-- XỬ LÝ API KEY
 local apiKeyFile = "banana_cat_gemini_key.txt"
 
 local function SaveApiKey(key)
@@ -1550,7 +1651,7 @@ toggleKeyBtn.Activated:Connect(function()
     end
 end)
 
--- ===== XỬ LÝ GỬI CÂU HỎI =====
+-- GỬI CÂU HỎI
 local function AskGemini(question)
     local key = LoadApiKey()
     if not key or #key == 0 then
@@ -1656,18 +1757,26 @@ questionIn.FocusLost:Connect(function(enter)
     end
 end)
 
--- ===== COPY TOÀN BỘ CHAT =====
+-- COPY CHAT
 copyAnswerBtn.Activated:Connect(function()
     local allText = ""
+    local function extract(obj)
+        local res = ""
+        for _, c in ipairs(obj:GetChildren()) do
+            if c:IsA("TextBox") and c.TextEditable == false then
+                res = res..c.Text.."\n"
+            elseif c:IsA("TextLabel") then
+                res = res..c.Text.."\n"
+            end
+            if #c:GetChildren() > 0 then
+                res = res..extract(c)
+            end
+        end
+        return res
+    end
     for _, child in ipairs(chatScroll:GetChildren()) do
         if child:IsA("Frame") then
-            local bubble = child:FindFirstChildWhichIsA("Frame")
-            if bubble then
-                local lbl = bubble:FindFirstChildWhichIsA("TextLabel")
-                if lbl then
-                    allText = allText..lbl.Text.."\n\n"
-                end
-            end
+            allText = allText..extract(child).."\n"
         end
     end
     if setclipboard then
@@ -1694,7 +1803,7 @@ clearChatBtn.Activated:Connect(function()
     chatScroll.CanvasPosition = Vector2.new(0, 0)
 end)
 
--- Cập nhật CanvasSize tab AI tự động theo nội dung
+-- Cập nhật CanvasSize tab AI
 aiTab.CanvasSize = UDim2.new(0, 0, 0, 0)
 aiInner:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
     aiTab.CanvasSize = UDim2.new(0, 0, 0, aiInner.AbsoluteSize.Y + 20)
@@ -2312,4 +2421,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.5: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Mini Web Chat, đã fix cuộn) + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v3.6: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Mini Web Chat, hiển thị code block) + Tạo Tính Năng — sẵn sàng!")
