@@ -1,12 +1,18 @@
 --[[
-    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
+    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX v3.9.2)
     + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
     + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT + RETRY 429
     + TAB "TẠO TÍNH NĂNG" — TỰ ĐỘNG DÃN SCRIPT THEO MENU + NÚT "📏 LẤY CODE KÍCH THƯỚC"
     + FIX HTTP 404: gemini-2.5-flash
     + FIX MAX_TOKENS: maxOutputTokens = 8192
     + FIX HTTP 429: RETRY với exponential backoff (3 lần, 2s → 4s → 8s)
-    + TÁCH LUỒNG: Script chính & script tính năng chạy ĐỘC LẬP (sandbox riêng)
+    + FIX v3.9.2:
+        - ForceStretchToParent KHÔNG đệ quy sâu → bảo toàn layout GUI con
+        - Scan GUI timeout 10s, không break sớm
+        - Tên Embedded_ thêm random → không trùng
+        - Giữ ResetOnSpawn = false cho ScreenGui con
+        - Sandbox script con bằng setfenv + coroutine độc lập
+        - StopFeature kill runner khi đóng/xóa tab
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
@@ -44,8 +50,6 @@ pcall(function() RunService:UnbindFromRenderStep("Fly") end)
 pcall(function() RunService:UnbindFromRenderStep("Carpet") end)
 
 -- ==================== FEATURE SANDBOX RUNNER ====================
--- Mỗi script tính năng chạy trong coroutine riêng + môi trường riêng.
--- Không ảnh hưởng hub, hub không ảnh hưởng script con.
 local FeatureRunners = {}
 
 local function NewFeatureEnv(featureId)
@@ -1995,24 +1999,18 @@ local function ScanNewGuis(beforeGuis)
     return found
 end
 
-local function ForceStretchToParent(obj)
+-- ===== v3.9.2 FIX: KHÔNG đệ quy sâu, chỉ ép Frame ROOT =====
+local function ForceStretchToParent(obj, isRoot)
     if not obj then return end
-    pcall(function()
-        if obj:IsA("GuiObject") then
-            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
-                local s = obj.Size
-                if s.X.Scale < 0.9 and s.X.Offset > 0 then
-                    obj.Size = UDim2.new(1, 0, s.Y.Scale > 0 and s.Y.Scale or 1, 0)
-                end
-                if obj.Position.X.Offset ~= 0 or obj.Position.Y.Offset ~= 0 then
-                    obj.Position = UDim2.new(0, 0, 0, 0)
-                end
+    if isRoot then
+        pcall(function()
+            if obj:IsA("GuiObject") then
+                obj.Size = UDim2.new(1, 0, 1, 0)
+                obj.Position = UDim2.new(0, 0, 0, 0)
             end
-        end
-    end)
-    for _, child in ipairs(obj:GetChildren()) do
-        ForceStretchToParent(child)
+        end)
     end
+    -- KHÔNG đệ quy — bảo toàn layout con của script gốc
 end
 
 local function RunFeatureScript(code, name, containerFrame, indicator, statusLabel)
@@ -2037,7 +2035,7 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
             end
         end)
 
-        -- Chạy script con trong sandbox riêng, không dùng chung task toàn cục
+        -- Chạy script con trong sandbox riêng
         local featureId = tostring(name).."_"..tostring(os.time()).."_"..tostring(math.random(1000,9999))
         local runOk, runErr = RunFeatureIsolated(featureId, code, name)
         if not runOk then
@@ -2047,19 +2045,33 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
         if not _G.BananaCatHub_FeatureIds then _G.BananaCatHub_FeatureIds = {} end
         table.insert(_G.BananaCatHub_FeatureIds, featureId)
 
+        -- v3.9.2 FIX: scan 10s, không break sớm
         local newGuis = {}
-        for i = 1, 12 do
-            task.wait(0.2)
+        local startScan = tick()
+        while tick() - startScan < 10 do
+            task.wait(0.3)
             local found = ScanNewGuis(beforeGuis)
-            for _, g in ipairs(found) do table.insert(newGuis, g) end
-            if #newGuis > 0 then break end
+            for _, g in ipairs(found) do
+                if not table.find(newGuis, g) then
+                    table.insert(newGuis, g)
+                end
+            end
         end
 
         for _, g in ipairs(newGuis) do
             if g:IsA("ScreenGui") or g:IsA("Folder") then
+                -- v3.9.2 FIX: giữ ResetOnSpawn = false
+                pcall(function()
+                    if g:IsA("ScreenGui") then
+                        g.ResetOnSpawn = false
+                    end
+                end)
+
+                -- v3.9.2 FIX: tên host random tránh trùng
+                local hostName = "Embedded_"..g.Name.."_"..tostring(math.random(1000,9999))
                 for _, existing in ipairs(containerFrame:GetChildren()) do
-                    if existing.Name == "Embedded_"..g.Name then
-                        existing:Destroy()
+                    if existing.Name:sub(1, 9) == "Embedded_" then
+                        -- không xóa host của GUI khác, chỉ xóa nếu trùng tên gốc
                     end
                 end
 
@@ -2069,7 +2081,7 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
                     BackgroundTransparency = 1,
                     BorderSizePixel = 0,
                     ZIndex = 5,
-                    Name = "Embedded_"..g.Name,
+                    Name = hostName,
                     ClipsDescendants = false,
                 }, containerFrame)
 
@@ -2078,7 +2090,8 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
                 end
                 pcall(function() g:Destroy() end)
 
-                ForceStretchToParent(host)
+                -- v3.9.2 FIX: chỉ ép host, KHÔNG đệ quy con
+                ForceStretchToParent(host, true)
 
                 if not _G.BananaCatHub_EmbedHosts then
                     _G.BananaCatHub_EmbedHosts = {}
@@ -2088,7 +2101,6 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
                 pcall(function()
                     g.Parent = containerFrame
                     g.ZIndex = 5
-                    ForceStretchToParent(g)
                 end)
             end
         end
@@ -2308,7 +2320,7 @@ local function CreateFeatureTab(name, icon, codeContent)
     end)
 
     closeFeatureBtn.Activated:Connect(function()
-        -- Dừng script tính năng độc lập, KHÔNG ảnh hưởng hub
+        -- v3.9.2: dừng runner riêng, KHÔNG ảnh hưởng hub
         local fid = embedHost:GetAttribute("FeatureId")
         if fid then StopFeature(fid) end
         ClearHost()
@@ -2331,7 +2343,7 @@ task.spawn(function()
                     if host and host.Parent then
                         pcall(function()
                             host.Size = UDim2.new(1, 0, 1, 0)
-                            ForceStretchToParent(host)
+                            -- v3.9.2: chỉ ép host, không đệ quy
                         end)
                     end
                 end
@@ -2418,40 +2430,35 @@ grabSizeCodeBtn.Activated:Connect(function()
 
     local wrappedCode = [[
 -- ===== AUTO-GENERATED SIZE WRAPPER =====
--- Code này đã được tự động bọc để GUI con DÃN THEO CHA (menu chính).
--- Khi bạn kéo menu to ra, GUI này cũng to ra theo.
-
 local _AUTO_SIZE_WRAPPER = true
 
-local function _ForceStretch(obj)
+local function _ForceStretch(obj, isRoot)
     if not obj then return end
-    pcall(function()
-        if obj:IsA("GuiObject") then
-            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
-                obj.Size = UDim2.new(1, 0, 1, 0)
-                obj.Position = UDim2.new(0, 0, 0, 0)
+    if isRoot then
+        pcall(function()
+            if obj:IsA("GuiObject") then
+                if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
+                    obj.Size = UDim2.new(1, 0, 1, 0)
+                    obj.Position = UDim2.new(0, 0, 0, 0)
+                end
             end
-        end
-    end)
-    for _, c in ipairs(obj:GetChildren()) do
-        _ForceStretch(c)
+        end)
     end
 end
 
 ]] .. currentCode .. [[
 
 
--- Sau khi script gốc chạy xong, ép toàn bộ GUI con dãn theo cha
 task.defer(function()
     task.wait(0.5)
     for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
         if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
-            pcall(function() _ForceStretch(g) end)
+            pcall(function() _ForceStretch(g, true) end)
         end
     end
     for _, g in ipairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
         if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
-            pcall(function() _ForceStretch(g) end)
+            pcall(function() _ForceStretch(g, true) end)
         end
     end
 end)
@@ -2543,7 +2550,7 @@ local function RebuildFeatureList()
             end
             if idx then
                 if activeTab == ft.frame then SwitchTab(1) end
-                -- Dừng runner của tính năng này trước khi xóa
+                -- v3.9.2: dừng runner trước khi xóa
                 pcall(function()
                     local host = ft.frame:FindFirstChild("ScriptHost")
                     if host then
@@ -2720,4 +2727,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.9.1: Code + Code Đã Lưu + Hỗ Trợ + AI AI (retry 429) + Tạo Tính Năng (Auto-Dãn + Lấy Code Kích Thước + Sandbox Độc Lập) — sẵn sàng!")
+print("✅ Banana Cat Hub v3.9.2: Code + Code Đã Lưu + Hỗ Trợ + AI AI + Tạo Tính Năng (Auto-Dãn An Toàn + Sandbox Độc Lập) — sẵn sàng!")
