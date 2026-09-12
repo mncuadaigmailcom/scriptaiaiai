@@ -1,9 +1,10 @@
 --[[
     🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
-    - Tab "Tạo Tính Năng" cho phép dán NGUYÊN một script hoàn chỉnh HOẶC link raw.
-    - Script đó sẽ được chạy trong môi trường riêng, và nếu nó tạo GUI riêng,
-      GUI đó sẽ được gắn vào menu chính (không tạo cửa sổ rời).
-    - FIX: hỗ trợ link raw, chờ GUI lâu hơn, quét cả CoreGui.
+    + THÊM TAB "HỖ TRỢ" — PHÂN TÍCH TỌA ĐỘ
+    - Tab "Hỗ Trợ" nằm giữa "Code Đã Lưu" và "Tạo Tính Năng"
+    - Hiển thị tọa độ real-time (X, Y, Z, Rotation)
+    - Copy tọa độ, Teleport, Waypoint
+    - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -766,11 +767,314 @@ end
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 RebuildScripts()
 
--- ==================== TAB 3: TẠO TÍNH NĂNG ====================
-local featureTabs = {}
-local featureTabIndex = 3
+-- ==================== TAB 3: HỖ TRỢ — PHÂN TÍCH TỌA ĐỘ ====================
+local supportTab = AddTab("Hỗ Trợ", "🛠", 3)
 
--- Chuẩn hóa input: nếu là link raw thì tự bọc loadstring(game:HttpGet(...))()
+local posY = 8
+Label(supportTab, "🛠 Hỗ Trợ — Phân Tích Tọa Độ", posY)
+posY = posY + 18
+Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
+posY = posY + 16
+
+Label(supportTab, "📍 Tọa Độ Hiện Tại (Real-time)", posY)
+posY = posY + 16
+
+local coordDisplay = New("Frame", {
+    Size=UDim2.new(1,-16,0,110),
+    Position=UDim2.new(0,8,0,posY),
+    BackgroundColor3=Color3.fromRGB(30, 35, 45),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=6,
+}, supportTab)
+Corner(coordDisplay, UDim.new(0,6))
+Stroke(coordDisplay, C.BLUE, 1.5)
+
+New("TextLabel", {
+    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,8,0,8),
+    Text="X:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 100, 100),
+    Font=Enum.Font.GothamBold, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+local xValLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,40,0,8),
+    Text="0.000", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 255, 255),
+    Font=Enum.Font.Code, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+New("TextLabel", {
+    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,8,0,30),
+    Text="Y:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(100, 255, 100),
+    Font=Enum.Font.GothamBold, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+local yValLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,40,0,30),
+    Text="0.000", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 255, 255),
+    Font=Enum.Font.Code, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+New("TextLabel", {
+    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,8,0,52),
+    Text="Z:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(100, 150, 255),
+    Font=Enum.Font.GothamBold, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+local zValLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,40,0,52),
+    Text="0.000", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 255, 255),
+    Font=Enum.Font.Code, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+New("TextLabel", {
+    Size=UDim2.new(0,80,0,20), Position=UDim2.new(0,8,0,76),
+    Text="Rotation:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 220, 100),
+    Font=Enum.Font.GothamBold, TextSize=11, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+local rotValLbl = New("TextLabel", {
+    Size=UDim2.new(1,-100,0,20), Position=UDim2.new(0,90,0,76),
+    Text="Y: 0°  |  P: 0°  |  R: 0°", BackgroundTransparency=1, TextColor3=Color3.fromRGB(200, 200, 200),
+    Font=Enum.Font.Code, TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+local placeLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,18), Position=UDim2.new(0,8,0,94),
+    Text="Place: ...", BackgroundTransparency=1, TextColor3=Color3.fromRGB(150, 200, 255),
+    Font=Enum.Font.GothamMedium, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+posY = posY + 118
+
+local coordUpdateConn = RunService.RenderStepped:Connect(function()
+    local char = player.Character
+    if not char then
+        xValLbl.Text = "N/A"; yValLbl.Text = "N/A"; zValLbl.Text = "N/A"; rotValLbl.Text = "N/A"
+        return
+    end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then
+        xValLbl.Text = "N/A"; yValLbl.Text = "N/A"; zValLbl.Text = "N/A"; rotValLbl.Text = "N/A"
+        return
+    end
+    local pos = hrp.Position
+    local rot = hrp.Orientation
+    xValLbl.Text = string.format("%.3f", pos.X)
+    yValLbl.Text = string.format("%.3f", pos.Y)
+    zValLbl.Text = string.format("%.3f", pos.Z)
+    rotValLbl.Text = string.format("Y: %.1f°  |  P: %.1f°  |  R: %.1f°", rot.Y, rot.X, rot.Z)
+    pcall(function()
+        placeLbl.Text = "Place: "..game.PlaceId.." — "..game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
+    end)
+end)
+trackConn(coordUpdateConn)
+
+posY = posY + 6
+
+local copyCoordBtn = Button(supportTab, "📋 Copy Tọa Độ Hiện Tại", 8, posY, 160, 26, C.BLUE)
+posY = posY + 32
+
+copyCoordBtn.Activated:Connect(function()
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local pos = hrp.Position
+    local text = string.format("%.3f, %.3f, %.3f", pos.X, pos.Y, pos.Z)
+    if setclipboard then
+        pcall(setclipboard, text)
+    elseif toclipboard then
+        pcall(toclipboard, text)
+    end
+    copyCoordBtn.Text = "✅ Đã Copy: "..text
+    task.delay(2, function()
+        if copyCoordBtn and copyCoordBtn.Parent then
+            copyCoordBtn.Text = "📋 Copy Tọa Độ Hiện Tại"
+        end
+    end)
+end)
+
+Label(supportTab, "🚀 Teleport Tới Tọa Độ", posY)
+posY = posY + 14
+
+Label(supportTab, "X:", posY)
+local tpXIn = New("TextBox", {
+    Size=UDim2.new(0,70,0,24), Position=UDim2.new(0,20,0,posY-2), Text="0",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0,
+    TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.Code, TextSize=11,
+    BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=10,
+}, supportTab)
+Corner(tpXIn, UDim.new(0,4)); Stroke(tpXIn, Color3.fromRGB(255,100,100), 1.2)
+
+Label(supportTab, "Y:", posY)
+local tpYIn = New("TextBox", {
+    Size=UDim2.new(0,70,0,24), Position=UDim2.new(0,110,0,posY-2), Text="0",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0,
+    TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.Code, TextSize=11,
+    BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=10,
+}, supportTab)
+Corner(tpYIn, UDim.new(0,4)); Stroke(tpYIn, Color3.fromRGB(100,255,100), 1.2)
+
+Label(supportTab, "Z:", posY)
+local tpZIn = New("TextBox", {
+    Size=UDim2.new(0,70,0,24), Position=UDim2.new(0,200,0,posY-2), Text="0",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0,
+    TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.Code, TextSize=11,
+    BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=10,
+}, supportTab)
+Corner(tpZIn, UDim.new(0,4)); Stroke(tpZIn, Color3.fromRGB(100,150,255), 1.2)
+
+posY = posY + 30
+
+local fillCurrentBtn = Button(supportTab, "📍 Lấy Vị Trí Hiện Tại", 8, posY, 130, 24, C.ORANGE)
+local tpBtn = Button(supportTab, "🚀 Teleport", 144, posY, 90, 24, C.GREEN)
+posY = posY + 30
+
+fillCurrentBtn.Activated:Connect(function()
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    tpXIn.Text = string.format("%.3f", hrp.Position.X)
+    tpYIn.Text = string.format("%.3f", hrp.Position.Y)
+    tpZIn.Text = string.format("%.3f", hrp.Position.Z)
+end)
+
+tpBtn.Activated:Connect(function()
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local x = tonumber(tpXIn.Text) or 0
+    local y = tonumber(tpYIn.Text) or 0
+    local z = tonumber(tpZIn.Text) or 0
+    hrp.CFrame = CFrame.new(Vector3.new(x, y, z))
+    tpBtn.Text = "✅ Đã Teleport!"
+    task.delay(1.5, function()
+        if tpBtn and tpBtn.Parent then tpBtn.Text = "🚀 Teleport" end
+    end)
+end)
+
+Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
+posY = posY + 16
+Label(supportTab, "💾 Waypoint Đã Lưu", posY)
+posY = posY + 14
+
+local wpNameIn = New("TextBox", {
+    Size=UDim2.new(1,-130,0,24), Position=UDim2.new(0,8,0,posY), Text="",
+    PlaceholderText="Tên waypoint...",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0,
+    TextColor3=Color3.fromRGB(20,20,20), Font=Enum.Font.GothamMedium, TextSize=11,
+    BorderSizePixel=0, ClearTextOnFocus=false, Active=true, Selectable=true, ZIndex=10,
+}, supportTab)
+Corner(wpNameIn, UDim.new(0,4)); Stroke(wpNameIn, Color3.fromRGB(180,180,200), 1.2)
+New("UIPadding", {PaddingLeft=UDim.new(0,6)}, wpNameIn)
+
+local saveWpBtn = Button(supportTab, "💾 Lưu", 0, 0, 100, 24, C.PURPLE)
+saveWpBtn.Position = UDim2.new(1, -110, 0, posY)
+
+posY = posY + 32
+
+local wpListFrame = New("Frame", {
+    Size=UDim2.new(1,-16,0,0), Position=UDim2.new(0,8,0,posY),
+    BackgroundTransparency=1, BorderSizePixel=0, ZIndex=6,
+}, supportTab)
+New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,4)}, wpListFrame)
+
+local waypoints = {}
+
+local RebuildWaypoints
+
+saveWpBtn.Activated:Connect(function()
+    local char = player.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+    local name = wpNameIn.Text
+    if #name == 0 then name = "WP "..(#waypoints+1) end
+    table.insert(waypoints, {name = name, pos = hrp.Position})
+    wpNameIn.Text = ""
+    if RebuildWaypoints then RebuildWaypoints() end
+end)
+
+RebuildWaypoints = function()
+    for _, c in ipairs(wpListFrame:GetChildren()) do
+        if not c:IsA("UIListLayout") then c:Destroy() end
+    end
+
+    if #waypoints == 0 then
+        New("TextLabel", {
+            Size=UDim2.new(1,0,0,26),
+            Text="📭 Chưa có waypoint nào.",
+            BackgroundTransparency=1, TextColor3=C.GRAY,
+            Font=Enum.Font.GothamMedium, TextSize=10,
+            TextXAlignment=Enum.TextXAlignment.Center, ZIndex=7,
+        }, wpListFrame)
+        supportTab.CanvasSize = UDim2.new(0, 0, 0, posY + 40)
+        return
+    end
+
+    local totalH = 0
+    for i, wp in ipairs(waypoints) do
+        local row = New("Frame", {
+            Size=UDim2.new(1,0,0,30),
+            BackgroundColor3=Color3.fromRGB(255,255,255),
+            BackgroundTransparency=0.1, BorderSizePixel=0, ZIndex=6,
+        }, wpListFrame)
+        Corner(row, UDim.new(0,5)); Stroke(row)
+
+        New("TextLabel", {
+            Size=UDim2.new(1,-120,1,0), Position=UDim2.new(0,8,0,0),
+            Text=wp.name.." ("..string.format("%.0f, %.0f, %.0f", wp.pos.X, wp.pos.Y, wp.pos.Z)..")",
+            BackgroundTransparency=1, TextColor3=C.DARK,
+            Font=Enum.Font.GothamBold, TextSize=9,
+            TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+        }, row)
+
+        local goBtn = New("TextButton", {
+            Size=UDim2.new(0,50,0,22), Position=UDim2.new(1,-84,0,4),
+            Text="🚀 Tới", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
+            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9,
+            BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(goBtn, UDim.new(0,4))
+        goBtn.Activated:Connect(function()
+            local char = player.Character
+            if not char then return end
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if not hrp then return end
+            hrp.CFrame = CFrame.new(wp.pos)
+        end)
+
+        local delBtn = New("TextButton", {
+            Size=UDim2.new(0,26,0,22), Position=UDim2.new(1,-30,0,4),
+            Text="🗑", BackgroundColor3=C.RED, BackgroundTransparency=0.1,
+            TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10,
+            BorderSizePixel=0, ZIndex=8,
+        }, row)
+        Corner(delBtn, UDim.new(0,4))
+        delBtn.Activated:Connect(function()
+            table.remove(waypoints, i)
+            RebuildWaypoints()
+        end)
+
+        totalH = totalH + 34
+    end
+
+    wpListFrame.Size = UDim2.new(1,-16,0,totalH)
+    supportTab.CanvasSize = UDim2.new(0, 0, 0, posY + totalH + 20)
+end
+
+RebuildWaypoints()
+
+-- ==================== TAB 4: TẠO TÍNH NĂNG ====================
+local featureTabs = {}
+local featureTabIndex = 4
+
 local function NormalizeCode(c)
     if type(c) ~= "string" then return "" end
     c = c:gsub("^%s+", ""):gsub("%s+$", "")
@@ -780,7 +1084,6 @@ local function NormalizeCode(c)
     return c
 end
 
--- Quét GUI mới, trả về danh sách ScreenGui/Frame mới chưa có trong beforeGuis
 local function ScanNewGuis(beforeGuis)
     local found = {}
     local function scan(container)
@@ -816,7 +1119,6 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
         local fn, lerr = loadstring(code)
         if not fn then error("loadstring thất bại: "..tostring(lerr)) end
 
-        -- Ghi lại GUI hiện có
         local beforeGuis = {}
         for _, g in ipairs(playerGui:GetChildren()) do beforeGuis[g] = true end
         for _, g in ipairs(targetGui:GetChildren()) do beforeGuis[g] = true end
@@ -827,10 +1129,8 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
             end
         end)
 
-        -- Chạy script con
         fn()
 
-        -- Chờ + quét lặp để bắt GUI tạo trễ (tối đa ~2.5s)
         local newGuis = {}
         for i = 1, 12 do
             task.wait(0.2)
@@ -839,7 +1139,6 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
             if #newGuis > 0 then break end
         end
 
-        -- Nhúng GUI mới vào frame tab
         for _, g in ipairs(newGuis) do
             if g:IsA("ScreenGui") or g:IsA("Folder") then
                 local host = New("Frame", {
@@ -856,7 +1155,6 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
                 end
                 pcall(function() g:Destroy() end)
             elseif g:IsA("GuiObject") then
-                -- Nếu script parent trực tiếp vào PlayerGui (không phải ScreenGui)
                 pcall(function()
                     g.Parent = containerFrame
                     g.ZIndex = 5
@@ -932,7 +1230,6 @@ local function CreateFeatureTab(name, icon, codeContent)
     }
     table.insert(featureTabs, featureData)
 
-    -- Khu vực chứa GUI script con
     local embedHost = New("Frame", {
         Size = UDim2.new(1,0,1,-36),
         Position = UDim2.new(0,0,0,0),
@@ -943,7 +1240,6 @@ local function CreateFeatureTab(name, icon, codeContent)
         Visible = true,
     }, sf)
 
-    -- Toolbar điều khiển
     local toolbar = New("Frame", {
         Size = UDim2.new(1,0,0,36),
         Position = UDim2.new(0,0,1,-36),
@@ -989,7 +1285,6 @@ local function CreateFeatureTab(name, icon, codeContent)
         Font=Enum.Font.GothamMedium, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=21,
     }, toolbar)
 
-    -- Editor (ẩn/hiện khi sửa)
     local editorFrame = New("Frame", {
         Size=UDim2.new(1,0,1,-36),
         Position=UDim2.new(0,0,0,0),
@@ -1089,8 +1384,7 @@ local function CreateFeatureTab(name, icon, codeContent)
     return featureData
 end
 
--- ==================== TAB TẠO TÍNH NĂNG ====================
-local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 3)
+local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 4)
 
 local cy = 8
 Label(createFeatureTab, "➕ Tạo Tab Tính Năng Tích Hợp", cy)
@@ -1385,4 +1679,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub (FIX v2): hỗ trợ link raw + chờ GUI + quét CoreGui — sẵn sàng!")
+print("✅ Banana Cat Hub v3: Code + Code Đã Lưu + Hỗ Trợ (Tọa Độ) + Tạo Tính Năng — sẵn sàng!")
