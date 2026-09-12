@@ -1,12 +1,9 @@
 --[[
-    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
-    + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
-    + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT + RETRY 429
-    + TAB "TẠO TÍNH NĂNG" — TỰ ĐỘNG DÃN SCRIPT THEO MENU + NÚT "📏 LẤY CODE KÍCH THƯỚC"
-    + FIX HTTP 404: gemini-2.5-flash
-    + FIX MAX_TOKENS: maxOutputTokens = 8192
-    + FIX HTTP 429: RETRY với exponential backoff (3 lần, 2s → 4s → 8s)
-    - GIỮ NGUYÊN toàn bộ tính năng gốc
+    🍌 Banana Cat Hub v4.0 — BẢN FIX TỌA ĐỘ CHÍNH XÁC THEO GAME
+    + FIX TỌA ĐỘ: Humanoid.RootPart + CFrame + ToOrientation + Camera LookVector
+    + GIỮ NGUYÊN toàn bộ tính năng: Code, Code Đã Lưu, Hỗ Trợ, AI AI, Tạo Tính Năng
+    + Thêm cache chống spam UI mỗi frame
+    + Fallback đa tầng: RootPart → HumanoidRootPart → PrimaryPart → UpperTorso/Torso
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -142,7 +139,7 @@ Corner(titleBar, UDim.new(0,10))
 New("TextLabel", {
     Size=UDim2.new(1,-90,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="🍌 Banana Cat Executor Hub (Caro Style)",
+    Text="🍌 Banana Cat Executor Hub v4.0",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -852,26 +849,68 @@ local placeLbl = New("TextLabel", {
 
 posY = posY + 118
 
+-- ===== FIX: LẤY TỌA ĐỘ CHÍNH XÁC THEO GAME =====
+local lastPos = Vector3.new()
+local lastRot = Vector3.new()
+
 local coordUpdateConn = RunService.RenderStepped:Connect(function()
     local char = player.Character
     if not char then
-        xValLbl.Text = "N/A"; yValLbl.Text = "N/A"; zValLbl.Text = "N/A"; rotValLbl.Text = "N/A"
+        xValLbl.Text = "N/A"
+        yValLbl.Text = "N/A"
+        zValLbl.Text = "N/A"
+        rotValLbl.Text = "N/A"
         return
     end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then
-        xValLbl.Text = "N/A"; yValLbl.Text = "N/A"; zValLbl.Text = "N/A"; rotValLbl.Text = "N/A"
+
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+
+    local rootPart = nil
+    if humanoid and humanoid.RootPart then
+        rootPart = humanoid.RootPart
+    end
+    if not rootPart then
+        rootPart = char:FindFirstChild("HumanoidRootPart")
+    end
+    if not rootPart and char.PrimaryPart then
+        rootPart = char.PrimaryPart
+    end
+    if not rootPart then
+        rootPart = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
+    end
+
+    if not rootPart then
+        xValLbl.Text = "N/A"
+        yValLbl.Text = "N/A"
+        zValLbl.Text = "N/A"
+        rotValLbl.Text = "N/A"
         return
     end
-    local pos = hrp.Position
-    local rot = hrp.Orientation
-    xValLbl.Text = string.format("%.3f", pos.X)
-    yValLbl.Text = string.format("%.3f", pos.Y)
-    zValLbl.Text = string.format("%.3f", pos.Z)
-    rotValLbl.Text = string.format("Y: %.1f°  |  P: %.1f°  |  R: %.1f°", rot.Y, rot.X, rot.Z)
-    pcall(function()
-        placeLbl.Text = "Place: "..game.PlaceId.." — "..game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name
-    end)
+
+    local cf = rootPart.CFrame
+    local pos = cf.Position
+    local rx, ry, rz = cf:ToOrientation()
+
+    if (pos - lastPos).Magnitude > 0.001 then
+        lastPos = pos
+        xValLbl.Text = string.format("%.3f", pos.X)
+        yValLbl.Text = string.format("%.3f", pos.Y)
+        zValLbl.Text = string.format("%.3f", pos.Z)
+    end
+
+    local newRot = Vector3.new(rx, ry, rz)
+    if (newRot - lastRot).Magnitude > 0.001 then
+        lastRot = newRot
+        rotValLbl.Text = string.format("Y: %.1f°  |  P: %.1f°  |  R: %.1f°",
+            math.deg(ry), math.deg(rx), math.deg(rz))
+    end
+
+    if placeLbl.Text == "Place: ..." then
+        pcall(function()
+            local info = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+            placeLbl.Text = "Place: "..game.PlaceId.." — "..info.Name
+        end)
+    end
 end)
 trackConn(coordUpdateConn)
 
@@ -883,9 +922,14 @@ posY = posY + 32
 copyCoordBtn.Activated:Connect(function()
     local char = player.Character
     if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    local pos = hrp.Position
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local rootPart = (humanoid and humanoid.RootPart)
+        or char:FindFirstChild("HumanoidRootPart")
+        or char.PrimaryPart
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+    if not rootPart then return end
+    local pos = rootPart.CFrame.Position
     local text = string.format("%.3f, %.3f, %.3f", pos.X, pos.Y, pos.Z)
     if setclipboard then
         pcall(setclipboard, text)
@@ -942,22 +986,33 @@ posY = posY + 30
 fillCurrentBtn.Activated:Connect(function()
     local char = player.Character
     if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    tpXIn.Text = string.format("%.3f", hrp.Position.X)
-    tpYIn.Text = string.format("%.3f", hrp.Position.Y)
-    tpZIn.Text = string.format("%.3f", hrp.Position.Z)
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local rootPart = (humanoid and humanoid.RootPart)
+        or char:FindFirstChild("HumanoidRootPart")
+        or char.PrimaryPart
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+    if not rootPart then return end
+    local p = rootPart.CFrame.Position
+    tpXIn.Text = string.format("%.3f", p.X)
+    tpYIn.Text = string.format("%.3f", p.Y)
+    tpZIn.Text = string.format("%.3f", p.Z)
 end)
 
 tpBtn.Activated:Connect(function()
     local char = player.Character
     if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local rootPart = (humanoid and humanoid.RootPart)
+        or char:FindFirstChild("HumanoidRootPart")
+        or char.PrimaryPart
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+    if not rootPart then return end
     local x = tonumber(tpXIn.Text) or 0
     local y = tonumber(tpYIn.Text) or 0
     local z = tonumber(tpZIn.Text) or 0
-    hrp.CFrame = CFrame.new(Vector3.new(x, y, z))
+    rootPart.CFrame = CFrame.new(Vector3.new(x, y, z))
     tpBtn.Text = "✅ Đã Teleport!"
     task.delay(1.5, function()
         if tpBtn and tpBtn.Parent then tpBtn.Text = "🚀 Teleport" end
@@ -998,11 +1053,16 @@ local RebuildWaypoints
 saveWpBtn.Activated:Connect(function()
     local char = player.Character
     if not char then return end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local rootPart = (humanoid and humanoid.RootPart)
+        or char:FindFirstChild("HumanoidRootPart")
+        or char.PrimaryPart
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+    if not rootPart then return end
     local name = wpNameIn.Text
     if #name == 0 then name = "WP "..(#waypoints+1) end
-    table.insert(waypoints, {name = name, pos = hrp.Position})
+    table.insert(waypoints, {name = name, pos = rootPart.CFrame.Position})
     wpNameIn.Text = ""
     if RebuildWaypoints then RebuildWaypoints() end
 end)
@@ -1051,9 +1111,14 @@ RebuildWaypoints = function()
         goBtn.Activated:Connect(function()
             local char = player.Character
             if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            hrp.CFrame = CFrame.new(wp.pos)
+            local humanoid = char:FindFirstChildOfClass("Humanoid")
+            local rootPart = (humanoid and humanoid.RootPart)
+                or char:FindFirstChild("HumanoidRootPart")
+                or char.PrimaryPart
+                or char:FindFirstChild("UpperTorso")
+                or char:FindFirstChild("Torso")
+            if not rootPart then return end
+            rootPart.CFrame = CFrame.new(wp.pos)
         end)
 
         local delBtn = New("TextButton", {
@@ -1119,7 +1184,6 @@ New("UIPadding", {
     PaddingRight=UDim.new(0,8),
 }, aiInner)
 
--- HEADER
 local headerFrame = New("Frame", {
     Size=UDim2.new(1,-16,0,56),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1185,7 +1249,6 @@ local statusText = New("TextLabel", {
     ZIndex=7,
 }, headerFrame)
 
--- API KEY PANEL
 local keyPanel = New("Frame", {
     Size=UDim2.new(1,-16,0,86),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1285,7 +1348,6 @@ local keyStatus = New("TextLabel", {
     ZIndex=7,
 }, keyPanel)
 
--- KHUNG CHAT
 local chatPanel = New("Frame", {
     Size=UDim2.new(1,-16,0,340),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1323,7 +1385,6 @@ New("UIListLayout", {
     HorizontalAlignment=Enum.HorizontalAlignment.Left,
 }, chatScroll)
 
--- Tách text thành các đoạn: text thường và code block
 local function ParseSegments(text)
     local segments = {}
     local remaining = text
@@ -1353,7 +1414,6 @@ local function ParseSegments(text)
     return segments
 end
 
--- Hàm thêm tin nhắn vào khung chat
 local function AddMessage(sender, text, isUser)
     local bubbleColor = isUser and Color3.fromRGB(50, 120, 220) or Color3.fromRGB(35, 40, 55)
     local textColor = isUser and C.WHITE or Color3.fromRGB(230, 235, 245)
@@ -1482,7 +1542,6 @@ end
 
 AddMessage("🤖 Gemini", "Xin chào! Tôi là AI Mini. Hãy nhập API key ở trên (nếu chưa có) rồi đặt câu hỏi bên dưới nhé!", false)
 
--- Ô NHẬP CÂU HỎI
 local inputBar = New("Frame", {
     Size=UDim2.new(1,-16,0,36),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1528,7 +1587,6 @@ local sendBtn = New("TextButton", {
 }, inputBar)
 Corner(sendBtn, UDim.new(0,6))
 
--- THANH CÔNG CỤ
 local toolBar = New("Frame", {
     Size=UDim2.new(1,-16,0,30),
     BackgroundTransparency=1,
@@ -1581,7 +1639,6 @@ local clearChatBtn = New("TextButton", {
 }, toolBar)
 Corner(clearChatBtn, UDim.new(0,6))
 
--- XỬ LÝ API KEY
 local apiKeyFile = "banana_cat_gemini_key.txt"
 
 local function SaveApiKey(key)
@@ -1654,7 +1711,6 @@ toggleKeyBtn.Activated:Connect(function()
     end
 end)
 
--- SYSTEM PROMPT: Ép AI viết code đầy đủ + biết cách dãn GUI
 local SYSTEM_PROMPT = [[Bạn là trợ lý lập trình chuyên nghiệp cho Roblox Lua.
 
 QUY TẮC BẮT BUỘC:
@@ -1674,7 +1730,6 @@ QUY TẮC ĐẶC BIỆT CHO GUI (RẤT QUAN TRỌNG):
 - Điều này để khi menu chính của hub kéo to ra, GUI này cũng tự dãn theo.
 - Nếu script dùng ScreenGui riêng, hãy đặt Parent là CoreGui hoặc PlayerGui và dùng Size tự dãn.]]
 
--- GỬI CÂU HỎI (có retry 429)
 local function AskGemini(question)
     local key = LoadApiKey()
     if not key or #key == 0 then
@@ -1902,7 +1957,6 @@ clearChatBtn.Activated:Connect(function()
     chatScroll.CanvasPosition = Vector2.new(0, 0)
 end)
 
--- Cập nhật CanvasSize tab AI
 aiTab.CanvasSize = UDim2.new(0, 0, 0, 0)
 aiInner:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
     aiTab.CanvasSize = UDim2.new(0, 0, 0, aiInner.AbsoluteSize.Y + 20)
@@ -1945,18 +1999,15 @@ local function ScanNewGuis(beforeGuis)
     return found
 end
 
--- Hàm ép tất cả Frame con phải dãn theo cha
 local function ForceStretchToParent(obj)
     if not obj then return end
     pcall(function()
         if obj:IsA("GuiObject") then
             if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
                 local s = obj.Size
-                -- Nếu kích thước là offset (cố định), ép thành scale
                 if s.X.Scale < 0.9 and s.X.Offset > 0 then
                     obj.Size = UDim2.new(1, 0, s.Y.Scale > 0 and s.Y.Scale or 1, 0)
                 end
-                -- Nếu Position là offset, đưa về 0
                 if obj.Position.X.Offset ~= 0 or obj.Position.Y.Offset ~= 0 then
                     obj.Position = UDim2.new(0, 0, 0, 0)
                 end
@@ -2005,7 +2056,6 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
 
         for _, g in ipairs(newGuis) do
             if g:IsA("ScreenGui") or g:IsA("Folder") then
-                -- Xóa host cũ nếu có (tránh chồng khi chạy lại)
                 for _, existing in ipairs(containerFrame:GetChildren()) do
                     if existing.Name == "Embedded_"..g.Name then
                         existing:Destroy()
@@ -2027,10 +2077,8 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
                 end
                 pcall(function() g:Destroy() end)
 
-                -- ÉP tất cả Frame con phải dãn theo host
                 ForceStretchToParent(host)
 
-                -- Lưu reference để cập nhật khi menu resize
                 if not _G.BananaCatHub_EmbedHosts then
                     _G.BananaCatHub_EmbedHosts = {}
                 end
@@ -2266,7 +2314,6 @@ local function CreateFeatureTab(name, icon, codeContent)
     return featureData
 end
 
--- ===== TỰ ĐỘNG DÃN SCRIPT CON KHI MENU RESIZE =====
 task.spawn(function()
     task.wait(1)
     local lastSize = main.AbsoluteSize
@@ -2357,7 +2404,6 @@ local createStatus = Label(createFeatureTab, "", cy)
 createStatus.TextColor3=C.YELLOW; createStatus.TextSize=9; createStatus.ZIndex=6
 cy = cy + 14
 
--- Xử lý nút "📏 Lấy Code Kích Thước"
 grabSizeCodeBtn.Activated:Connect(function()
     local currentCode = featureCodeIn.Text
     if #currentCode == 0 then
@@ -2365,12 +2411,8 @@ grabSizeCodeBtn.Activated:Connect(function()
         return
     end
 
-    -- Bọc code với wrapper ép dãn
     local wrappedCode = [[
 -- ===== AUTO-GENERATED SIZE WRAPPER =====
--- Code này đã được tự động bọc để GUI con DÃN THEO CHA (menu chính).
--- Khi bạn kéo menu to ra, GUI này cũng to ra theo.
-
 local _AUTO_SIZE_WRAPPER = true
 
 local function _ForceStretch(obj)
@@ -2391,7 +2433,6 @@ end
 ]] .. currentCode .. [[
 
 
--- Sau khi script gốc chạy xong, ép toàn bộ GUI con dãn theo cha
 task.defer(function()
     task.wait(0.5)
     for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
@@ -2407,7 +2448,6 @@ task.defer(function()
 end)
 ]]
 
-    -- Tự động lưu vào danh sách Code Đã Lưu
     local saveName = "AutoSize_"..os.date("%H%M%S")
     local bn = saveName
     local cnt = 1
@@ -2424,7 +2464,6 @@ end)
     table.insert(scripts, {name = saveName, code = wrappedCode, expanded = false})
     if RebuildScripts then RebuildScripts() end
 
-    -- Đưa wrapped code vào ô nhập để người dùng có thể bấm "Tạo Tab Tính Năng" ngay
     featureCodeIn.Text = wrappedCode
     featureNameIn.Text = "AutoSize_"..os.date("%H%M%S")
 
@@ -2660,4 +2699,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.9: Code + Code Đã Lưu + Hỗ Trợ + AI AI (retry 429) + Tạo Tính Năng (Auto-Dãn + Lấy Code Kích Thước) — sẵn sàng!")
+print("✅ Banana Cat Hub v4.0: Code + Code Đã Lưu + Hỗ Trợ (Fix Tọa Độ) + AI AI + Tạo Tính Năng — sẵn sàng!")
