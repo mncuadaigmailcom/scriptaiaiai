@@ -1,14 +1,16 @@
 --[[
-    🍌 Banana Cat Hub — v4
-    - 3 quick script (Dex / IY / SimpleSpy) chạy TRỰC TIẾP, KHÔNG cần loadstring HttpGet
-    - Tab Hỗ Trợ giữ nguyên + nâng cấp nhẹ
+    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
+    + THÊM TAB "HỖ TRỢ" — PHÂN TÍCH TỌA ĐỘ
+    + CHUYỂN 3 SCRIPT NHANH TỪ TAB "CODE" SANG TAB "HỖ TRỢ"
+    - Tab "Hỗ Trợ" nằm giữa "Code Đã Lưu" và "Tạo Tính Năng"
+    - Hiển thị tọa độ real-time (X, Y, Z, Rotation)
+    - Copy tọa độ, Teleport, Waypoint
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -417,112 +419,8 @@ local function Button(parent, text, x, y, w, h, color)
     return btn
 end
 
--- ==================== HÀM TẢI SCRIPT TỪ URL (có fallback nhiều nguồn) ====================
-local function FetchUrl(url)
-    -- Thử HttpGet của executor
-    local ok, res = pcall(function()
-        return game:HttpGet(url)
-    end)
-    if ok and type(res) == "string" and #res > 0 then
-        return res
-    end
-    -- Fallback: HttpService (nếu executor cho phép)
-    local ok2, res2 = pcall(function()
-        return HttpService:GetAsync(url)
-    end)
-    if ok2 and type(res2) == "string" and #res2 > 0 then
-        return res2
-    end
-    -- Fallback: request (Synapse / Krnl)
-    if request then
-        local ok3, res3 = pcall(function()
-            local r = request({Url = url, Method = "GET"})
-            return r and r.Body
-        end)
-        if ok3 and type(res3) == "string" and #res3 > 0 then
-            return res3
-        end
-    end
-    if http_request then
-        local ok4, res4 = pcall(function()
-            local r = http_request({Url = url, Method = "GET"})
-            return r and r.Body
-        end)
-        if ok4 and type(res4) == "string" and #res4 > 0 then
-            return res4
-        end
-    end
-    return nil, "Không thể tải URL (HttpGet/HttpService/request đều thất bại)"
-end
-
 -- ==================== TAB 1: CODE ====================
 local y = 8
-Label(codeTab, "⚡ Code Nhanh - Nhấn để chạy ngay", y)
-y = y + 16
-
--- 3 quick script: chạy TRỰC TIẾP, không còn loadstring(game:HttpGet(...))()
-local quickScripts = {
-    {
-        n = "Dex Explorer",
-        d = "Mở Dex Explorer (tải trực tiếp)",
-        url = "https://raw.githubusercontent.com/infyiff/backup/main/dex.lua",
-        cl = Color3.fromRGB(50,120,200),
-    },
-    {
-        n = "Infinite Yield",
-        d = "Admin Commands (tải trực tiếp)",
-        url = "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source",
-        cl = C.PURPLE,
-    },
-    {
-        n = "SimpleSpy v3",
-        d = "Theo dõi RemoteEvent & RemoteFunction",
-        url = "https://raw.githubusercontent.com/ex-serum/SimpleSpy/main/SimpleSpy.lua",
-        cl = Color3.fromRGB(0,150,80),
-    },
-}
-
-for _, s in ipairs(quickScripts) do
-    local btn = New("TextButton", {
-        Size=UDim2.new(1,-16,0,28), Position=UDim2.new(0,8,0,y), Text="",
-        BackgroundColor3=s.cl, BackgroundTransparency=0.3, BorderSizePixel=0, ZIndex=6,
-    }, codeTab)
-    Corner(btn, UDim.new(0,5))
-    Stroke(btn, s.cl, 1.2)
-    New("TextLabel", {
-        Size=UDim2.new(1,-10,1,0), Position=UDim2.new(0,10,0,0), Text=s.n.."\n"..s.d,
-        BackgroundTransparency=1, TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10,
-        TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
-    }, btn)
-
-    btn.Activated:Connect(function()
-        statusLbl.Text = "⏳ Đang tải: "..s.n.."..."
-        task.spawn(function()
-            local src, err = FetchUrl(s.url)
-            if not src then
-                statusLbl.Text = "❌ "..(err or "Tải thất bại")
-                return
-            end
-            statusLbl.Text = "▶ Đang chạy: "..s.n
-            local ok, execErr = pcall(function()
-                local fn, lerr = loadstring(src)
-                if not fn then error(lerr) end
-                fn()
-            end)
-            if ok then
-                statusLbl.Text = "✅ Đã chạy: "..s.n
-            else
-                statusLbl.Text = "❌ Lỗi: "..tostring(execErr)
-            end
-        end)
-    end)
-
-    y = y + 32
-end
-
-y = y + 6
-Label(codeTab, "━━━━━━━━━━━━━━━━━━━━━━", y)
-y = y + 16
 Label(codeTab, "💻 Nhập Code Tùy Chỉnh", y)
 y = y + 14
 Label(codeTab, "👤 Tên Script", y)
@@ -842,10 +740,42 @@ end
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 RebuildScripts()
 
--- ==================== TAB 3: HỖ TRỢ — PHÂN TÍCH TỌA ĐỘ ====================
+-- ==================== TAB 3: HỖ TRỢ — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ ====================
 local supportTab = AddTab("Hỗ Trợ", "🛠", 3)
 
 local posY = 8
+
+-- ===== 3 SCRIPT NHANH (đã chuyển từ tab Code) =====
+Label(supportTab, "⚡ Script Nhanh - Nhấn để chạy ngay", posY)
+posY = posY + 16
+
+local quickScripts = {
+    {n="Dex Explorer", d="Mở Dex Explorer", c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/infyiff/backup/main/dex.lua"))()]], cl=Color3.fromRGB(50,120,200)},
+    {n="Infinite Yield", d="Admin Commands", c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))()]], cl=C.PURPLE},
+    {n="SimpleSpy v3", d="Theo dõi RemoteEvent & RemoteFunction", c=[[loadstring(game:HttpGet("https://raw.githubusercontent.com/ex-serum/SimpleSpy/main/SimpleSpy.lua"))()]], cl=Color3.fromRGB(0,150,80)},
+}
+
+for _, s in ipairs(quickScripts) do
+    local btn = New("TextButton", {
+        Size=UDim2.new(1,-16,0,28), Position=UDim2.new(0,8,0,posY), Text="",
+        BackgroundColor3=s.cl, BackgroundTransparency=0.3, BorderSizePixel=0, ZIndex=6,
+    }, supportTab)
+    Corner(btn, UDim.new(0,5))
+    Stroke(btn, s.cl, 1.2)
+    New("TextLabel", {
+        Size=UDim2.new(1,-10,1,0), Position=UDim2.new(0,10,0,0), Text=s.n.."\n"..s.d,
+        BackgroundTransparency=1, TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10,
+        TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Center, ZIndex=7,
+    }, btn)
+    btn.Activated:Connect(function() RunCode(s.c, s.n, nil, 1, 0) end)
+    posY = posY + 32
+end
+
+posY = posY + 6
+Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
+posY = posY + 16
+
+-- ===== PHẦN PHÂN TÍCH TỌA ĐỘ =====
 Label(supportTab, "🛠 Hỗ Trợ — Phân Tích Tọa Độ", posY)
 posY = posY + 18
 Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
@@ -1754,4 +1684,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v4: 3 Quick Script (Dex/IY/SimpleSpy) chạy trực tiếp + Tab Hỗ Trợ — sẵn sàng!")
+print("✅ Banana Cat Hub v3.1: Code + Code Đã Lưu + Hỗ Trợ (Script Nhanh + Tọa Độ) + Tạo Tính Năng — sẵn sàng!")
