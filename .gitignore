@@ -1,0 +1,7 @@
+# Per-user runtime state; never commit local credentials/configuration.
+banana_cat_gemini_key.txt
+banana_cat_github_settings.json
+
+# Python test-runner cache.
+__pycache__/
+*.pyc

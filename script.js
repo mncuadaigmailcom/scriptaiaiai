@@ -3,6 +3,7 @@
     + THÊM: Highlight viền tím khi click vật thể (dùng Highlight instance)
     + THÊM: Tự động xóa highlight cũ khi click vật mới
     + THÊM: Nút bật/tắt highlight
+    + THÊM: Tab GitHub — chọn kho/nhánh/file, lưu và nhập thư viện, PAT chỉ giữ trong RAM
     + GIỮ NGUYÊN toàn bộ tính năng cũ
 --]]
 local Players = game:GetService("Players")
@@ -335,7 +336,8 @@ local function AddTab(name, icon, order, customContent)
 
     local tabIdx = #tabs + 1
     btn.Activated:Connect(function()
-        SwitchTab(tabIdx)
+        local currentIndex = table.find(tabContent, sf)
+        if currentIndex then SwitchTab(currentIndex) end
     end)
 
     table.insert(tabs, btn)
@@ -354,6 +356,8 @@ local S = {
 }
 
 local scripts = {}
+-- Filled by the GitHub tab; local saving works even before connecting.
+local GitHubSync = {Changed=function() end}
 local totalRuns, cancelled = 0, false
 local curThread, curIndicator = nil, nil
 
@@ -574,6 +578,7 @@ saveBtn.Activated:Connect(function()
         cnt+=1; n=bn.." ("..cnt..")"
     end
     table.insert(scripts,{name=n, code=c, expanded=false})
+    GitHubSync.Changed("scripts")
     if RebuildScripts then RebuildScripts() end
     statusLbl.Text="✅ Đã lưu vào Tab 'Code Đã Lưu'!"
 end)
@@ -726,6 +731,7 @@ RebuildScripts = function()
             end
             if origIdx then
                 table.remove(scripts, origIdx)
+                GitHubSync.Changed("scripts")
                 RebuildScripts()
             end
         end)
@@ -2477,11 +2483,11 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
     end
 end
 
-local function CreateFeatureTab(name, icon, codeContent)
+local function CreateFeatureTab(name, icon, codeContent, preserveSource)
     if not name or #name == 0 then name = "Tính Năng " .. (#featureTabs + 1) end
     if not icon or #icon == 0 then icon = "⚙️" end
 
-    codeContent = NormalizeCode(codeContent)
+    if not preserveSource then codeContent = NormalizeCode(codeContent) end
 
     local sf = New("ScrollingFrame", {
         Size=UDim2.new(1,0,1,0),
@@ -2507,7 +2513,7 @@ local function CreateFeatureTab(name, icon, codeContent)
         Font=Enum.Font.GothamBold,
         TextSize=9,
         BorderSizePixel=0,
-        LayoutOrder=featureTabIndex + #featureTabs,
+        LayoutOrder=#tabs + 1,
         TextXAlignment=Enum.TextXAlignment.Left,
         ZIndex=4,
     }, tabBar)
@@ -2515,7 +2521,8 @@ local function CreateFeatureTab(name, icon, codeContent)
 
     local tabIdx = #tabs + 1
     btn.Activated:Connect(function()
-        SwitchTab(tabIdx)
+        local currentIndex = table.find(tabContent, sf)
+        if currentIndex then SwitchTab(currentIndex) end
     end)
 
     table.insert(tabs, btn)
@@ -2657,6 +2664,7 @@ local function CreateFeatureTab(name, icon, codeContent)
             n = bn.." ("..cnt..")"
         end
         table.insert(scripts, {name = n, code = c, expanded = false})
+        GitHubSync.Changed("scripts")
         if RebuildScripts then RebuildScripts() end
         fStatus.Text = "✅ Đã lưu!"
     end)
@@ -2669,6 +2677,7 @@ local function CreateFeatureTab(name, icon, codeContent)
     applyEditBtn.Activated:Connect(function()
         codeContent = NormalizeCode(editorBox.Text)
         featureData.code = codeContent
+        GitHubSync.Changed("features")
         editorFrame.Visible = false
         ClearHost()
         fStatus.Text = "✏️ Đã cập nhật code"
@@ -2834,6 +2843,7 @@ end)
     end
 
     table.insert(scripts, {name = saveName, code = wrappedCode, expanded = false})
+    GitHubSync.Changed("scripts")
     if RebuildScripts then RebuildScripts() end
 
     featureCodeIn.Text = wrappedCode
@@ -2890,7 +2900,8 @@ local function RebuildFeatureList()
         }, row)
         Corner(goBtn, UDim.new(0,4))
         goBtn.Activated:Connect(function()
-            SwitchTab(ft.tabIdx)
+            local currentIndex = table.find(tabContent, ft.frame)
+            if currentIndex then SwitchTab(currentIndex) end
         end)
 
         local delBtn = New("TextButton", {
@@ -2911,6 +2922,8 @@ local function RebuildFeatureList()
                 table.remove(tabs, idx)
                 table.remove(tabContent, idx)
                 table.remove(featureTabs, i)
+                GitHubSync.Changed("features")
+                tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 34 + 10)
                 for j, t in ipairs(tabs) do
                     t.LayoutOrder = j
                 end
@@ -2953,6 +2966,7 @@ createTabBtn.Activated:Connect(function()
 
     CreateFeatureTab(n, ic, c)
     RebuildFeatureList()
+    GitHubSync.Changed("features")
 
     createStatus.Text = "✅ Đã tạo tab: "..n
     featureNameIn.Text = ""
@@ -2970,6 +2984,1008 @@ clearFormBtn.Activated:Connect(function()
 end)
 
 RebuildFeatureList()
+
+-- ==================== TAB 6: GITHUB — OPTIONAL CLOUD STORAGE ====================
+do
+    -- A separate function keeps the original chunk below Luau's local-register limit.
+    local function InitializeGitHub()
+        -- BEGIN GITHUB STORAGE CORE (dependency-injected; never executes downloaded code)
+        local function CreateGitHubStore(deps)
+            local store = {}
+            local token, epoch = "", 0
+            local target = {repo="", branch="", codePath="banana-cat/saved-code.json", featureFolder="banana-cat/features"}
+            local known = {}
+            local MAX_FILE, MAX_BATCH, MAX_RECORDS = 900 * 1024, 4 * 1024 * 1024, 200
+            local formats = {scripts="banana-cat-hub/scripts", features="banana-cat-hub/features"}
+
+            local function fail(message) error(message, 0) end
+            local function trim(text) return (text:gsub("^%s+", ""):gsub("%s+$", "")) end
+            local function text(value, label, limit, empty)
+                if type(value) ~= "string" or #value > limit or (not empty and #value == 0) or not utf8.len(value) then
+                    fail(label.." không hợp lệ hoặc quá dài.")
+                end
+                return value
+            end
+            local function path(value, allowEmpty)
+                value = trim(text(value, "Đường dẫn", 400, allowEmpty))
+                if value == "" and allowEmpty then return value end
+                if value == "" or value:find("[%c\\]") or value:sub(1,1) == "/" or value:sub(-1) == "/" or value:find("//",1,true) then
+                    fail("Dùng đường dẫn tương đối trong kho, không dùng / đầu dòng, \\ hoặc ký tự điều khiển.")
+                end
+                for part in value:gmatch("[^/]+") do
+                    if part == "." or part == ".." or part:lower() == ".git" then fail("Đường dẫn không được chứa . / .. / .git.") end
+                end
+                return value
+            end
+            local function repoName(value)
+                value = trim(text(value, "Tên kho", 300, false)):gsub("^https://github%.com/", ""):gsub("/+$", ""):gsub("%.git$", "")
+                if not value:match("^[%w_.-]+/[%w_.-]+$") then fail("Nhập kho theo dạng owner/repository.") end
+                return value
+            end
+            local function escape(value)
+                return (value:gsub("([^%w%-%._~])", function(char) return string.format("%%%02X", string.byte(char)) end))
+            end
+            local function escapePath(value)
+                local parts = {}
+                for part in value:gmatch("[^/]+") do table.insert(parts, escape(part)) end
+                return table.concat(parts, "/")
+            end
+            local function array(value, label)
+                if type(value) ~= "table" then fail(label.." phải là danh sách.") end
+                local count = 0
+                for key in pairs(value) do
+                    if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then fail(label.." không đúng cấu trúc.") end
+                    count += 1
+                end
+                if count ~= #value or count > MAX_RECORDS then fail(label.." không liên tục hoặc vượt 200 mục.") end
+                return value
+            end
+            local function identifier(value)
+                text(value, "ID", 100, false)
+                if not value:match("^[%w_-]+$") then fail("ID chỉ được chứa chữ, số, dấu - và _.") end
+                return value
+            end
+            local function filename(value)
+                value = path(value)
+                if not (value:lower():match("%.lua$") or value:lower():match("%.luau$")) then fail("File tính năng phải có đuôi .lua hoặc .luau.") end
+                return value
+            end
+            local function jsonDecode(value, label)
+                local ok, result = pcall(deps.decode, value)
+                if not ok or type(result) ~= "table" then fail(label.." không phải JSON hợp lệ. Không ghi đè file này.") end
+                return result
+            end
+            local function jsonEncode(value)
+                local ok, result = pcall(deps.encode, value)
+                if not ok or type(result) ~= "string" then fail("Không mã hóa được dữ liệu UTF-8 sang JSON.") end
+                return result
+            end
+            local function base64Decode(value)
+                if type(value) ~= "string" then fail("GitHub không trả nội dung base64.") end
+                value = value:gsub("%s", "")
+                if #value % 4 ~= 0 or #value > math.ceil(MAX_FILE / 3) * 4 then fail("Nội dung base64 quá lớn hoặc không hợp lệ.") end
+                local alphabet, lookup, output = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", {}, {}
+                for i = 1, #alphabet do lookup[alphabet:sub(i,i)] = i - 1 end
+                for i = 1, #value, 4 do
+                    local a,b,c,d = value:sub(i,i), value:sub(i+1,i+1), value:sub(i+2,i+2), value:sub(i+3,i+3)
+                    if lookup[a] == nil or lookup[b] == nil or (c ~= "=" and lookup[c] == nil) or (d ~= "=" and lookup[d] == nil)
+                        or (c == "=" and d ~= "=") or ((c == "=" or d == "=") and i + 3 ~= #value) then
+                        fail("Nội dung base64 không hợp lệ.")
+                    end
+                    local bits = lookup[a] * 262144 + lookup[b] * 4096 + (lookup[c] or 0) * 64 + (lookup[d] or 0)
+                    table.insert(output, string.char(math.floor(bits / 65536)))
+                    if c ~= "=" then table.insert(output, string.char(math.floor(bits / 256) % 256)) end
+                    if d ~= "=" then table.insert(output, string.char(bits % 256)) end
+                end
+                return table.concat(output)
+            end
+            local function api(method, endpoint, body, allowMissing)
+                if token == "" then fail("Chưa kết nối GitHub. Nhập PAT và bấm Kết nối.") end
+                local requestEpoch = epoch
+                local options = {
+                    Url="https://api.github.com"..endpoint, Method=method,
+                    Headers={Authorization="Bearer "..token, Accept="application/vnd.github+json", ["X-GitHub-Api-Version"]="2022-11-28", ["User-Agent"]="BananaCatHub-GitHub/1.0"},
+                }
+                if body then options.Body = jsonEncode(body); options.Headers["Content-Type"] = "application/json" end
+                local ok, response = pcall(deps.request, options)
+                -- Never display transport exceptions: some executors include request headers in them.
+                if requestEpoch ~= epoch then fail("Kết nối đã đổi. Yêu cầu cũ có thể đã hoàn tất; kiểm tra GitHub trước khi thử lại.") end
+                if not ok or type(response) ~= "table" then fail("Không gọi được GitHub. Cần HTTPS request hỗ trợ Authorization trong môi trường đang dùng.") end
+                local status = tonumber(response.StatusCode or response.status_code or response.status)
+                if status == 404 and allowMissing then return nil end
+                if not status or status < 200 or status >= 300 then
+                    if status == 401 then fail("GitHub 401: PAT sai, hết hạn hoặc đã thu hồi.") end
+                    if status == 403 then fail("GitHub 403: thiếu quyền Contents, cần duyệt SSO, hoặc đã chạm giới hạn API. Kiểm tra quyền và thử lại sau.") end
+                    if status == 404 then fail("GitHub 404: không tìm thấy kho/nhánh/file, hoặc PAT chưa được cấp quyền truy cập.") end
+                    if status == 409 or status == 422 then fail("GitHub "..status..": nhánh đã đổi, kho rỗng hoặc nhánh được bảo vệ. Nạp lại dữ liệu; không ép ghi đè.") end
+                    if status == 429 then fail("GitHub 429: vượt giới hạn API. Chờ rồi thử lại, dữ liệu máy vẫn được giữ.") end
+                    fail("GitHub HTTP "..tostring(status or "?")..". Chưa xác nhận lưu; kiểm tra GitHub trước khi thử lại.")
+                end
+                local responseBody = response.Body or response.body or ""
+                if #responseBody > 2 * MAX_BATCH then fail("Phản hồi GitHub quá lớn.") end
+                if responseBody == "" then return {} end
+                return jsonDecode(responseBody, "Phản hồi GitHub")
+            end
+            local function ready()
+                if token == "" then fail("Chưa kết nối GitHub.") end
+                if target.repo == "" or target.branch == "" then fail("Chọn kho và áp dụng nhánh trước.") end
+                return "/repos/"..target.repo
+            end
+            local function head()
+                local data = api("GET", ready().."/git/ref/heads/"..escapePath(target.branch))
+                if not (data.object and type(data.object.sha) == "string") then fail("Không đọc được HEAD của nhánh. Kho cần có commit đầu tiên, ví dụ README.") end
+                return data.object.sha
+            end
+            local function readAt(filePath, ref)
+                filePath = path(filePath)
+                local data = api("GET", ready().."/contents/"..escapePath(filePath).."?ref="..escape(ref), nil, true)
+                if not data then return false end
+                if data.type ~= "file" or data.encoding ~= "base64" or type(data.size) ~= "number" or data.size > MAX_FILE then
+                    fail(filePath..": cần file văn bản thường, không phải thư mục/link, tối đa 900 KiB.")
+                end
+                return text(base64Decode(data.content), filePath, MAX_FILE, true)
+            end
+            local function record(value, kind, withCode)
+                if type(value) ~= "table" then fail("Mục lưu không hợp lệ.") end
+                local result = {id=identifier(value.id), name=text(value.name, "Tên mục", 200, false)}
+                if kind == "features" then
+                    result.icon = text(value.icon or "⚙️", "Icon", 64, false)
+                    result.file = filename(value.file)
+                end
+                if kind == "scripts" or withCode then result.code = text(value.code, "Code", MAX_FILE, false) end
+                return result
+            end
+            local function records(values, kind, withCode)
+                local result, ids, files = {}, {}, {}
+                for _, value in ipairs(array(values, "Danh sách "..kind)) do
+                    local item = record(value, kind, withCode)
+                    if ids[item.id] then fail("Trùng ID trong danh sách "..kind..".") end
+                    if kind == "features" and files[item.file] then fail("Hai tính năng đang chọn cùng một file: "..item.file) end
+                    ids[item.id] = true
+                    if item.file then files[item.file] = true end
+                    table.insert(result, item)
+                end
+                return result
+            end
+            local function document(content, kind)
+                if content == false then return {} end
+                local data = jsonDecode(content, "File "..kind)
+                if data.format ~= formats[kind] or data.version ~= 1 then fail("File không đúng định dạng Banana Cat "..kind.." v1. Chọn file khác; không ghi đè.") end
+                return records(data[kind], kind, false)
+            end
+            local function manifestPath() return target.featureFolder.."/index.json" end
+            local function checkAncestors(filePath, ref, checked)
+                local parts, prefix = {}, ""
+                for part in filePath:gmatch("[^/]+") do table.insert(parts, part) end
+                for index = 1, #parts - 1 do
+                    prefix = prefix == "" and parts[index] or prefix.."/"..parts[index]
+                    if not checked[prefix] then
+                        local entry = api("GET", ready().."/contents/"..escapePath(prefix).."?ref="..escape(ref), nil, true)
+                        if entry and entry.type then fail(prefix.." đang là file/link, không thể dùng làm thư mục. Chưa ghi đè.") end
+                        checked[prefix] = true
+                        if not entry then break end -- A missing parent cannot contain any existing descendants at this commit.
+                    end
+                end
+            end
+            local function guardedRead(filePath, ref)
+                local content = readAt(filePath, ref)
+                if content ~= false and known[filePath] == nil then fail(filePath.." đã tồn tại. Bấm Nhập từ GitHub trước khi lưu vào file này.") end
+                if known[filePath] ~= nil and known[filePath] ~= content then fail(filePath.." đã thay đổi trên GitHub. Nạp lại để giữ cả hai bản; chưa ghi đè.") end
+                return content
+            end
+            local function merge(remote, incoming, kind)
+                local result, positions, changed = {}, {}, false
+                for _, item in ipairs(remote) do table.insert(result, item); positions[item.id] = #result end
+                for _, value in ipairs(incoming) do
+                    local item = record(value, kind, false)
+                    local index = positions[item.id]
+                    local previous = index and result[index]
+                    if not previous or previous.name ~= item.name or previous.code ~= item.code or previous.icon ~= item.icon or previous.file ~= item.file then
+                        changed = true
+                    end
+                    if index then result[index] = item else table.insert(result, item); positions[item.id] = #result end
+                end
+                -- Missing local records are deliberately retained remotely. A local delete is not a cloud delete.
+                return records(result, kind, false), changed
+            end
+
+            function store:ValidatePaths(codePath, featureFolder)
+                codePath, featureFolder = path(codePath), path(featureFolder)
+                if not codePath:lower():match("%.json$") then fail("File Code Đã Lưu cần có đuôi .json.") end
+                if codePath == featureFolder.."/index.json" then fail("File Code Đã Lưu không được trùng index.json của tính năng.") end
+                if featureFolder == codePath or featureFolder:sub(1,#codePath+1) == codePath.."/" then fail("Không thể dùng file Code Đã Lưu làm thư mục tính năng.") end
+                return codePath, featureFolder
+            end
+            function store:Configure(repo, branch, codePath, featureFolder)
+                repo = repoName(repo)
+                branch = trim(text(branch, "Nhánh", 200, false))
+                if branch == "" or branch:find("[%c\\]") then fail("Tên nhánh không hợp lệ.") end
+                codePath, featureFolder = self:ValidatePaths(codePath, featureFolder)
+                if target.repo ~= repo or target.branch ~= branch then known = {} end
+                if target.repo ~= repo or target.branch ~= branch or target.codePath ~= codePath or target.featureFolder ~= featureFolder then epoch += 1 end
+                target = {repo=repo, branch=branch, codePath=codePath, featureFolder=featureFolder}
+                return self:GetTarget()
+            end
+            function store:GetTarget()
+                return {repo=target.repo, branch=target.branch, codePath=target.codePath, featureFolder=target.featureFolder}
+            end
+            function store:IsConnected() return token ~= "" end
+            function store:CheckTarget() return head() end
+            function store:Disconnect() token=""; epoch+=1; known={} end
+            function store:Connect(value)
+                value = trim(text(value, "PAT", 300, false))
+                if not (value:match("^ghp_[%w_]+$") or value:match("^github_pat_[%w_]+$")) then fail("Nhập Personal Access Token dạng ghp_... hoặc github_pat_...") end
+                token=value; epoch+=1; known={}
+                local ok, user = pcall(function() return api("GET", "/user") end)
+                if not ok then token=""; error(user,0) end
+                if type(user.login) ~= "string" then token=""; fail("Không xác định được tài khoản GitHub.") end
+                return user.login
+            end
+            function store:ListRepositories(page)
+                page = math.max(1, math.floor(tonumber(page) or 1))
+                return api("GET", "/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member&page="..page)
+            end
+            function store:GetRepository(repo)
+                return api("GET", "/repos/"..repoName(repo))
+            end
+            function store:ListBranches(repo, page)
+                page = math.max(1, math.floor(tonumber(page) or 1))
+                return api("GET", "/repos/"..repoName(repo).."/branches?per_page=100&page="..page)
+            end
+            function store:ListDirectory(directory)
+                directory = path(directory or "", true)
+                local result = api("GET", ready().."/contents/"..escapePath(directory).."?ref="..escape(target.branch))
+                if result.type then fail("Đường dẫn duyệt phải là thư mục.") end
+                return result
+            end
+            function store:ReadTextFile(filePath)
+                local result = readAt(filePath, head())
+                if result == false then fail("Không tìm thấy file cần nhập.") end
+                if result == "" then fail("File cần nhập đang trống.") end
+                return result
+            end
+            function store:SuggestedFile(name, id)
+                local slug = name:lower():gsub("[^%w_-]+", "-"):gsub("^-+", ""):gsub("-+$", ""):sub(1,40)
+                if slug == "" then slug = "feature" end
+                return slug.."-"..identifier(id)..".lua"
+            end
+            function store:ValidateFeatureFile(value) return filename(value) end
+            function store:Load(kind)
+                if kind ~= "scripts" and kind ~= "features" and kind ~= "all" then fail("Loại nhập không hợp lệ.") end
+                local ref, staged, bundle, bytes = head(), {}, {}, 0
+                if kind == "scripts" or kind == "all" then
+                    local content = readAt(target.codePath, ref)
+                    bundle.scripts = document(content, "scripts")
+                    staged[target.codePath] = content
+                    bytes += content and #content or 0
+                end
+                if kind == "features" or kind == "all" then
+                    local filePath = manifestPath()
+                    local content = readAt(filePath, ref)
+                    local items = document(content, "features")
+                    staged[filePath] = content
+                    bytes += content and #content or 0
+                    for _, item in ipairs(items) do
+                        local fullPath = path(target.featureFolder.."/"..item.file)
+                        local code = readAt(fullPath, ref)
+                        if code == false or code == "" then fail("Thiếu code của tính năng: "..fullPath..". Chưa nhập mục nào.") end
+                        item.code = code
+                        staged[fullPath] = code
+                        bytes += #code
+                        if bytes > MAX_BATCH then fail("Tổng dữ liệu vượt 4 MiB. Chia thành nhiều kho/thư mục nhỏ hơn.") end
+                    end
+                    bundle.features = items
+                end
+                for filePath, content in pairs(staged) do known[filePath] = content end
+                return bundle
+            end
+            function store:PrepareSave(bundle)
+                if type(bundle) ~= "table" then fail("Dữ liệu lưu không hợp lệ.") end
+                local localScripts = bundle.scripts and records(bundle.scripts, "scripts", false)
+                local localFeatures = bundle.features and records(bundle.features, "features", true)
+                if not localScripts and not localFeatures then fail("Chọn dữ liệu cần lưu.") end
+                local ref, writes, totalBytes, checkedParents = head(), {}, 0, {}
+                local function propose(filePath, content, previous)
+                    if #content > MAX_FILE then fail(filePath.." vượt 900 KiB. Không ghi dữ liệu bị cắt.") end
+                    totalBytes += #content
+                    if totalBytes > MAX_BATCH then fail("Một lần lưu tối đa 4 MiB. Chia thành các lần lưu nhỏ hơn.") end
+                    if content ~= previous then
+                        checkAncestors(filePath, ref, checkedParents)
+                        for _, other in ipairs(writes) do
+                            if filePath == other.path or filePath:sub(1,#other.path+1) == other.path.."/" or other.path:sub(1,#filePath+1) == filePath.."/" then
+                                fail("Một đường dẫn file không được trùng hoặc làm thư mục cho file khác: "..filePath)
+                            end
+                        end
+                        table.insert(writes, {path=filePath, content=content, isNew=previous == false})
+                    end
+                end
+                if localScripts and #localScripts > 0 then
+                    local previous = guardedRead(target.codePath, ref)
+                    local combined, changed = merge(document(previous, "scripts"), localScripts, "scripts")
+                    if changed then propose(target.codePath, jsonEncode({format=formats.scripts, version=1, scripts=combined}), previous) end
+                end
+                if localFeatures and #localFeatures > 0 then
+                    local indexPath = manifestPath()
+                    local previous = guardedRead(indexPath, ref)
+                    local combined, changed = merge(document(previous, "features"), localFeatures, "features")
+                    -- Validate every destination before constructing a tree. Never reuse another feature's path.
+                    for _, item in ipairs(localFeatures) do
+                        local fullPath = path(target.featureFolder.."/"..item.file)
+                        if fullPath == target.codePath or fullPath == indexPath then fail("Đường dẫn lưu bị trùng: "..fullPath) end
+                        local oldCode = guardedRead(fullPath, ref)
+                        propose(fullPath, item.code, oldCode)
+                    end
+                    if changed then propose(indexPath, jsonEncode({format=formats.features, version=1, features=combined}), previous) end
+                end
+                local baseTree
+                if #writes > 0 then
+                    local commit = api("GET", ready().."/git/commits/"..escape(ref))
+                    baseTree = commit.tree and commit.tree.sha
+                    if type(baseTree) ~= "string" then fail("Không đọc được cây file gốc.") end
+                end
+                return {repo=target.repo, branch=target.branch, epoch=epoch, head=ref, baseTree=baseTree, writes=writes, used=false}
+            end
+            function store:Commit(plan)
+                ready()
+                if type(plan) ~= "table" or plan.used or plan.epoch ~= epoch or plan.repo ~= target.repo or plan.branch ~= target.branch then
+                    fail("Kế hoạch lưu đã hết hiệu lực. Xem lại và xác nhận một kế hoạch mới.")
+                end
+                plan.used = true
+                if #plan.writes == 0 then return {count=0, sha=plan.head} end
+                if head() ~= plan.head then fail("Nhánh vừa có commit mới. Nạp lại rồi lưu, không ghi đè thay đổi của người khác.") end
+                local treeEntries = {}
+                for _, item in ipairs(plan.writes) do
+                    table.insert(treeEntries, {path=item.path, mode="100644", type="blob", content=item.content})
+                end
+                local root = ready()
+                local tree = api("POST", root.."/git/trees", {base_tree=plan.baseTree, tree=treeEntries})
+                if type(tree.sha) ~= "string" then fail("GitHub chưa xác nhận tạo cây file.") end
+                local commit = api("POST", root.."/git/commits", {message="Banana Cat Hub: save library ("..#treeEntries.." files)", tree=tree.sha, parents={plan.head}})
+                if type(commit.sha) ~= "string" then fail("GitHub chưa xác nhận tạo commit.") end
+                -- One atomic, non-forced branch update publishes all files together. No DELETE calls.
+                api("PATCH", root.."/git/refs/heads/"..escapePath(target.branch), {sha=commit.sha, force=false})
+                for _, item in ipairs(plan.writes) do known[item.path] = item.content end
+                return {count=#treeEntries, sha=commit.sha}
+            end
+            return store
+        end
+        -- END GITHUB STORAGE CORE
+
+        -- BEGIN GITHUB UI / LIBRARY BRIDGE
+        local alive, busy, configured, updatingFields = true, false, false, false
+        local contextVersion, autoTicket = 0, 0
+        local autoSave, pendingSave = false, nil
+        local revisions, savedRevisions = {scripts=0, features=0}, {scripts=0, features=0}
+        local RefreshFeatures, QueueAutoSave, SetStatus, UpdateSummary
+        local selectedFeature, lastFeatureFile, draftToken, maskedToken, changingToken = nil, nil, "", false, false
+        local settingsFile = "banana_cat_github_settings.json"
+
+        local function trim(value) return (value:gsub("^%s+", ""):gsub("%s+$", "")) end
+        local function newId() return HttpService:GenerateGUID(false) end
+        local function RequestGitHub(options)
+            -- Executor transports are optional. No token is ever sent to a proxy or arbitrary host.
+            local transport = type(request) == "function" and request or http_request
+            if type(transport) ~= "function" and type(syn) == "table" then transport = syn.request end
+            if type(transport) ~= "function" and type(http) == "table" then transport = http.request end
+            if type(transport) == "function" then return transport(options) end
+            -- Roblox supplies its own User-Agent and may reject overriding this protected header.
+            local robloxOptions = table.clone(options)
+            robloxOptions.Headers = table.clone(options.Headers)
+            robloxOptions.Headers["User-Agent"] = nil
+            return HttpService:RequestAsync(robloxOptions)
+        end
+        local store = CreateGitHubStore({
+            request=RequestGitHub,
+            encode=function(value) return HttpService:JSONEncode(value) end,
+            decode=function(value) return HttpService:JSONDecode(value) end,
+        })
+        local settings = {}
+        if readfile and isfile then
+            pcall(function()
+                if isfile(settingsFile) then
+                    local data = readfile(settingsFile)
+                    if #data <= 4096 then
+                        local parsed = HttpService:JSONDecode(data)
+                        if type(parsed) == "table" and parsed.version == 1 then
+                            for _, key in ipairs({"repo", "branch", "codePath", "featureFolder"}) do
+                                if type(parsed[key]) == "string" and #parsed[key] <= 400 then settings[key] = parsed[key] end
+                            end
+                        end
+                    end
+                end
+            end)
+        end
+
+        local githubTab = AddTab("GitHub", "🐙", 6)
+        githubTab.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        githubTab.CanvasSize = UDim2.new(0,0,0,0)
+        local column = New("Frame", {
+            Size=UDim2.new(1,-20,0,0), Position=UDim2.new(0,8,0,8), AutomaticSize=Enum.AutomaticSize.Y,
+            BackgroundTransparency=1, BorderSizePixel=0, ZIndex=5,
+        }, githubTab)
+        New("UIListLayout", {Padding=UDim.new(0,7), SortOrder=Enum.SortOrder.LayoutOrder}, column)
+        New("UIPadding", {PaddingBottom=UDim.new(0,24)}, column)
+        local order = 0
+        local function ordered(object)
+            order += 1
+            object.LayoutOrder = order
+            return object
+        end
+        local function Note(message, color, bold)
+            return ordered(New("TextLabel", {
+                Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y,
+                BackgroundTransparency=1, Text=message, TextWrapped=true, TextColor3=color or C.DARK,
+                TextSize=11, Font=bold and Enum.Font.GothamBold or Enum.Font.GothamMedium,
+                TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top, ZIndex=6,
+            }, column))
+        end
+        local function Field(title, placeholder, value)
+            Note(title, C.BLUE, true)
+            local box = ordered(New("TextBox", {
+                Size=UDim2.new(1,0,0,28), Text=value or "", PlaceholderText=placeholder,
+                PlaceholderColor3=C.GRAY, BackgroundColor3=C.WHITE, TextColor3=C.DARK,
+                Font=Enum.Font.Code, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
+                TextXAlignment=Enum.TextXAlignment.Left, ZIndex=8,
+            }, column))
+            Corner(box, UDim.new(0,5)); Stroke(box)
+            New("UIPadding", {PaddingLeft=UDim.new(0,6), PaddingRight=UDim.new(0,6)}, box)
+            return box
+        end
+        local function Buttons(specs, parent)
+            local row = New("Frame", {Size=UDim2.new(1,0,0,29), BackgroundTransparency=1, ZIndex=6}, parent or column)
+            if not parent then ordered(row) else row.LayoutOrder = 2 end
+            local result = {}
+            for index, spec in ipairs(specs) do
+                local button = New("TextButton", {
+                    Size=UDim2.new(1/#specs,-5,1,0), Position=UDim2.new((index-1)/#specs,0,0,0),
+                    Text=spec[1], BackgroundColor3=spec[2] or C.BLUE, TextColor3=C.WHITE,
+                    Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=8,
+                }, row)
+                Corner(button, UDim.new(0,5))
+                table.insert(result, button)
+            end
+            return table.unpack(result)
+        end
+        local function Picker(height)
+            local list = ordered(New("ScrollingFrame", {
+                Size=UDim2.new(1,0,0,height), BackgroundColor3=C.WHITE, BackgroundTransparency=0.15,
+                BorderSizePixel=0, ScrollBarThickness=4, AutomaticCanvasSize=Enum.AutomaticSize.Y,
+                CanvasSize=UDim2.new(0,0,0,0), ScrollingDirection=Enum.ScrollingDirection.Y, Visible=false, ZIndex=6,
+            }, column))
+            Corner(list, UDim.new(0,5))
+            New("UIListLayout", {Padding=UDim.new(0,3), SortOrder=Enum.SortOrder.LayoutOrder}, list)
+            return list
+        end
+        local function ClearPicker(list)
+            for _, child in ipairs(list:GetChildren()) do if not child:IsA("UIListLayout") and not child:IsA("UICorner") then child:Destroy() end end
+            list.CanvasPosition = Vector2.new(0,0)
+        end
+        local function PickItem(list, caption, callback)
+            local button = New("TextButton", {
+                Size=UDim2.new(1,-6,0,29), BackgroundColor3=Color3.fromRGB(225,233,250),
+                Text=caption, TextColor3=C.DARK, TextSize=10, Font=Enum.Font.GothamMedium,
+                TextXAlignment=Enum.TextXAlignment.Left, TextTruncate=Enum.TextTruncate.AtEnd,
+                BorderSizePixel=0, ZIndex=7,
+            }, list)
+            New("UIPadding", {PaddingLeft=UDim.new(0,6)}, button)
+            button.Activated:Connect(callback)
+        end
+
+        Note("🐙 GitHub — Lưu thư viện & khôi phục", C.PURPLE, true)
+        Note("Code Đã Lưu → một file JSON. Tính năng → nhiều file Lua + index.json. Nhập về chỉ thêm dữ liệu/tab, KHÔNG tự chạy code.")
+        local status = Note("Chưa kết nối. Các chức năng cũ vẫn dùng bình thường.", C.GRAY)
+        local tokenIn = Field("1. Personal Access Token (PAT)", "ghp_... hoặc github_pat_...", "")
+        local connectBtn, showTokenBtn, disconnectBtn = Buttons({{"Kết nối",C.GREEN}, {"Hiện nháp",C.ORANGE}, {"Ngắt / Xóa token",C.RED}})
+        local account = Note("Token chỉ giữ trong RAM của phiên này; kết nối xong sẽ xóa ô nhập.", C.GRAY)
+        Note("Fine-grained PAT: chọn kho, cấp Contents: Read and write. PAT cổ điển: public_repo cho kho công khai hoặc repo cho kho riêng. Không gửi token vào chat; nên dùng kho riêng cho code cá nhân.", C.GRAY)
+
+        local repoIn = Field("2. Kho lưu trữ", "owner/repository", settings.repo or "")
+        local repoListBtn, repoPrevBtn, repoNextBtn = Buttons({{"Chọn kho",C.BLUE}, {"← Trang kho",C.GRAY}, {"Trang kho →",C.GRAY}})
+        local repoList = Picker(115)
+        local branchIn = Field("Nhánh đã có trong kho", "Mặc định theo kho được chọn", settings.branch or "")
+        local branchListBtn, branchPrevBtn, branchNextBtn = Buttons({{"Chọn nhánh",C.BLUE}, {"← Trang nhánh",C.GRAY}, {"Trang nhánh →",C.GRAY}})
+        local branchList = Picker(90)
+        local codePathIn = Field("3. Một file JSON chứa toàn bộ Code Đã Lưu", "banana-cat/saved-code.json", settings.codePath or "banana-cat/saved-code.json")
+        local folderIn = Field("Thư mục chứa các file tính năng", "banana-cat/features", settings.featureFolder or "banana-cat/features")
+        local applyTargetBtn = Buttons({{"Áp dụng kho / nhánh / đường dẫn",C.PURPLE}})
+        local targetInfo = Note("Chưa áp dụng đích lưu. Đường dẫn mới sẽ được tạo trong commit khi lưu.", C.GRAY)
+        Note("Nếu file đã có trên GitHub, hãy NHẬP trước khi lưu. Dữ liệu khác nội dung được giữ thành hai bản. Xóa trên máy không xóa file/mục trên GitHub; đổi tên file cũng giữ file cũ.", C.ORANGE)
+
+        local directoryIn = Field("Duyệt file/thư mục có sẵn (để trống = gốc kho)", "banana-cat", "")
+        local browseBtn, upBtn, useFolderBtn = Buttons({{"Duyệt",C.BLUE}, {"Lên thư mục",C.GRAY}, {"Dùng thư mục",C.PURPLE}})
+        local fileList = Picker(125)
+        Note("Chạm thư mục để mở; chạm .json để chọn file Code Đã Lưu; chạm file Lua để điền ô nhập bên dưới. Sau khi đổi đích lưu, bấm Áp dụng.", C.GRAY)
+
+        Note("4. Lưu & nhập thư viện", C.BLUE, true)
+        local saveScriptsBtn, saveFeaturesBtn, saveAllBtn = Buttons({{"Lưu Code",C.GREEN}, {"Lưu tính năng",C.GREEN}, {"Lưu cả hai",C.BLUE}})
+        local loadScriptsBtn, loadFeaturesBtn, loadAllBtn = Buttons({{"Nhập Code",C.PURPLE}, {"Nhập tính năng",C.PURPLE}, {"Nhập cả hai",C.BLUE}})
+        local autoBtn = Buttons({{"Tự lưu khi thêm / sửa: TẮT",C.GRAY}})
+        Note("Bật Tự lưu để các nút Lưu Vào Danh Sách, Lưu Vào DS, AutoSize và thao tác tạo/sửa tính năng tự ghi GitHub. Mặc định tắt; vẫn có thể lưu thủ công.", C.GRAY)
+        local summary = Note("", C.GRAY)
+        local confirmation = ordered(New("Frame", {
+            Size=UDim2.new(1,0,0,0), AutomaticSize=Enum.AutomaticSize.Y,
+            BackgroundColor3=Color3.fromRGB(255,242,211), BorderSizePixel=0, Visible=false, ZIndex=6,
+        }, column))
+        Corner(confirmation, UDim.new(0,5))
+        New("UIListLayout", {Padding=UDim.new(0,6), SortOrder=Enum.SortOrder.LayoutOrder}, confirmation)
+        local planLabel = New("TextLabel", {
+            Size=UDim2.new(1,-8,0,0), AutomaticSize=Enum.AutomaticSize.Y, BackgroundTransparency=1,
+            Text="", TextWrapped=true, TextColor3=C.DARK, Font=Enum.Font.Code, TextSize=10,
+            TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top, ZIndex=7, LayoutOrder=1,
+        }, confirmation)
+        local confirmBtn, cancelSaveBtn = Buttons({{"Xác nhận ghi GitHub",C.GREEN}, {"Hủy kế hoạch",C.RED}}, confirmation)
+
+        Note("5. Đặt file riêng cho từng tính năng", C.BLUE, true)
+        local featurePicker = Picker(110)
+        featurePicker.Visible = true
+        local featureFileIn = Field("File tương đối trong thư mục tính năng", "auto-farm.lua hoặc tools/esp.luau", "")
+        local setFeatureFileBtn, saveOneFeatureBtn = Buttons({{"Đặt tên file",C.PURPLE}, {"Lưu tính năng đã chọn",C.GREEN}})
+
+        local importPathIn = Field("6. Nhập code từ một file có sẵn trên GitHub", "scripts/example.lua", "")
+        local importCodeBtn, importFeatureBtn = Buttons({{"Nhập vào Code Đã Lưu",C.BLUE}, {"Nhập thành tính năng",C.PURPLE}})
+        Note("Nhập file văn bản là thao tác đọc, không thực thi. Giới hạn: 900 KiB/file, 200 mục/danh sách, 4 MiB/lần. Kho cần có commit đầu tiên (ví dụ README).", C.GRAY)
+
+        SetStatus = function(message, color)
+            if alive then status.Text = message; status.TextColor3 = color or C.DARK end
+        end
+        local function InvalidatePlan()
+            pendingSave = nil
+            confirmation.Visible = false
+        end
+        local function UpdateAuto()
+            autoBtn.Text = autoSave and "Tự lưu khi thêm / sửa: BẬT" or "Tự lưu khi thêm / sửa: TẮT"
+            autoBtn.BackgroundColor3 = autoSave and C.GREEN or C.GRAY
+        end
+        UpdateSummary = function()
+            if not alive then return end
+            local changes = {}
+            if revisions.scripts ~= savedRevisions.scripts then table.insert(changes, "Code") end
+            if revisions.features ~= savedRevisions.features then table.insert(changes, "tính năng") end
+            summary.Text = string.format("Bản máy: %d script • %d tính năng. %s", #scripts, #featureTabs,
+                #changes > 0 and ("Chờ lưu: "..table.concat(changes, ", ")) or "Không có thay đổi mới đang chờ.")
+        end
+        local function EnsureRecords()
+            for _, item in ipairs(scripts) do if not item.id then item.id = newId() end end
+            for _, item in ipairs(featureTabs) do
+                if not item.id then item.id = newId() end
+                if not item.githubFile then item.githubFile = store:SuggestedFile(item.name, item.id) end
+            end
+        end
+        local function CheckContext(version)
+            if not alive or version ~= contextVersion then error("Thiết lập đã thay đổi. Thực hiện lại thao tác với đích mới.",0) end
+        end
+        local function RequireTarget(forSave)
+            if not store:IsConnected() then error("Chưa kết nối GitHub.",0) end
+            local destination = store:GetTarget()
+            if destination.repo == "" or destination.branch == "" then error("Chọn kho và bấm Áp dụng trước.",0) end
+            if trim(repoIn.Text) ~= destination.repo or trim(branchIn.Text) ~= destination.branch then
+                error("Kho/nhánh đang nhập chưa được áp dụng. Bấm Áp dụng trước để tránh đọc nhầm kho cũ.",0)
+            end
+            if forSave and not configured then error("Thiết lập đã đổi. Bấm Áp dụng kho / nhánh / đường dẫn trước.",0) end
+            return destination
+        end
+        local function Work(message, callback, onFailure)
+            if not alive then return end
+            if busy then SetStatus("Đang xử lý yêu cầu trước. Vui lòng chờ.", C.ORANGE); return end
+            busy = true
+            SetStatus(message, C.BLUE)
+            local version = contextVersion
+            task.spawn(function()
+                local ok, result = pcall(callback, version)
+                busy = false
+                if not alive then return end
+                if not ok then
+                    if onFailure then onFailure() end
+                    SetStatus("❌ "..tostring(result), C.RED)
+                elseif type(result) == "string" then
+                    SetStatus(result, C.GREEN)
+                end
+                UpdateSummary()
+            end)
+        end
+        local function SaveSettings()
+            -- Whitelist non-secret configuration. Never serialize the store, token input or _G.
+            local destination = store:GetTarget()
+            if writefile then
+                pcall(function()
+                    writefile(settingsFile, HttpService:JSONEncode({version=1, repo=destination.repo, branch=destination.branch,
+                        codePath=destination.codePath, featureFolder=destination.featureFolder}))
+                end)
+            end
+        end
+        local function ConfigureChanged()
+            if updatingFields then return end
+            contextVersion += 1
+            configured = false
+            autoSave = false
+            autoTicket += 1
+            UpdateAuto(); InvalidatePlan()
+            targetInfo.Text = "Có thiết lập chưa áp dụng. Tự lưu tạm tắt để tránh lưu nhầm kho/nhánh/file."
+        end
+        for _, field in ipairs({repoIn, branchIn, codePathIn, folderIn}) do
+            field:GetPropertyChangedSignal("Text"):Connect(ConfigureChanged)
+        end
+
+        local function DisplayDraft(hidden)
+            changingToken = true
+            maskedToken = hidden and #draftToken > 0
+            tokenIn.Text = maskedToken and string.rep("•", math.min(#draftToken,24)) or draftToken
+            changingToken = false
+            showTokenBtn.Text = maskedToken and "Hiện nháp" or "Ẩn nháp"
+        end
+        tokenIn:GetPropertyChangedSignal("Text"):Connect(function()
+            if not changingToken and not maskedToken then draftToken = tokenIn.Text end
+        end)
+        tokenIn.Focused:Connect(function() DisplayDraft(false) end)
+        tokenIn.FocusLost:Connect(function() draftToken=trim(draftToken); DisplayDraft(true) end)
+        showTokenBtn.Activated:Connect(function() DisplayDraft(not maskedToken) end)
+
+        local repoPage, branchPage = 1, 1
+        local function ShowRepositories(page, version)
+            local items = store:ListRepositories(page)
+            CheckContext(version)
+            ClearPicker(repoList); repoList.Visible=true; repoPage=page
+            for _, item in ipairs(items) do
+                if type(item.full_name) == "string" then
+                    PickItem(repoList, (item.private and "🔒 " or "🌐 ")..item.full_name, function()
+                        repoIn.Text = item.full_name
+                        branchIn.Text = type(item.default_branch) == "string" and item.default_branch or "main"
+                        branchPage = 1
+                        repoList.Visible = false
+                        SetStatus("Đã chọn "..item.full_name..". Chọn đường dẫn và bấm Áp dụng.", C.BLUE)
+                    end)
+                end
+            end
+            if #items == 0 then PickItem(repoList, "Không có kho ở trang này. Có thể nhập owner/repo trực tiếp.", function() end) end
+            return "Đã tải trang kho "..page..". Token fine-grained chỉ thấy các kho được cấp quyền."
+        end
+        local function Repositories(page)
+            Work("Đang tải danh sách kho...", function(version) return ShowRepositories(page, version) end)
+        end
+        connectBtn.Activated:Connect(function()
+            local value = trim(draftToken)
+            if value == "" then SetStatus("Nhập PAT trong ô phía trên, không gửi vào chat.", C.ORANGE); return end
+            Work("Đang xác thực PAT với api.github.com...", function(version)
+                local login = store:Connect(value)
+                CheckContext(version)
+                draftToken = ""; DisplayDraft(true)
+                account.Text = "✅ @"..login.." • PAT chỉ ở RAM; không ghi vào file hoặc thư viện."
+                configured=false; autoSave=false; UpdateAuto(); InvalidatePlan()
+                SetStatus("Đã kết nối @"..login..". Đang tải danh sách kho...", C.GREEN)
+                return ShowRepositories(1, version)
+            end, function()
+                configured=false; autoSave=false; UpdateAuto()
+                if not store:IsConnected() then account.Text="PAT chưa được xác thực. Kiểm tra token và kết nối lại." end
+            end)
+        end)
+        disconnectBtn.Activated:Connect(function()
+            store:Disconnect()
+            contextVersion += 1; autoTicket += 1; autoSave=false; configured=false
+            draftToken=""; DisplayDraft(true); UpdateAuto(); InvalidatePlan()
+            account.Text = "Đã xóa token khỏi bộ nhớ của hub. Bản code/tính năng trên máy vẫn được giữ."
+            SetStatus("Đã ngắt GitHub. Yêu cầu đã gửi trước đó có thể vẫn hoàn tất trên GitHub.", C.GRAY)
+        end)
+        repoListBtn.Activated:Connect(function() Repositories(1) end)
+        repoPrevBtn.Activated:Connect(function() Repositories(math.max(1,repoPage-1)) end)
+        repoNextBtn.Activated:Connect(function() Repositories(repoPage+1) end)
+        local function Branches(page)
+            local repo = repoIn.Text
+            Work("Đang tải các nhánh...", function(version)
+                local items = store:ListBranches(repo, page)
+                CheckContext(version)
+                ClearPicker(branchList); branchList.Visible=true; branchPage=page
+                for _, item in ipairs(items) do
+                    if type(item.name) == "string" then PickItem(branchList, item.name, function() branchIn.Text=item.name; branchList.Visible=false end) end
+                end
+                if #items == 0 then PickItem(branchList, "Không có nhánh ở trang này.", function() end) end
+                return "Đã tải trang nhánh "..page.."."
+            end)
+        end
+        branchListBtn.Activated:Connect(function() Branches(1) end)
+        branchPrevBtn.Activated:Connect(function() Branches(math.max(1,branchPage-1)) end)
+        branchNextBtn.Activated:Connect(function() Branches(branchPage+1) end)
+        applyTargetBtn.Activated:Connect(function()
+            local repo, branch, codePath, folder = repoIn.Text, branchIn.Text, codePathIn.Text, folderIn.Text
+            Work("Đang kiểm tra kho và nhánh...", function(version)
+                local metadata = store:GetRepository(repo)
+                CheckContext(version)
+                if trim(branch) == "" then branch = metadata.default_branch or "main" end
+                local destination = store:Configure(metadata.full_name, branch, codePath, folder)
+                store:CheckTarget()
+                CheckContext(version)
+                updatingFields=true
+                repoIn.Text=destination.repo; branchIn.Text=destination.branch; codePathIn.Text=destination.codePath; folderIn.Text=destination.featureFolder
+                updatingFields=false
+                configured=true; InvalidatePlan(); SaveSettings()
+                targetInfo.Text = "Đích: "..destination.repo.." @ "..destination.branch.."\nCode: "..destination.codePath.."\nTính năng: "..destination.featureFolder.."/*.lua + index.json"
+                return "✅ Đã áp dụng. Nếu kho có thư viện cũ, hãy Nhập cả hai trước khi lưu."
+            end)
+        end)
+
+        local Browse
+        Browse = function(directory)
+            Work("Đang duyệt thư mục...", function(version)
+                RequireTarget(false)
+                local items = store:ListDirectory(directory)
+                CheckContext(version)
+                directoryIn.Text = directory
+                ClearPicker(fileList); fileList.Visible=true
+                table.sort(items, function(a,b)
+                    if a.type ~= b.type then return a.type == "dir" end
+                    return tostring(a.name) < tostring(b.name)
+                end)
+                for _, item in ipairs(items) do
+                    if type(item.path) == "string" then
+                        PickItem(fileList, (item.type == "dir" and "📁 " or "📄 ")..tostring(item.name), function()
+                            if item.type == "dir" then Browse(item.path)
+                            elseif item.type == "file" then
+                                if item.path:lower():match("%.json$") then
+                                    codePathIn.Text=item.path
+                                    SetStatus("Đã chọn file JSON. Bấm Áp dụng, rồi Nhập Code trước khi ghi.", C.BLUE)
+                                else
+                                    importPathIn.Text=item.path
+                                    SetStatus("Đã chọn file để nhập ở mục 6; chưa chạy code.", C.BLUE)
+                                end
+                            end
+                        end)
+                    end
+                end
+                if #items == 0 then PickItem(fileList, "Thư mục trống.", function() end) end
+                return "Đang xem: "..(directory == "" and "/" or directory)..". GitHub Contents trả tối đa 1.000 mục/thư mục; vẫn có thể nhập đường dẫn trực tiếp."
+            end)
+        end
+        browseBtn.Activated:Connect(function() Browse(trim(directoryIn.Text)) end)
+        upBtn.Activated:Connect(function() Browse((trim(directoryIn.Text):match("^(.*)/[^/]+$") or "")) end)
+        useFolderBtn.Activated:Connect(function()
+            local value = trim(directoryIn.Text)
+            if value == "" then SetStatus("Chọn một thư mục con cho tính năng, không dùng gốc kho.", C.ORANGE); return end
+            folderIn.Text=value
+            SetStatus("Đã chọn thư mục tính năng. Bấm Áp dụng để sử dụng.", C.BLUE)
+        end)
+
+        RefreshFeatures = function()
+            if not alive then return end
+            EnsureRecords(); ClearPicker(featurePicker)
+            if selectedFeature and not table.find(featureTabs,selectedFeature) then selectedFeature=nil; lastFeatureFile=nil; featureFileIn.Text="" end
+            if selectedFeature and selectedFeature.githubFile ~= lastFeatureFile then
+                lastFeatureFile=selectedFeature.githubFile; featureFileIn.Text=lastFeatureFile
+            end
+            for _, item in ipairs(featureTabs) do
+                PickItem(featurePicker, (selectedFeature == item and "✓ " or "")..item.name.." → "..item.githubFile, function()
+                    selectedFeature=item; lastFeatureFile=item.githubFile; featureFileIn.Text=item.githubFile; RefreshFeatures()
+                end)
+            end
+            if #featureTabs == 0 then PickItem(featurePicker, "Tạo tính năng ở tab ➕ trước, hoặc Nhập tính năng từ GitHub.", function() end) end
+        end
+        GitHubSync.Changed = function(kind, suppressAuto)
+            if not alive then return end
+            local ok = pcall(function()
+                revisions[kind] += 1
+                InvalidatePlan(); EnsureRecords(); UpdateSummary()
+                if kind == "features" then RefreshFeatures() end
+                if autoSave and not suppressAuto and QueueAutoSave then QueueAutoSave() end
+            end)
+            if not ok then
+                autoSave=false; UpdateAuto()
+                SetStatus("Thay đổi trên máy vẫn được giữ. GitHub chưa cập nhật được; thử Lưu thủ công sau. Không chặn các nút lưu cũ.",C.ORANGE)
+            end
+        end
+        local function UniqueName(values, desired)
+            local name, number = desired, 1
+            while true do
+                local exists=false
+                for _, item in ipairs(values) do if item.name == name then exists=true; break end end
+                if not exists then return name end
+                number += 1; name=desired.." ("..number..")"
+            end
+        end
+        -- Import is additive. Conflicting IDs are split into two records; no existing tab is destroyed.
+        GitHubSync.Import = function(bundle)
+            EnsureRecords()
+            local added, conflicts = 0, 0
+            for _, kind in ipairs({"scripts", "features"}) do
+                local incoming = bundle[kind]
+                if incoming then
+                    local values = kind == "scripts" and scripts or featureTabs
+                    for _, remote in ipairs(incoming) do
+                        local existing
+                        for _, item in ipairs(values) do if item.id == remote.id then existing=item; break end end
+                        local same = existing and existing.code == remote.code and (kind == "scripts" or existing.icon == remote.icon)
+                        if not same then
+                            if existing then
+                                existing.id = newId()
+                                if kind == "features" then existing.githubFile=nil end
+                                conflicts += 1
+                            else
+                                for _, item in ipairs(values) do
+                                    if item.name == remote.name and item.code == remote.code and (kind == "scripts" or item.icon == remote.icon) then
+                                        existing=item; same=true; item.id=remote.id
+                                        if kind == "features" then item.githubFile=remote.file end
+                                        break
+                                    end
+                                end
+                            end
+                            if not same then
+                                local name = UniqueName(values, remote.name)
+                                if kind == "scripts" then
+                                    table.insert(scripts, {id=remote.id, name=name, code=remote.code, expanded=false})
+                                else
+                                    local feature = CreateFeatureTab(name, remote.icon, remote.code, true)
+                                    feature.id=remote.id; feature.githubFile=remote.file
+                                end
+                                added += 1
+                            end
+                        end
+                    end
+                    GitHubSync.Changed(kind, true)
+                end
+            end
+            RebuildScripts(); RebuildFeatureList(); RefreshFeatures()
+            return added, conflicts
+        end
+        local function Snapshot(mode, selected)
+            EnsureRecords()
+            local bundle, version = {}, {scripts=revisions.scripts, features=revisions.features}
+            if mode == "scripts" or mode == "all" then
+                bundle.scripts={}
+                for _, item in ipairs(scripts) do table.insert(bundle.scripts, {id=item.id, name=item.name, code=item.code}) end
+            end
+            if mode == "features" or mode == "all" or mode == "selected" then
+                bundle.features={}
+                local values = mode == "selected" and {selected} or featureTabs
+                if mode == "selected" and (not selected or not table.find(featureTabs, selected)) then error("Chọn một tính năng trước.",0) end
+                for _, item in ipairs(values) do
+                    table.insert(bundle.features, {id=item.id, name=item.name, code=item.code, icon=item.icon, file=item.githubFile})
+                end
+            end
+            return bundle, version
+        end
+        local function SameRevision(mode, version)
+            return ((mode ~= "scripts" and mode ~= "all") or version.scripts == revisions.scripts)
+                and ((mode ~= "features" and mode ~= "all" and mode ~= "selected") or version.features == revisions.features)
+        end
+        local function MarkSaved(mode, version)
+            if (mode == "scripts" or mode == "all") and version.scripts == revisions.scripts then savedRevisions.scripts=version.scripts end
+            if (mode == "features" or mode == "all") and version.features == revisions.features then savedRevisions.features=version.features end
+            UpdateSummary()
+        end
+        local function BeginSave(mode, selected)
+            Work("Đang kiểm tra file và lập kế hoạch lưu...", function(version)
+                RequireTarget(true)
+                local bundle, revision = Snapshot(mode,selected)
+                local plan = store:PrepareSave(bundle)
+                CheckContext(version)
+                if not SameRevision(mode,revision) then error("Bản máy vừa đổi. Bấm Lưu lại để lấy dữ liệu mới nhất.",0) end
+                if #plan.writes == 0 then
+                    MarkSaved(mode,revision)
+                    return "Không có nội dung mới cần ghi. Các mục chỉ xóa trên máy vẫn được giữ trên GitHub."
+                end
+                pendingSave={plan=plan, mode=mode, revision=revision, context=version}
+                local lines={"Xác nhận lưu vào "..plan.repo.." @ "..plan.branch, "Một commit, "..#plan.writes.." file; không xóa file:"}
+                for index, item in ipairs(plan.writes) do
+                    if index <= 12 then table.insert(lines, (item.isNew and "+ Mới: " or "~ Cập nhật: ")..item.path) end
+                end
+                if #plan.writes > 12 then table.insert(lines, "... và "..(#plan.writes-12).." file khác trong cùng thư viện.") end
+                planLabel.Text=table.concat(lines,"\n"); confirmation.Visible=true
+                return "Đã lập kế hoạch. Kiểm tra kho/nhánh và danh sách file, rồi bấm Xác nhận ghi GitHub."
+            end)
+        end
+        confirmBtn.Activated:Connect(function()
+            local pending = pendingSave
+            if not pending then SetStatus("Không có kế hoạch đang chờ. Bấm Lưu để lập kế hoạch mới.",C.ORANGE); return end
+            Work("Đang ghi một commit lên GitHub...", function(version)
+                RequireTarget(true); CheckContext(pending.context)
+                if not SameRevision(pending.mode,pending.revision) then error("Code vừa thay đổi. Lập kế hoạch mới trước khi xác nhận.",0) end
+                InvalidatePlan()
+                local result = store:Commit(pending.plan)
+                CheckContext(version)
+                MarkSaved(pending.mode,pending.revision)
+                if autoSave and QueueAutoSave then QueueAutoSave() end
+                return "✅ Đã lưu "..result.count.." file trong commit "..result.sha:sub(1,8)..". Bản máy không bị xóa."
+            end)
+        end)
+        cancelSaveBtn.Activated:Connect(function() InvalidatePlan(); SetStatus("Đã hủy kế hoạch, chưa gửi thao tác ghi.",C.GRAY) end)
+        saveScriptsBtn.Activated:Connect(function() BeginSave("scripts") end)
+        saveFeaturesBtn.Activated:Connect(function() BeginSave("features") end)
+        saveAllBtn.Activated:Connect(function() BeginSave("all") end)
+        saveOneFeatureBtn.Activated:Connect(function() BeginSave("selected",selectedFeature) end)
+        setFeatureFileBtn.Activated:Connect(function()
+            if not selectedFeature then SetStatus("Chọn tính năng trong danh sách trước.",C.ORANGE); return end
+            local ok, result = pcall(function()
+                local value = store:ValidateFeatureFile(featureFileIn.Text)
+                for _, item in ipairs(featureTabs) do if item ~= selectedFeature and item.githubFile == value then error("Tên file này đã được một tính năng khác sử dụng.",0) end end
+                selectedFeature.githubFile=value
+                GitHubSync.Changed("features")
+                return "Đã đặt file "..value..". Bấm Lưu hoặc bật Tự lưu để ghi GitHub."
+            end)
+            SetStatus((ok and "" or "❌ ")..tostring(result), ok and C.GREEN or C.RED)
+        end)
+        local function LoadLibrary(kind)
+            InvalidatePlan()
+            Work("Đang đọc và kiểm tra toàn bộ dữ liệu trước khi nhập...", function(version)
+                RequireTarget(true)
+                local bundle = store:Load(kind)
+                CheckContext(version)
+                local count, conflicts = GitHubSync.Import(bundle)
+                return "✅ Đã nhập thêm "..count.." mục; giữ cả hai bản cho "..conflicts.." xung đột. Không chạy code, không xóa tính năng cũ."
+            end)
+        end
+        loadScriptsBtn.Activated:Connect(function() LoadLibrary("scripts") end)
+        loadFeaturesBtn.Activated:Connect(function() LoadLibrary("features") end)
+        loadAllBtn.Activated:Connect(function() LoadLibrary("all") end)
+        local function ImportFile(asFeature)
+            local filePath = trim(importPathIn.Text)
+            Work("Đang đọc file văn bản, không thực thi...", function(version)
+                RequireTarget(true)
+                local code = store:ReadTextFile(filePath)
+                CheckContext(version)
+                local name=(filePath:match("([^/]+)$") or "GitHub Script"):gsub("%.lua[u]?$", ""):gsub("%.txt$", "")
+                if name == "" then name="GitHub Script" end
+                if asFeature then
+                    CreateFeatureTab(UniqueName(featureTabs,name), "🐙", code, true)
+                    RebuildFeatureList(); GitHubSync.Changed("features")
+                else
+                    table.insert(scripts,{id=newId(), name=UniqueName(scripts,name), code=code, expanded=false})
+                    RebuildScripts(); GitHubSync.Changed("scripts")
+                end
+                return "✅ Đã nhập "..filePath.." vào bản máy. Chỉ chạy khi bạn bấm nút Chạy."
+            end)
+        end
+        importCodeBtn.Activated:Connect(function() ImportFile(false) end)
+        importFeatureBtn.Activated:Connect(function() ImportFile(true) end)
+
+        QueueAutoSave = function()
+            if not autoSave or not alive or not configured then return end
+            autoTicket += 1
+            local ticket = autoTicket
+            task.delay(1.2,function()
+                if not autoSave or not alive or ticket ~= autoTicket or not configured or pendingSave then return end
+                if busy then QueueAutoSave(); return end
+                local dirtyScripts = revisions.scripts ~= savedRevisions.scripts
+                local dirtyFeatures = revisions.features ~= savedRevisions.features
+                if not dirtyScripts and not dirtyFeatures then return end
+                local mode = dirtyScripts and (dirtyFeatures and "all" or "scripts") or "features"
+                Work("Tự lưu: kiểm tra thay đổi trên GitHub...",function(version)
+                    RequireTarget(true)
+                    local bundle, revision = Snapshot(mode)
+                    local plan = store:PrepareSave(bundle)
+                    CheckContext(version)
+                    if not autoSave or not SameRevision(mode,revision) then QueueAutoSave(); return "Bản máy vừa đổi; đã hoãn tự lưu đến lượt tiếp theo." end
+                    local result=store:Commit(plan)
+                    CheckContext(version); MarkSaved(mode,revision)
+                    QueueAutoSave()
+                    return result.count > 0 and ("✅ Tự lưu "..result.count.." file • commit "..result.sha:sub(1,8)) or "GitHub đã có dữ liệu này; không tạo commit thừa. Xóa bản máy không xóa bản GitHub."
+                end,function() autoSave=false; UpdateAuto() end)
+            end)
+        end
+        autoBtn.Activated:Connect(function()
+            if not autoSave then
+                local ok, message=pcall(function() RequireTarget(true) end)
+                if not ok then SetStatus(tostring(message),C.ORANGE); return end
+            end
+            autoSave=not autoSave; UpdateAuto()
+            if autoSave then
+                SetStatus("Đã cho phép tự tạo commit sau thao tác lưu/thêm/sửa (chờ 1,2 giây). File chưa nạp hoặc bị đổi từ xa sẽ bị chặn, không ghi đè.",C.GREEN)
+                QueueAutoSave()
+            else
+                autoTicket+=1
+                SetStatus("Đã tắt tự lưu. Yêu cầu đã gửi trước đó có thể vẫn hoàn tất.",C.GRAY)
+            end
+        end)
+        -- Do not track this with external connections: it must still run when the old ScreenGui is destroyed on reload.
+        gui.Destroying:Connect(function()
+            alive=false; autoSave=false; autoTicket+=1; contextVersion+=1
+            draftToken=""; pendingSave=nil; store:Disconnect()
+        end)
+        EnsureRecords(); RefreshFeatures(); UpdateSummary(); UpdateAuto()
+        -- END GITHUB UI / LIBRARY BRIDGE
+    end
+    local githubOK = pcall(InitializeGitHub)
+    if not githubOK then
+        GitHubSync.Changed = function() end
+        warn("[BananaCatHub] Không khởi tạo được tab GitHub; các tính năng cũ vẫn hoạt động.")
+    end
+end
 
 -- ==================== TOGGLE MENU & DRAG ====================
 local function ToggleMainFrame()
@@ -3071,4 +4087,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v4.3: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + AI AI + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v4.3: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + AI AI + Tạo Tính Năng + GitHub — sẵn sàng!")
