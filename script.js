@@ -1,9 +1,8 @@
 --[[
     🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
-    + THÊM TAB "HỖ TRỢ" — PHÂN TÍCH TỌA ĐỘ
-    + CHUYỂN 3 SCRIPT NHANH TỪ TAB "CODE" SANG TAB "HỖ TRỢ"
-    + THÊM TAB "AI AI" — GEMINI API (giữa Hỗ Trợ và Tạo Tính Năng)
-    + FIX HTTP 404: ĐỔI MODEL gemini-2.0-flash → gemini-2.5-flash
+    + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
+    + TAB "AI AI" — GIAO DIỆN MINI WEB CHAT (giữa Hỗ Trợ và Tạo Tính Năng)
+    + FIX HTTP 404: gemini-2.5-flash
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
@@ -746,7 +745,6 @@ local supportTab = AddTab("Hỗ Trợ", "🛠", 3)
 
 local posY = 8
 
--- ===== 3 SCRIPT NHANH =====
 Label(supportTab, "⚡ Script Nhanh - Nhấn để chạy ngay", posY)
 posY = posY + 16
 
@@ -776,7 +774,6 @@ posY = posY + 6
 Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
 posY = posY + 16
 
--- ===== PHẦN PHÂN TÍCH TỌA ĐỘ =====
 Label(supportTab, "🛠 Hỗ Trợ — Phân Tích Tọa Độ", posY)
 posY = posY + 18
 Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
@@ -1077,100 +1074,388 @@ end
 
 RebuildWaypoints()
 
--- ==================== TAB 4: AI AI — GEMINI API ====================
+-- ==================== TAB 4: AI AI — GIAO DIỆN MINI WEB CHAT ====================
 local aiTab = AddTab("AI AI", "🤖", 4)
 
-local aiY = 8
+-- Nền tối giống web AI mini
+local aiBG = New("Frame", {
+    Size=UDim2.new(1,0,1,0),
+    Position=UDim2.new(0,0,0,0),
+    BackgroundColor3=Color3.fromRGB(15, 17, 22),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=4,
+}, aiTab)
+aiTab.BackgroundTransparency = 1
+aiTab.ScrollingDirection = Enum.ScrollingDirection.Y
 
-Label(aiTab, "🤖 AI AI — Trợ Lý Gemini", aiY)
-aiY = aiY + 18
-Label(aiTab, "━━━━━━━━━━━━━━━━━━━━━━", aiY)
-aiY = aiY + 16
+-- Nội dung cuộn bên trong
+local aiInner = New("Frame", {
+    Size=UDim2.new(1,0,0,0),
+    Position=UDim2.new(0,0,0,0),
+    BackgroundTransparency=1,
+    BorderSizePixel=0,
+    ZIndex=5,
+    AutomaticSize=Enum.AutomaticSize.Y,
+}, aiBG)
+New("UIListLayout", {
+    SortOrder=Enum.SortOrder.LayoutOrder,
+    Padding=UDim.new(0,8),
+    HorizontalAlignment=Enum.HorizontalAlignment.Center,
+}, aiInner)
+New("UIPadding", {
+    PaddingTop=UDim.new(0,10),
+    PaddingBottom=UDim.new(0,10),
+    PaddingLeft=UDim.new(0,8),
+    PaddingRight=UDim.new(0,8),
+}, aiInner)
 
-Label(aiTab, "🔑 API Key Gemini", aiY)
-aiY = aiY + 14
+-- ===== HEADER: Logo + Tên giống web AI =====
+local headerFrame = New("Frame", {
+    Size=UDim2.new(1,-16,0,56),
+    BackgroundColor3=Color3.fromRGB(25, 28, 36),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=6,
+    LayoutOrder=1,
+}, aiInner)
+Corner(headerFrame, UDim.new(0,10))
+Stroke(headerFrame, Color3.fromRGB(60, 70, 100), 1)
+
+local logoCircle = New("Frame", {
+    Size=UDim2.new(0,36,0,36),
+    Position=UDim2.new(0,10,0,10),
+    BackgroundColor3=Color3.fromRGB(100, 120, 240),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=7,
+}, headerFrame)
+Corner(logoCircle, UDim.new(1,0))
+
+New("TextLabel", {
+    Size=UDim2.new(1,0,1,0),
+    Text="🤖",
+    BackgroundTransparency=1,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=18,
+    ZIndex=8,
+}, logoCircle)
+
+New("TextLabel", {
+    Size=UDim2.new(1,-70,0,20),
+    Position=UDim2.new(0,56,0,10),
+    Text="AI Mini — Gemini Assistant",
+    BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(240, 242, 250),
+    Font=Enum.Font.GothamBold,
+    TextSize=13,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, headerFrame)
+
+local statusDot = New("Frame", {
+    Size=UDim2.new(0,8,0,8),
+    Position=UDim2.new(0,58,0,34),
+    BackgroundColor3=C.GREEN,
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=7,
+}, headerFrame)
+Corner(statusDot, UDim.new(1,0))
+
+local statusText = New("TextLabel", {
+    Size=UDim2.new(1,-80,0,14),
+    Position=UDim2.new(0,70,0,30),
+    Text="Đang hoạt động",
+    BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(140, 200, 160),
+    Font=Enum.Font.GothamMedium,
+    TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, headerFrame)
+
+-- ===== API KEY PANEL =====
+local keyPanel = New("Frame", {
+    Size=UDim2.new(1,-16,0,86),
+    BackgroundColor3=Color3.fromRGB(25, 28, 36),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=6,
+    LayoutOrder=2,
+}, aiInner)
+Corner(keyPanel, UDim.new(0,10))
+Stroke(keyPanel, Color3.fromRGB(60, 70, 100), 1)
+
+New("TextLabel", {
+    Size=UDim2.new(1,-20,0,16),
+    Position=UDim2.new(0,10,0,6),
+    Text="🔑 API KEY GEMINI",
+    BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(140, 160, 220),
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, keyPanel)
 
 local apiKeyIn = New("TextBox", {
-    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,aiY), Text="",
-    PlaceholderText="Nhập API Key Gemini tại đây...",
-    PlaceholderColor3=Color3.fromRGB(160,160,160),
-    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
-    Font=Enum.Font.Code, TextSize=10, BorderSizePixel=0, ClearTextOnFocus=false,
-    Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
-}, aiTab)
-Corner(apiKeyIn, UDim.new(0,5))
-Stroke(apiKeyIn, Color3.fromRGB(100,120,200), 1.5)
-New("UIPadding", {PaddingLeft=UDim.new(0,6)}, apiKeyIn)
+    Size=UDim2.new(1,-20,0,26),
+    Position=UDim2.new(0,10,0,24),
+    Text="",
+    PlaceholderText="Dán API key Gemini vào đây...",
+    PlaceholderColor3=Color3.fromRGB(90, 95, 110),
+    BackgroundColor3=Color3.fromRGB(15, 17, 22),
+    BackgroundTransparency=0,
+    TextColor3=Color3.fromRGB(230, 235, 245),
+    Font=Enum.Font.Code,
+    TextSize=10,
+    BorderSizePixel=0,
+    ClearTextOnFocus=false,
+    Active=true,
+    Selectable=true,
+    ZIndex=10,
+    TextXAlignment=Enum.TextXAlignment.Left,
+}, keyPanel)
+Corner(apiKeyIn, UDim.new(0,6))
+Stroke(apiKeyIn, Color3.fromRGB(70, 90, 150), 1.2)
+New("UIPadding", {PaddingLeft=UDim.new(0,8)}, apiKeyIn)
 
-aiY = aiY + 32
+local saveKeyBtn = New("TextButton", {
+    Size=UDim2.new(0,70,0,22),
+    Position=UDim2.new(0,10,0,56),
+    Text="💾 Lưu",
+    BackgroundColor3=Color3.fromRGB(50, 120, 220),
+    BackgroundTransparency=0,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    BorderSizePixel=0,
+    ZIndex=8,
+}, keyPanel)
+Corner(saveKeyBtn, UDim.new(0,5))
 
-local saveKeyBtn = Button(aiTab, "💾 Lưu Key", 8, aiY, 90, 24, C.BLUE)
-local clearKeyBtn = Button(aiTab, "🗑 Xóa Key", 104, aiY, 90, 24, C.RED)
-local toggleKeyBtn = Button(aiTab, "👁 Hiện", 200, aiY, 70, 24, C.ORANGE)
+local clearKeyBtn = New("TextButton", {
+    Size=UDim2.new(0,70,0,22),
+    Position=UDim2.new(0,86,0,56),
+    Text="🗑 Xóa",
+    BackgroundColor3=Color3.fromRGB(180, 60, 60),
+    BackgroundTransparency=0,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    BorderSizePixel=0,
+    ZIndex=8,
+}, keyPanel)
+Corner(clearKeyBtn, UDim.new(0,5))
 
-local keyStatus = Label(aiTab, "", aiY + 26)
-keyStatus.TextColor3=C.GREEN; keyStatus.TextSize=9; keyStatus.ZIndex=6
+local toggleKeyBtn = New("TextButton", {
+    Size=UDim2.new(0,70,0,22),
+    Position=UDim2.new(0,162,0,56),
+    Text="👁 Hiện",
+    BackgroundColor3=Color3.fromRGB(180, 120, 40),
+    BackgroundTransparency=0,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    BorderSizePixel=0,
+    ZIndex=8,
+}, keyPanel)
+Corner(toggleKeyBtn, UDim.new(0,5))
 
-aiY = aiY + 46
+local keyStatus = New("TextLabel", {
+    Size=UDim2.new(1,-240,0,14),
+    Position=UDim2.new(0,238,0,60),
+    Text="",
+    BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(140, 200, 160),
+    Font=Enum.Font.GothamMedium,
+    TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    ZIndex=7,
+}, keyPanel)
 
-Label(aiTab, "━━━━━━━━━━━━━━━━━━━━━━", aiY)
-aiY = aiY + 16
+-- ===== KHUNG CHAT =====
+local chatPanel = New("Frame", {
+    Size=UDim2.new(1,-16,0,200),
+    BackgroundColor3=Color3.fromRGB(25, 28, 36),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=6,
+    LayoutOrder=3,
+}, aiInner)
+Corner(chatPanel, UDim.new(0,10))
+Stroke(chatPanel, Color3.fromRGB(60, 70, 100), 1)
 
-Label(aiTab, "📝 Câu Hỏi Của Bạn", aiY)
-aiY = aiY + 14
+local chatScroll = New("ScrollingFrame", {
+    Size=UDim2.new(1,-16,1,-52),
+    Position=UDim2.new(0,8,0,8),
+    BackgroundColor3=Color3.fromRGB(15, 17, 22),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=7,
+    ScrollBarThickness=4,
+    ScrollBarImageColor3=Color3.fromRGB(80, 100, 150),
+    CanvasSize=UDim2.new(0,0,0,0),
+    AutomaticCanvasSize=Enum.AutomaticSize.Y,
+}, chatPanel)
+Corner(chatScroll, UDim.new(0,8))
+New("UIPadding", {PaddingTop=UDim.new(0,8), PaddingBottom=UDim.new(0,8), PaddingLeft=UDim.new(0,8), PaddingRight=UDim.new(0,8)}, chatScroll)
+New("UIListLayout", {
+    SortOrder=Enum.SortOrder.LayoutOrder,
+    Padding=UDim.new(0,8),
+    HorizontalAlignment=Enum.HorizontalAlignment.Left,
+}, chatScroll)
+
+-- Tin nhắn chào mừng từ AI
+local function AddMessage(sender, text, isUser)
+    local bubbleColor = isUser and Color3.fromRGB(50, 120, 220) or Color3.fromRGB(35, 40, 55)
+    local textColor = isUser and C.WHITE or Color3.fromRGB(230, 235, 245)
+    local align = isUser and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left
+    local bubbleAlign = isUser and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
+    local sizeScale = isUser and 0.75 or 0.85
+    local posX = isUser and UDim2.new(1,-8,0,0) or UDim2.new(0,8,0,0)
+
+    local holder = New("Frame", {
+        Size=UDim2.new(1,0,0,0),
+        BackgroundTransparency=1,
+        BorderSizePixel=0,
+        ZIndex=8,
+        AutomaticSize=Enum.AutomaticSize.Y,
+    }, chatScroll)
+
+    local bubble = New("Frame", {
+        Size=UDim2.new(sizeScale,0,0,0),
+        BackgroundColor3=bubbleColor,
+        BackgroundTransparency=0,
+        BorderSizePixel=0,
+        ZIndex=9,
+        AutomaticSize=Enum.AutomaticSize.Y,
+    }, holder)
+    Corner(bubble, UDim.new(0,10))
+
+    if isUser then
+        bubble.Position = UDim2.new(1-sizeScale.Scale, 0, 0, 0)
+    end
+
+    local msgLbl = New("TextLabel", {
+        Size=UDim2.new(1,-16,0,0),
+        Position=UDim2.new(0,8,0,6),
+        Text=text,
+        BackgroundTransparency=1,
+        TextColor3=textColor,
+        Font=Enum.Font.GothamMedium,
+        TextSize=11,
+        TextXAlignment=align,
+        TextYAlignment=Enum.TextYAlignment.Top,
+        TextWrapped=true,
+        ZIndex=10,
+        AutomaticSize=Enum.AutomaticSize.Y,
+    }, bubble)
+
+    local senderLbl = New("TextLabel", {
+        Size=UDim2.new(1,-16,0,12),
+        Position=UDim2.new(0,8,0,-14),
+        Text=sender,
+        BackgroundTransparency=1,
+        TextColor3=isUser and Color3.fromRGB(150, 180, 240) or Color3.fromRGB(140, 200, 160),
+        Font=Enum.Font.GothamBold,
+        TextSize=8,
+        TextXAlignment=align,
+        ZIndex=10,
+    }, bubble)
+
+    return holder
+end
+
+AddMessage("🤖 Gemini", "Xin chào! Tôi là AI Mini. Hãy nhập API key ở trên (nếu chưa có) rồi đặt câu hỏi bên dưới nhé!", false)
+
+-- ===== Ô NHẬP CÂU HỎI + NÚT GỬI =====
+local inputBar = New("Frame", {
+    Size=UDim2.new(1,-16,0,36),
+    BackgroundColor3=Color3.fromRGB(25, 28, 36),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=6,
+    LayoutOrder=4,
+}, aiInner)
+Corner(inputBar, UDim.new(0,10))
+Stroke(inputBar, Color3.fromRGB(60, 70, 100), 1)
 
 local questionIn = New("TextBox", {
-    Size=UDim2.new(1,-16,0,70), Position=UDim2.new(0,8,0,aiY), Text="",
-    PlaceholderText="Nhập câu hỏi... VD: Làm sao để bay trong Roblox?",
-    PlaceholderColor3=Color3.fromRGB(160,160,160),
-    BackgroundColor3=Color3.fromRGB(245,245,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
-    Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
-    MultiLine=true, TextWrapped=true, TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top,
-    Active=true, Selectable=true, ZIndex=10,
-}, aiTab)
-Corner(questionIn, UDim.new(0,5))
-Stroke(questionIn, Color3.fromRGB(100,120,200), 1.5)
-New("UIPadding", {PaddingLeft=UDim.new(0,6), PaddingTop=UDim.new(0,4)}, questionIn)
+    Size=UDim2.new(1,-70,1,-10),
+    Position=UDim2.new(0,8,0,5),
+    Text="",
+    PlaceholderText="Nhập câu hỏi...",
+    PlaceholderColor3=Color3.fromRGB(90, 95, 110),
+    BackgroundColor3=Color3.fromRGB(15, 17, 22),
+    BackgroundTransparency=0,
+    TextColor3=Color3.fromRGB(230, 235, 245),
+    Font=Enum.Font.GothamMedium,
+    TextSize=11,
+    BorderSizePixel=0,
+    ClearTextOnFocus=false,
+    ZIndex=10,
+    TextXAlignment=Enum.TextXAlignment.Left,
+    TextYAlignment=Enum.TextYAlignment.Center,
+}, inputBar)
+Corner(questionIn, UDim.new(0,6))
+New("UIPadding", {PaddingLeft=UDim.new(0,8)}, questionIn)
 
-aiY = aiY + 76
+local sendBtn = New("TextButton", {
+    Size=UDim2.new(0,54,1,-10),
+    Position=UDim2.new(1,-62,0,5),
+    Text="➤",
+    BackgroundColor3=Color3.fromRGB(50, 120, 220),
+    BackgroundTransparency=0,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=16,
+    BorderSizePixel=0,
+    ZIndex=8,
+}, inputBar)
+Corner(sendBtn, UDim.new(0,6))
 
-local askBtn = Button(aiTab, "🚀 Gửi Câu Hỏi", 8, aiY, 140, 28, C.GREEN)
-local clearAskBtn = Button(aiTab, "🧹 Xóa", 154, aiY, 70, 28, C.ORANGE)
+-- ===== THANH CÔNG CỤ DƯỚI =====
+local toolBar = New("Frame", {
+    Size=UDim2.new(1,-16,0,30),
+    BackgroundTransparency=1,
+    BorderSizePixel=0,
+    ZIndex=6,
+    LayoutOrder=5,
+}, aiInner)
+New("UIListLayout", {
+    FillDirection=Enum.FillDirection.Horizontal,
+    SortOrder=Enum.SortOrder.LayoutOrder,
+    Padding=UDim.new(0,6),
+}, toolBar)
 
-aiY = aiY + 36
+local copyAnswerBtn = New("TextButton", {
+    Size=UDim2.new(0,120,1,0),
+    Text="📋 Copy chat",
+    BackgroundColor3=Color3.fromRGB(50, 120, 220),
+    BackgroundTransparency=0,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    BorderSizePixel=0,
+    ZIndex=7,
+}, toolBar)
+Corner(copyAnswerBtn, UDim.new(0,6))
 
-local aiStatus = Label(aiTab, "💤 Sẵn sàng", aiY)
-aiStatus.TextColor3=C.YELLOW; aiStatus.TextSize=9; aiStatus.ZIndex=6
-aiY = aiY + 14
-
-Label(aiTab, "💬 Trả Lời Từ Gemini:", aiY)
-aiY = aiY + 14
-
-local answerFrame = New("ScrollingFrame", {
-    Size=UDim2.new(1,-16,0,120), Position=UDim2.new(0,8,0,aiY),
-    BackgroundColor3=Color3.fromRGB(30, 35, 45), BackgroundTransparency=0,
-    BorderSizePixel=0, ZIndex=6, ScrollBarThickness=4,
-    CanvasSize=UDim2.new(0,0,0,0),
-}, aiTab)
-Corner(answerFrame, UDim.new(0,6))
-Stroke(answerFrame, C.PURPLE, 1.5)
-
-local answerLbl = New("TextLabel", {
-    Size=UDim2.new(1,-12,0,0), Position=UDim2.new(0,6,0,6),
-    Text="🤖 Câu trả lời sẽ hiển thị ở đây...",
-    BackgroundTransparency=1, TextColor3=Color3.fromRGB(220, 225, 240),
-    Font=Enum.Font.GothamMedium, TextSize=11,
-    TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top,
-    TextWrapped=true, ZIndex=7, AutomaticSize=Enum.AutomaticSize.Y,
-}, answerFrame)
-
-aiY = aiY + 126
-
-local copyAnswerBtn = Button(aiTab, "📋 Copy Trả Lời", 8, aiY, 130, 24, C.BLUE)
-local clearAnswerBtn = Button(aiTab, "🧹 Xóa Trả Lời", 144, aiY, 110, 24, C.RED)
-
-aiY = aiY + 30
-aiTab.CanvasSize = UDim2.new(0, 0, 0, aiY + 20)
+local clearChatBtn = New("TextButton", {
+    Size=UDim2.new(0,120,1,0),
+    Text="🧹 Xóa chat",
+    BackgroundColor3=Color3.fromRGB(180, 60, 60),
+    BackgroundTransparency=0,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    BorderSizePixel=0,
+    ZIndex=7,
+}, toolBar)
+Corner(clearChatBtn, UDim.new(0,6))
 
 -- ===== XỬ LÝ API KEY =====
 local apiKeyFile = "banana_cat_gemini_key.txt"
@@ -1209,19 +1494,19 @@ end
 local loadedKey = LoadApiKey()
 if loadedKey and #loadedKey > 0 then
     apiKeyIn.Text = loadedKey
-    keyStatus.Text = "✅ Đã tải key: "..MaskKey(loadedKey)
+    keyStatus.Text = "✅ Đã tải: "..MaskKey(loadedKey)
 else
-    keyStatus.Text = "⚠️ Chưa có API key"
+    keyStatus.Text = "⚠️ Chưa có key"
 end
 
 saveKeyBtn.Activated:Connect(function()
     local k = apiKeyIn.Text
     if #k == 0 then
-        keyStatus.Text = "⚠️ Vui lòng nhập API key!"
+        keyStatus.Text = "⚠️ Nhập key trước!"
         return
     end
     SaveApiKey(k)
-    keyStatus.Text = "✅ Đã lưu key: "..MaskKey(k)
+    keyStatus.Text = "✅ Đã lưu: "..MaskKey(k)
 end)
 
 clearKeyBtn.Activated:Connect(function()
@@ -1230,7 +1515,7 @@ clearKeyBtn.Activated:Connect(function()
     if delfile then
         pcall(delfile, apiKeyFile)
     end
-    keyStatus.Text = "🗑 Đã xóa API key"
+    keyStatus.Text = "🗑 Đã xóa key"
 end)
 
 local keyVisible = true
@@ -1246,13 +1531,6 @@ toggleKeyBtn.Activated:Connect(function()
 end)
 
 -- ===== XỬ LÝ GỬI CÂU HỎI =====
-local function UpdateAnswerHeight()
-    local h = answerLbl.AbsoluteSize.Y
-    if h < 100 then h = 100 end
-    answerFrame.CanvasSize = UDim2.new(0, 0, 0, h + 12)
-    answerLbl.Size = UDim2.new(1, -12, 0, h)
-end
-
 local function AskGemini(question)
     local key = LoadApiKey()
     if not key or #key == 0 then
@@ -1262,8 +1540,6 @@ local function AskGemini(question)
         return false, "⚠️ Vui lòng nhập câu hỏi!"
     end
 
-    -- FIX HTTP 404: Dùng model gemini-2.5-flash thay vì gemini-2.0-flash (đã bị gỡ)
-    -- Nếu vẫn 404, thử đổi sang: gemini-flash-latest HOẶC gemini-2.5-flash-lite
     local url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="..key
 
     local body = HttpService:JSONEncode({
@@ -1319,66 +1595,84 @@ local function AskGemini(question)
     return false, "❌ Không có câu trả lời từ Gemini"
 end
 
-askBtn.Activated:Connect(function()
+local isSending = false
+
+local function SendQuestion()
+    if isSending then return end
     local q = questionIn.Text
     if #q == 0 then
-        aiStatus.Text = "⚠️ Vui lòng nhập câu hỏi!"
         return
     end
 
-    aiStatus.Text = "⏳ Đang gửi tới Gemini..."
-    aiStatus.TextColor3 = C.YELLOW
-    answerLbl.Text = "🤖 Đang suy nghĩ..."
+    isSending = true
+    questionIn.Text = ""
+    statusText.Text = "Đang suy nghĩ..."
+    statusDot.BackgroundColor3 = C.YELLOW
+
+    AddMessage("👤 Bạn", q, true)
 
     task.spawn(function()
         local ok, response = AskGemini(q)
         if ok then
-            answerLbl.Text = response
-            aiStatus.Text = "✅ Đã nhận trả lời!"
-            aiStatus.TextColor3 = C.GREEN
+            AddMessage("🤖 Gemini", response, false)
+            statusText.Text = "Đang hoạt động"
+            statusDot.BackgroundColor3 = C.GREEN
         else
-            answerLbl.Text = response
-            aiStatus.Text = "❌ Lỗi!"
-            aiStatus.TextColor3 = C.RED
+            AddMessage("⚠️ Lỗi", response, false)
+            statusText.Text = "Lỗi kết nối"
+            statusDot.BackgroundColor3 = C.RED
         end
+        isSending = false
         task.wait(0.1)
-        UpdateAnswerHeight()
+        chatScroll.CanvasPosition = Vector2.new(0, chatScroll.AbsoluteCanvasSize.Y)
     end)
-end)
+end
 
-clearAskBtn.Activated:Connect(function()
-    questionIn.Text = ""
-    aiStatus.Text = "🧹 Đã xóa câu hỏi"
-end)
-
-clearAnswerBtn.Activated:Connect(function()
-    answerLbl.Text = "🤖 Câu trả lời sẽ hiển thị ở đây..."
-    UpdateAnswerHeight()
-end)
-
-copyAnswerBtn.Activated:Connect(function()
-    local text = answerLbl.Text
-    if setclipboard then
-        pcall(setclipboard, text)
-        copyAnswerBtn.Text = "✅ Đã Copy!"
-    elseif toclipboard then
-        pcall(toclipboard, text)
-        copyAnswerBtn.Text = "✅ Đã Copy!"
-    else
-        answerLbl:CaptureFocus()
-        answerLbl.SelectionStart = 1
-        answerLbl.CursorPosition = #text + 1
-        copyAnswerBtn.Text = "⚠️ Đã Bôi Đen"
+sendBtn.Activated:Connect(SendQuestion)
+questionIn.FocusLost:Connect(function(enter)
+    if enter then
+        SendQuestion()
     end
+end)
+
+-- ===== COPY TOÀN BỘ CHAT =====
+copyAnswerBtn.Activated:Connect(function()
+    local allText = ""
+    for _, child in ipairs(chatScroll:GetChildren()) do
+        if child:IsA("Frame") then
+            local bubble = child:FindFirstChildWhichIsA("Frame")
+            if bubble then
+                local lbl = bubble:FindFirstChildWhichIsA("TextLabel")
+                if lbl then
+                    allText = allText..lbl.Text.."\n\n"
+                end
+            end
+        end
+    end
+    if setclipboard then
+        pcall(setclipboard, allText)
+    elseif toclipboard then
+        pcall(toclipboard, allText)
+    end
+    copyAnswerBtn.Text = "✅ Đã copy!"
     task.delay(1.5, function()
         if copyAnswerBtn and copyAnswerBtn.Parent then
-            copyAnswerBtn.Text = "📋 Copy Trả Lời"
+            copyAnswerBtn.Text = "📋 Copy chat"
         end
     end)
 end)
 
-answerLbl:GetPropertyChangedSignal("Text"):Connect(UpdateAnswerHeight)
-UpdateAnswerHeight()
+clearChatBtn.Activated:Connect(function()
+    for _, child in ipairs(chatScroll:GetChildren()) do
+        if not child:IsA("UIListLayout") and not child:IsA("UIPadding") then
+            child:Destroy()
+        end
+    end
+    AddMessage("🤖 Gemini", "Cuộc trò chuyện đã được xóa. Hãy đặt câu hỏi mới!", false)
+end)
+
+-- Cập nhật CanvasSize tab AI
+aiTab.CanvasSize = UDim2.new(0, 0, 0, 0)
 
 -- ==================== TAB 5: TẠO TÍNH NĂNG ====================
 local featureTabs = {}
@@ -1988,4 +2282,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.3: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Gemini 2.5 Flash) + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v3.4: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Mini Web Chat) + Tạo Tính Năng — sẵn sàng!")
