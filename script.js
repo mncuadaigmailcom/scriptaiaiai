@@ -2,15 +2,14 @@
     🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
     + THÊM TAB "HỖ TRỢ" — PHÂN TÍCH TỌA ĐỘ
     + CHUYỂN 3 SCRIPT NHANH TỪ TAB "CODE" SANG TAB "HỖ TRỢ"
-    - Tab "Hỗ Trợ" nằm giữa "Code Đã Lưu" và "Tạo Tính Năng"
-    - Hiển thị tọa độ real-time (X, Y, Z, Rotation)
-    - Copy tọa độ, Teleport, Waypoint
+    + THÊM TAB "AI AI" — GEMINI API (giữa Hỗ Trợ và Tạo Tính Năng)
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -50,6 +49,7 @@ local C = {
     YELLOW = Color3.fromRGB(255, 200, 0),
     PURPLE = Color3.fromRGB(130, 60, 200),
     ORANGE = Color3.fromRGB(220, 130, 50),
+    PINK = Color3.fromRGB(230, 100, 180),
     BG = Color3.fromRGB(240, 242, 248),
 }
 
@@ -745,7 +745,7 @@ local supportTab = AddTab("Hỗ Trợ", "🛠", 3)
 
 local posY = 8
 
--- ===== 3 SCRIPT NHANH (đã chuyển từ tab Code) =====
+-- ===== 3 SCRIPT NHANH =====
 Label(supportTab, "⚡ Script Nhanh - Nhấn để chạy ngay", posY)
 posY = posY + 16
 
@@ -1076,9 +1076,306 @@ end
 
 RebuildWaypoints()
 
--- ==================== TAB 4: TẠO TÍNH NĂNG ====================
+-- ==================== TAB 4: AI AI — GEMINI API ====================
+local aiTab = AddTab("AI AI", "🤖", 4)
+
+local aiY = 8
+
+Label(aiTab, "🤖 AI AI — Trợ Lý Gemini", aiY)
+aiY = aiY + 18
+Label(aiTab, "━━━━━━━━━━━━━━━━━━━━━━", aiY)
+aiY = aiY + 16
+
+Label(aiTab, "🔑 API Key Gemini", aiY)
+aiY = aiY + 14
+
+local apiKeyIn = New("TextBox", {
+    Size=UDim2.new(1,-16,0,26), Position=UDim2.new(0,8,0,aiY), Text="",
+    PlaceholderText="Nhập API Key Gemini tại đây...",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(255,255,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.Code, TextSize=10, BorderSizePixel=0, ClearTextOnFocus=false,
+    Active=true, Selectable=true, ZIndex=10, TextXAlignment=Enum.TextXAlignment.Left,
+}, aiTab)
+Corner(apiKeyIn, UDim.new(0,5))
+Stroke(apiKeyIn, Color3.fromRGB(100,120,200), 1.5)
+New("UIPadding", {PaddingLeft=UDim.new(0,6)}, apiKeyIn)
+
+aiY = aiY + 32
+
+local saveKeyBtn = Button(aiTab, "💾 Lưu Key", 8, aiY, 90, 24, C.BLUE)
+local clearKeyBtn = Button(aiTab, "🗑 Xóa Key", 104, aiY, 90, 24, C.RED)
+local toggleKeyBtn = Button(aiTab, "👁 Hiện", 200, aiY, 70, 24, C.ORANGE)
+
+local keyStatus = Label(aiTab, "", aiY + 26)
+keyStatus.TextColor3=C.GREEN; keyStatus.TextSize=9; keyStatus.ZIndex=6
+
+aiY = aiY + 46
+
+Label(aiTab, "━━━━━━━━━━━━━━━━━━━━━━", aiY)
+aiY = aiY + 16
+
+Label(aiTab, "📝 Câu Hỏi Của Bạn", aiY)
+aiY = aiY + 14
+
+local questionIn = New("TextBox", {
+    Size=UDim2.new(1,-16,0,70), Position=UDim2.new(0,8,0,aiY), Text="",
+    PlaceholderText="Nhập câu hỏi... VD: Làm sao để bay trong Roblox?",
+    PlaceholderColor3=Color3.fromRGB(160,160,160),
+    BackgroundColor3=Color3.fromRGB(245,245,255), BackgroundTransparency=0, TextColor3=Color3.fromRGB(20,20,20),
+    Font=Enum.Font.GothamMedium, TextSize=11, BorderSizePixel=0, ClearTextOnFocus=false,
+    MultiLine=true, TextWrapped=true, TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top,
+    Active=true, Selectable=true, ZIndex=10,
+}, aiTab)
+Corner(questionIn, UDim.new(0,5))
+Stroke(questionIn, Color3.fromRGB(100,120,200), 1.5)
+New("UIPadding", {PaddingLeft=UDim.new(0,6), PaddingTop=UDim.new(0,4)}, questionIn)
+
+aiY = aiY + 76
+
+local askBtn = Button(aiTab, "🚀 Gửi Câu Hỏi", 8, aiY, 140, 28, C.GREEN)
+local clearAskBtn = Button(aiTab, "🧹 Xóa", 154, aiY, 70, 28, C.ORANGE)
+
+aiY = aiY + 36
+
+local aiStatus = Label(aiTab, "💤 Sẵn sàng", aiY)
+aiStatus.TextColor3=C.YELLOW; aiStatus.TextSize=9; aiStatus.ZIndex=6
+aiY = aiY + 14
+
+Label(aiTab, "💬 Trả Lời Từ Gemini:", aiY)
+aiY = aiY + 14
+
+local answerFrame = New("ScrollingFrame", {
+    Size=UDim2.new(1,-16,0,120), Position=UDim2.new(0,8,0,aiY),
+    BackgroundColor3=Color3.fromRGB(30, 35, 45), BackgroundTransparency=0,
+    BorderSizePixel=0, ZIndex=6, ScrollBarThickness=4,
+    CanvasSize=UDim2.new(0,0,0,0),
+}, aiTab)
+Corner(answerFrame, UDim.new(0,6))
+Stroke(answerFrame, C.PURPLE, 1.5)
+
+local answerLbl = New("TextLabel", {
+    Size=UDim2.new(1,-12,0,0), Position=UDim2.new(0,6,0,6),
+    Text="🤖 Câu trả lời sẽ hiển thị ở đây...",
+    BackgroundTransparency=1, TextColor3=Color3.fromRGB(220, 225, 240),
+    Font=Enum.Font.GothamMedium, TextSize=11,
+    TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Top,
+    TextWrapped=true, ZIndex=7, AutomaticSize=Enum.AutomaticSize.Y,
+}, answerFrame)
+
+aiY = aiY + 126
+
+local copyAnswerBtn = Button(aiTab, "📋 Copy Trả Lời", 8, aiY, 130, 24, C.BLUE)
+local clearAnswerBtn = Button(aiTab, "🧹 Xóa Trả Lời", 144, aiY, 110, 24, C.RED)
+
+aiY = aiY + 30
+aiTab.CanvasSize = UDim2.new(0, 0, 0, aiY + 20)
+
+-- ===== XỬ LÝ API KEY =====
+local apiKeyFile = "banana_cat_gemini_key.txt"
+
+local function SaveApiKey(key)
+    if writefile then
+        pcall(writefile, apiKeyFile, key)
+    end
+    _G.BananaCatHub_GeminiKey = key
+end
+
+local function LoadApiKey()
+    if _G.BananaCatHub_GeminiKey then
+        return _G.BananaCatHub_GeminiKey
+    end
+    if readfile and isfile then
+        local ok, data = pcall(function()
+            if isfile(apiKeyFile) then
+                return readfile(apiKeyFile)
+            end
+            return nil
+        end)
+        if ok and data and #data > 0 then
+            _G.BananaCatHub_GeminiKey = data
+            return data
+        end
+    end
+    return nil
+end
+
+local function MaskKey(key)
+    if not key or #key < 8 then return key or "" end
+    return key:sub(1, 4)..string.rep("•", math.min(#key - 8, 20))..key:sub(-4)
+end
+
+local loadedKey = LoadApiKey()
+if loadedKey and #loadedKey > 0 then
+    apiKeyIn.Text = loadedKey
+    keyStatus.Text = "✅ Đã tải key: "..MaskKey(loadedKey)
+else
+    keyStatus.Text = "⚠️ Chưa có API key"
+end
+
+saveKeyBtn.Activated:Connect(function()
+    local k = apiKeyIn.Text
+    if #k == 0 then
+        keyStatus.Text = "⚠️ Vui lòng nhập API key!"
+        return
+    end
+    SaveApiKey(k)
+    keyStatus.Text = "✅ Đã lưu key: "..MaskKey(k)
+end)
+
+clearKeyBtn.Activated:Connect(function()
+    apiKeyIn.Text = ""
+    _G.BananaCatHub_GeminiKey = nil
+    if delfile then
+        pcall(delfile, apiKeyFile)
+    end
+    keyStatus.Text = "🗑 Đã xóa API key"
+end)
+
+local keyVisible = true
+toggleKeyBtn.Activated:Connect(function()
+    keyVisible = not keyVisible
+    if keyVisible then
+        apiKeyIn.Text = LoadApiKey() or ""
+        toggleKeyBtn.Text = "👁 Hiện"
+    else
+        apiKeyIn.Text = MaskKey(LoadApiKey() or "")
+        toggleKeyBtn.Text = "🙈 Ẩn"
+    end
+end)
+
+-- ===== XỬ LÝ GỬI CÂU HỎI =====
+local function UpdateAnswerHeight()
+    local h = answerLbl.AbsoluteSize.Y
+    if h < 100 then h = 100 end
+    answerFrame.CanvasSize = UDim2.new(0, 0, 0, h + 12)
+    answerLbl.Size = UDim2.new(1, -12, 0, h)
+end
+
+local function AskGemini(question)
+    local key = LoadApiKey()
+    if not key or #key == 0 then
+        return false, "⚠️ Chưa có API key. Vui lòng nhập và lưu key trước!"
+    end
+    if #question == 0 then
+        return false, "⚠️ Vui lòng nhập câu hỏi!"
+    end
+
+    local url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="..key
+
+    local body = HttpService:JSONEncode({
+        contents = {
+            {
+                parts = {
+                    { text = question }
+                }
+            }
+        }
+    })
+
+    local ok, result = pcall(function()
+        return HttpService:RequestAsync({
+            Url = url,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = body
+        })
+    end)
+
+    if not ok then
+        return false, "❌ Lỗi kết nối: "..tostring(result)
+    end
+
+    if not result.Success then
+        return false, "❌ HTTP "..tostring(result.StatusCode)..": "..tostring(result.StatusMessage)
+    end
+
+    local parseOk, data = pcall(function()
+        return HttpService:JSONDecode(result.Body)
+    end)
+
+    if not parseOk then
+        return false, "❌ Không parse được JSON trả về"
+    end
+
+    if data.error then
+        return false, "❌ API Error: "..tostring(data.error.message or "unknown")
+    end
+
+    if data.candidates and data.candidates[1] and data.candidates[1].content
+       and data.candidates[1].content.parts and data.candidates[1].content.parts[1] then
+        return true, data.candidates[1].content.parts[1].text
+    end
+
+    return false, "❌ Không có câu trả lời từ Gemini"
+end
+
+askBtn.Activated:Connect(function()
+    local q = questionIn.Text
+    if #q == 0 then
+        aiStatus.Text = "⚠️ Vui lòng nhập câu hỏi!"
+        return
+    end
+
+    aiStatus.Text = "⏳ Đang gửi tới Gemini..."
+    aiStatus.TextColor3 = C.YELLOW
+    answerLbl.Text = "🤖 Đang suy nghĩ..."
+
+    task.spawn(function()
+        local ok, response = AskGemini(q)
+        if ok then
+            answerLbl.Text = response
+            aiStatus.Text = "✅ Đã nhận trả lời!"
+            aiStatus.TextColor3 = C.GREEN
+        else
+            answerLbl.Text = response
+            aiStatus.Text = "❌ Lỗi!"
+            aiStatus.TextColor3 = C.RED
+        end
+        task.wait(0.1)
+        UpdateAnswerHeight()
+    end)
+end)
+
+clearAskBtn.Activated:Connect(function()
+    questionIn.Text = ""
+    aiStatus.Text = "🧹 Đã xóa câu hỏi"
+end)
+
+clearAnswerBtn.Activated:Connect(function()
+    answerLbl.Text = "🤖 Câu trả lời sẽ hiển thị ở đây..."
+    UpdateAnswerHeight()
+end)
+
+copyAnswerBtn.Activated:Connect(function()
+    local text = answerLbl.Text
+    if setclipboard then
+        pcall(setclipboard, text)
+        copyAnswerBtn.Text = "✅ Đã Copy!"
+    elseif toclipboard then
+        pcall(toclipboard, text)
+        copyAnswerBtn.Text = "✅ Đã Copy!"
+    else
+        answerLbl:CaptureFocus()
+        answerLbl.SelectionStart = 1
+        answerLbl.CursorPosition = #text + 1
+        copyAnswerBtn.Text = "⚠️ Đã Bôi Đen"
+    end
+    task.delay(1.5, function()
+        if copyAnswerBtn and copyAnswerBtn.Parent then
+            copyAnswerBtn.Text = "📋 Copy Trả Lời"
+        end
+    end)
+end)
+
+answerLbl:GetPropertyChangedSignal("Text"):Connect(UpdateAnswerHeight)
+UpdateAnswerHeight()
+
+-- ==================== TAB 5: TẠO TÍNH NĂNG ====================
 local featureTabs = {}
-local featureTabIndex = 4
+local featureTabIndex = 5
 
 local function NormalizeCode(c)
     if type(c) ~= "string" then return "" end
@@ -1389,7 +1686,7 @@ local function CreateFeatureTab(name, icon, codeContent)
     return featureData
 end
 
-local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 4)
+local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 5)
 
 local cy = 8
 Label(createFeatureTab, "➕ Tạo Tab Tính Năng Tích Hợp", cy)
@@ -1684,4 +1981,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.1: Code + Code Đã Lưu + Hỗ Trợ (Script Nhanh + Tọa Độ) + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v3.2: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Gemini) + Tạo Tính Năng — sẵn sàng!")
