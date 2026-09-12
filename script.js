@@ -3,6 +3,7 @@
     + THÊM TAB "HỖ TRỢ" — PHÂN TÍCH TỌA ĐỘ
     + CHUYỂN 3 SCRIPT NHANH TỪ TAB "CODE" SANG TAB "HỖ TRỢ"
     + THÊM TAB "AI AI" — GEMINI API (giữa Hỗ Trợ và Tạo Tính Năng)
+    + FIX HTTP 404: ĐỔI MODEL gemini-2.0-flash → gemini-2.5-flash
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
@@ -1261,7 +1262,9 @@ local function AskGemini(question)
         return false, "⚠️ Vui lòng nhập câu hỏi!"
     end
 
-    local url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="..key
+    -- FIX HTTP 404: Dùng model gemini-2.5-flash thay vì gemini-2.0-flash (đã bị gỡ)
+    -- Nếu vẫn 404, thử đổi sang: gemini-flash-latest HOẶC gemini-2.5-flash-lite
+    local url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="..key
 
     local body = HttpService:JSONEncode({
         contents = {
@@ -1289,7 +1292,11 @@ local function AskGemini(question)
     end
 
     if not result.Success then
-        return false, "❌ HTTP "..tostring(result.StatusCode)..": "..tostring(result.StatusMessage)
+        local bodyPreview = ""
+        if result.Body then
+            bodyPreview = tostring(result.Body):sub(1, 300)
+        end
+        return false, "❌ HTTP "..tostring(result.StatusCode)..": "..tostring(result.StatusMessage).."\n"..bodyPreview
     end
 
     local parseOk, data = pcall(function()
@@ -1981,4 +1988,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.2: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Gemini) + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v3.3: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Gemini 2.5 Flash) + Tạo Tính Năng — sẵn sàng!")
