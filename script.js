@@ -1,7 +1,7 @@
 --[[
     🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
     + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
-    + TAB "AI AI" — GIAO DIỆN MINI WEB CHAT (giữa Hỗ Trợ và Tạo Tính Năng)
+    + TAB "AI AI" — GIAO DIỆN MINI WEB CHAT (đã fix cuộn)
     + FIX HTTP 404: gemini-2.5-flash
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
@@ -1077,22 +1077,31 @@ RebuildWaypoints()
 -- ==================== TAB 4: AI AI — GIAO DIỆN MINI WEB CHAT ====================
 local aiTab = AddTab("AI AI", "🤖", 4)
 
--- Nền tối giống web AI mini
+-- Cấu hình tab AI thành dạng cuộn dọc tự động theo nội dung
+aiTab.BackgroundTransparency = 1
+aiTab.ScrollingDirection = Enum.ScrollingDirection.Y
+aiTab.ScrollingEnabled = true
+aiTab.ElasticBehavior = Enum.ElasticBehavior.Never
+aiTab.AutomaticCanvasSize = Enum.AutomaticSize.Y
+aiTab.CanvasSize = UDim2.new(0, 0, 0, 0)
+aiTab.ScrollBarThickness = 5
+aiTab.ScrollBarImageColor3 = Color3.fromRGB(100, 120, 180)
+
+-- Nền tối giống web AI mini (đặt trực tiếp trong aiTab)
 local aiBG = New("Frame", {
-    Size=UDim2.new(1,0,1,0),
-    Position=UDim2.new(0,0,0,0),
+    Size=UDim2.new(1, 0, 0, 0),
+    Position=UDim2.new(0, 0, 0, 0),
     BackgroundColor3=Color3.fromRGB(15, 17, 22),
     BackgroundTransparency=0,
     BorderSizePixel=0,
     ZIndex=4,
+    AutomaticSize=Enum.AutomaticSize.Y,
 }, aiTab)
-aiTab.BackgroundTransparency = 1
-aiTab.ScrollingDirection = Enum.ScrollingDirection.Y
 
--- Nội dung cuộn bên trong
+-- Nội dung bên trong nền tối
 local aiInner = New("Frame", {
-    Size=UDim2.new(1,0,0,0),
-    Position=UDim2.new(0,0,0,0),
+    Size=UDim2.new(1, 0, 0, 0),
+    Position=UDim2.new(0, 0, 0, 0),
     BackgroundTransparency=1,
     BorderSizePixel=0,
     ZIndex=5,
@@ -1299,6 +1308,12 @@ local chatScroll = New("ScrollingFrame", {
     ScrollBarImageColor3=Color3.fromRGB(80, 100, 150),
     CanvasSize=UDim2.new(0,0,0,0),
     AutomaticCanvasSize=Enum.AutomaticSize.Y,
+    ScrollingDirection=Enum.ScrollingDirection.Y,
+    ScrollingEnabled=true,
+    ElasticBehavior=Enum.ElasticBehavior.Never,
+    ClipsDescendants=true,
+    Active=true,
+    Selectable=false,
 }, chatPanel)
 Corner(chatScroll, UDim.new(0,8))
 New("UIPadding", {PaddingTop=UDim.new(0,8), PaddingBottom=UDim.new(0,8), PaddingLeft=UDim.new(0,8), PaddingRight=UDim.new(0,8)}, chatScroll)
@@ -1308,14 +1323,12 @@ New("UIListLayout", {
     HorizontalAlignment=Enum.HorizontalAlignment.Left,
 }, chatScroll)
 
--- Tin nhắn chào mừng từ AI
+-- Hàm thêm tin nhắn vào khung chat
 local function AddMessage(sender, text, isUser)
     local bubbleColor = isUser and Color3.fromRGB(50, 120, 220) or Color3.fromRGB(35, 40, 55)
     local textColor = isUser and C.WHITE or Color3.fromRGB(230, 235, 245)
     local align = isUser and Enum.TextXAlignment.Right or Enum.TextXAlignment.Left
-    local bubbleAlign = isUser and Enum.HorizontalAlignment.Right or Enum.HorizontalAlignment.Left
     local sizeScale = isUser and 0.75 or 0.85
-    local posX = isUser and UDim2.new(1,-8,0,0) or UDim2.new(0,8,0,0)
 
     local holder = New("Frame", {
         Size=UDim2.new(1,0,0,0),
@@ -1336,7 +1349,7 @@ local function AddMessage(sender, text, isUser)
     Corner(bubble, UDim.new(0,10))
 
     if isUser then
-        bubble.Position = UDim2.new(1-sizeScale.Scale, 0, 0, 0)
+        bubble.Position = UDim2.new(1-sizeScale, 0, 0, 0)
     end
 
     local msgLbl = New("TextLabel", {
@@ -1365,6 +1378,13 @@ local function AddMessage(sender, text, isUser)
         TextXAlignment=align,
         ZIndex=10,
     }, bubble)
+
+    -- Tự cuộn xuống cuối sau khi thêm tin nhắn
+    task.defer(function()
+        task.wait(0.05)
+        local maxY = math.max(0, chatScroll.AbsoluteCanvasSize.Y - chatScroll.AbsoluteWindowSize.Y)
+        chatScroll.CanvasPosition = Vector2.new(0, maxY)
+    end)
 
     return holder
 end
@@ -1623,8 +1643,9 @@ local function SendQuestion()
             statusDot.BackgroundColor3 = C.RED
         end
         isSending = false
-        task.wait(0.1)
-        chatScroll.CanvasPosition = Vector2.new(0, chatScroll.AbsoluteCanvasSize.Y)
+        task.wait(0.15)
+        local maxY = math.max(0, chatScroll.AbsoluteCanvasSize.Y - chatScroll.AbsoluteWindowSize.Y)
+        chatScroll.CanvasPosition = Vector2.new(0, maxY)
     end)
 end
 
@@ -1669,10 +1690,19 @@ clearChatBtn.Activated:Connect(function()
         end
     end
     AddMessage("🤖 Gemini", "Cuộc trò chuyện đã được xóa. Hãy đặt câu hỏi mới!", false)
+    task.wait(0.1)
+    chatScroll.CanvasPosition = Vector2.new(0, 0)
 end)
 
--- Cập nhật CanvasSize tab AI
+-- Cập nhật CanvasSize tab AI tự động theo nội dung
 aiTab.CanvasSize = UDim2.new(0, 0, 0, 0)
+aiInner:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+    aiTab.CanvasSize = UDim2.new(0, 0, 0, aiInner.AbsoluteSize.Y + 20)
+end)
+task.defer(function()
+    task.wait(0.5)
+    aiTab.CanvasSize = UDim2.new(0, 0, 0, aiInner.AbsoluteSize.Y + 20)
+end)
 
 -- ==================== TAB 5: TẠO TÍNH NĂNG ====================
 local featureTabs = {}
@@ -2282,4 +2312,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.4: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Mini Web Chat) + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v3.5: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Mini Web Chat, đã fix cuộn) + Tạo Tính Năng — sẵn sàng!")
