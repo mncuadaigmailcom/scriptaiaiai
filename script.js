@@ -4,6 +4,7 @@
     + THÊM: Nút đặt lại tốc độ cao nhất
     + THÊM: Nút bật/tắt theo dõi tốc độ
     + GIỮ NGUYÊN toàn bộ tính năng cũ của v4.3
+    + FIX: Menu hiển thị đúng, tính năng tốc độ nằm an toàn trong Tab Hỗ Trợ
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -1514,66 +1515,79 @@ end
 RebuildWaypoints()
 
 -- ==================== TÍNH NĂNG TỐC ĐỘ DI CHUYỂN ====================
-Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
-posY = posY + 16
+-- Đặt trong Frame riêng, không dùng posY, tự tính vị trí sau khi waypoint render xong
+local speedSectionFrame = New("Frame", {
+    Size = UDim2.new(1, -16, 0, 176),
+    Position = UDim2.new(0, 8, 0, 0),
+    BackgroundTransparency = 1,
+    BorderSizePixel = 0,
+    ZIndex = 6,
+}, supportTab)
+
+task.defer(function()
+    task.wait(0.15)
+    local wpBottom = 0
+    if wpListFrame and wpListFrame.Parent then
+        wpBottom = wpListFrame.Position.Y.Offset + wpListFrame.Size.Y.Offset
+    end
+    if wpBottom < posY then wpBottom = posY end
+    speedSectionFrame.Position = UDim2.new(0, 8, 0, wpBottom + 16)
+
+    local neededBottom = speedSectionFrame.Position.Y.Offset + speedSectionFrame.Size.Y.Offset + 20
+    local currentCanvas = supportTab.CanvasSize.Y.Offset
+    if neededBottom > currentCanvas then
+        supportTab.CanvasSize = UDim2.new(0, 0, 0, neededBottom)
+    end
+end)
+
+Label(speedSectionFrame, "━━━━━━━━━━━━━━━━━━━━━━", 0)
+Label(speedSectionFrame, "🏃 TỐC ĐỘ DI CHUYỂN", 16)
 
 local speedPanel = New("Frame", {
-    Size=UDim2.new(1,-16,0,140),
-    Position=UDim2.new(0,8,0,posY),
-    BackgroundColor3=Color3.fromRGB(30, 35, 45),
-    BackgroundTransparency=0,
-    BorderSizePixel=0,
-    ZIndex=6,
-}, supportTab)
-Corner(speedPanel, UDim.new(0,6))
+    Size = UDim2.new(1, 0, 0, 140),
+    Position = UDim2.new(0, 0, 0, 34),
+    BackgroundColor3 = Color3.fromRGB(30, 35, 45),
+    BackgroundTransparency = 0,
+    BorderSizePixel = 0,
+    ZIndex = 6,
+}, speedSectionFrame)
+Corner(speedPanel, UDim.new(0, 6))
 Stroke(speedPanel, C.GREEN, 1.5)
 
-New("TextLabel", {
-    Size=UDim2.new(1,-16,0,14),
-    Position=UDim2.new(0,8,0,4),
-    Text="🏃 TỐC ĐỘ DI CHUYỂN",
-    BackgroundTransparency=1,
-    TextColor3=Color3.fromRGB(100, 255, 150),
-    Font=Enum.Font.GothamBold,
-    TextSize=10,
-    TextXAlignment=Enum.TextXAlignment.Left,
-    ZIndex=7,
-}, speedPanel)
-
 local speedCurrentLbl = New("TextLabel", {
-    Size=UDim2.new(1,-16,0,18),
-    Position=UDim2.new(0,8,0,22),
-    Text="Tốc độ hiện tại: 0.00 studs/s",
-    BackgroundTransparency=1,
-    TextColor3=Color3.fromRGB(255, 255, 100),
-    Font=Enum.Font.Code,
-    TextSize=12,
-    TextXAlignment=Enum.TextXAlignment.Left,
-    ZIndex=7,
+    Size = UDim2.new(1, -16, 0, 18),
+    Position = UDim2.new(0, 8, 0, 22),
+    Text = "Tốc độ hiện tại: 0.00 studs/s",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(255, 255, 100),
+    Font = Enum.Font.Code,
+    TextSize = 12,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex = 7,
 }, speedPanel)
 
 local speedMaxLbl = New("TextLabel", {
-    Size=UDim2.new(1,-16,0,18),
-    Position=UDim2.new(0,8,0,44),
-    Text="Tốc độ cao nhất: 0.00 studs/s",
-    BackgroundTransparency=1,
-    TextColor3=Color3.fromRGB(255, 150, 100),
-    Font=Enum.Font.Code,
-    TextSize=12,
-    TextXAlignment=Enum.TextXAlignment.Left,
-    ZIndex=7,
+    Size = UDim2.new(1, -16, 0, 18),
+    Position = UDim2.new(0, 8, 0, 44),
+    Text = "Tốc độ cao nhất: 0.00 studs/s",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(255, 150, 100),
+    Font = Enum.Font.Code,
+    TextSize = 12,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex = 7,
 }, speedPanel)
 
 local speedGameMaxLbl = New("TextLabel", {
-    Size=UDim2.new(1,-16,0,18),
-    Position=UDim2.new(0,8,0,66),
-    Text="Tốc độ tối đa game: Đang phân tích...",
-    BackgroundTransparency=1,
-    TextColor3=Color3.fromRGB(150, 220, 255),
-    Font=Enum.Font.Code,
-    TextSize=11,
-    TextXAlignment=Enum.TextXAlignment.Left,
-    ZIndex=7,
+    Size = UDim2.new(1, -16, 0, 18),
+    Position = UDim2.new(0, 8, 0, 66),
+    Text = "Tốc độ tối đa game: Đang phân tích...",
+    BackgroundTransparency = 1,
+    TextColor3 = Color3.fromRGB(150, 220, 255),
+    Font = Enum.Font.Code,
+    TextSize = 11,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex = 7,
 }, speedPanel)
 
 local resetSpeedMaxBtn = Button(speedPanel, "🔄 Đặt Lại Tốc Độ Cao Nhất", 8, 90, 220, 24, C.ORANGE)
@@ -1589,12 +1603,6 @@ local gameMaxSpeed = 0
 local gameMaxSpeedAnalyzed = false
 local speedHistory = {}
 local speedHistoryMaxSize = 50
-
-local function GetHumanoid()
-    local char = player.Character
-    if not char then return nil end
-    return char:FindFirstChildOfClass("Humanoid")
-end
 
 local function GetSpeedRootPart()
     local char = player.Character
@@ -1735,11 +1743,6 @@ local speedUpdateConn = RunService.Heartbeat:Connect(function(dt)
     end
 end)
 trackConn(speedUpdateConn)
-
-posY = posY + 148
-
-Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
-posY = posY + 16
 
 -- ==================== TAB 4: AI AI — MINI WEB CHAT ====================
 local aiTab = AddTab("AI AI", "🤖", 4)
