@@ -1,8 +1,7 @@
 --[[
     🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
     + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
-    + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT + RETRY 429
-    + TAB "TẠO TÍNH NĂNG" — TỰ ĐỘNG DÃN SCRIPT THEO MENU + NÚT "📏 LẤY CODE KÍCH THƯỚC"
+    + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT
     + FIX HTTP 404: gemini-2.5-flash
     + FIX MAX_TOKENS: maxOutputTokens = 8192
     + FIX HTTP 429: RETRY với exponential backoff (3 lần, 2s → 4s → 8s)
@@ -1654,7 +1653,7 @@ toggleKeyBtn.Activated:Connect(function()
     end
 end)
 
--- SYSTEM PROMPT: Ép AI viết code đầy đủ + biết cách dãn GUI
+-- SYSTEM PROMPT: Ép AI viết code đầy đủ
 local SYSTEM_PROMPT = [[Bạn là trợ lý lập trình chuyên nghiệp cho Roblox Lua.
 
 QUY TẮC BẮT BUỘC:
@@ -1664,15 +1663,7 @@ QUY TẮC BẮT BUỘC:
 4. KHÔNG giải thích dài dòng. Chỉ viết code + vài dòng ghi chú ngắn.
 5. Code phải dùng đúng API Roblox Lua, không dùng Python/JavaScript.
 6. Nếu người dùng hỏi bằng tiếng Việt, trả lời bằng tiếng Việt.
-7. Nếu câu hỏi không liên quan lập trình, trả lời ngắn gọn, trực tiếp.
-
-QUY TẮC ĐẶC BIỆT CHO GUI (RẤT QUAN TRỌNG):
-- Khi viết script tạo GUI (như bảng định vị người chơi, ESP, thông tin...), PHẢI dùng cấu trúc GUI TỰ DÃN THEO CHA.
-- Frame chính phải có: Size = UDim2.new(1, 0, 1, 0), Position = UDim2.new(0, 0, 0, 0).
-- KHÔNG hard-code kích thước như UDim2.new(0, 300, 0, 200).
-- Nếu cần viền hay padding, dùng UIPadding bên trong, KHÔNG thay đổi Size của Frame chính.
-- Điều này để khi menu chính của hub kéo to ra, GUI này cũng tự dãn theo.
-- Nếu script dùng ScreenGui riêng, hãy đặt Parent là CoreGui hoặc PlayerGui và dùng Size tự dãn.]]
+7. Nếu câu hỏi không liên quan lập trình, trả lời ngắn gọn, trực tiếp.]]
 
 -- GỬI CÂU HỎI (có retry 429)
 local function AskGemini(question)
@@ -1721,6 +1712,7 @@ local function AskGemini(question)
         }
     })
 
+    -- Retry cho lỗi 429 (rate limit): tối đa 3 lần, chờ 2s → 4s → 8s
     local maxRetries = 3
     local baseDelay = 2
 
@@ -1740,6 +1732,7 @@ local function AskGemini(question)
             return false, "❌ Lỗi kết nối: "..tostring(result)
         end
 
+        -- Thành công: parse và trả về
         if result.Success then
             local parseOk, data = pcall(function()
                 return HttpService:JSONDecode(result.Body)
@@ -1786,9 +1779,11 @@ local function AskGemini(question)
             return true, fullText
         end
 
+        -- Lỗi 429: chờ rồi retry
         if result.StatusCode == 429 then
             if attempt < maxRetries then
-                local waitTime = baseDelay * (2 ^ (attempt - 1))
+                local waitTime = baseDelay * (2 ^ (attempt - 1)) -- 2, 4, 8
+                -- Cập nhật status
                 pcall(function()
                     statusText.Text = string.format("⏳ Bị giới hạn (429). Chờ %ds rồi thử lại (%d/%d)...", waitTime, attempt, maxRetries)
                     statusDot.BackgroundColor3 = C.YELLOW
@@ -1799,6 +1794,7 @@ local function AskGemini(question)
                 return false, "❌ HTTP 429 — Vượt giới hạn yêu cầu/phút của Gemini (gói miễn phí ~10-15 RPM).\n\nVui lòng chờ khoảng 1 phút rồi gửi lại.\nHoặc nâng cấp API key lên gói trả phí để tăng giới hạn.\n\n"..bodyPreview
             end
         else
+            -- Các lỗi HTTP khác: trả về ngay
             local bodyPreview = result.Body and tostring(result.Body):sub(1, 500) or ""
             return false, "❌ HTTP "..tostring(result.StatusCode)..": "..tostring(result.StatusMessage).."\n"..bodyPreview
         end
@@ -1851,12 +1847,14 @@ questionIn.FocusLost:Connect(function(enter)
     end
 end)
 
+-- NÚT VIẾT TIẾP
 continueBtn.Activated:Connect(function()
     if isSending then return end
     questionIn.Text = "Viết tiếp phần code còn lại của câu trả lời trước, KHÔNG lặp lại phần đã viết. Viết đầy đủ, không rút gọn."
     SendQuestion()
 end)
 
+-- COPY CHAT
 copyAnswerBtn.Activated:Connect(function()
     local allText = ""
     local function extract(obj)
@@ -1945,29 +1943,6 @@ local function ScanNewGuis(beforeGuis)
     return found
 end
 
--- Hàm ép tất cả Frame con phải dãn theo cha
-local function ForceStretchToParent(obj)
-    if not obj then return end
-    pcall(function()
-        if obj:IsA("GuiObject") then
-            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
-                local s = obj.Size
-                -- Nếu kích thước là offset (cố định), ép thành scale
-                if s.X.Scale < 0.9 and s.X.Offset > 0 then
-                    obj.Size = UDim2.new(1, 0, s.Y.Scale > 0 and s.Y.Scale or 1, 0)
-                end
-                -- Nếu Position là offset, đưa về 0
-                if obj.Position.X.Offset ~= 0 or obj.Position.Y.Offset ~= 0 then
-                    obj.Position = UDim2.new(0, 0, 0, 0)
-                end
-            end
-        end
-    end)
-    for _, child in ipairs(obj:GetChildren()) do
-        ForceStretchToParent(child)
-    end
-end
-
 local function RunFeatureScript(code, name, containerFrame, indicator, statusLabel)
     if #code == 0 then
         if statusLabel then statusLabel.Text = "⚠️ Vui lòng nhập code!" end
@@ -2005,13 +1980,6 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
 
         for _, g in ipairs(newGuis) do
             if g:IsA("ScreenGui") or g:IsA("Folder") then
-                -- Xóa host cũ nếu có (tránh chồng khi chạy lại)
-                for _, existing in ipairs(containerFrame:GetChildren()) do
-                    if existing.Name == "Embedded_"..g.Name then
-                        existing:Destroy()
-                    end
-                end
-
                 local host = New("Frame", {
                     Size = UDim2.new(1,0,1,0),
                     Position = UDim2.new(0,0,0,0),
@@ -2019,27 +1987,16 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
                     BorderSizePixel = 0,
                     ZIndex = 5,
                     Name = "Embedded_"..g.Name,
-                    ClipsDescendants = false,
                 }, containerFrame)
 
                 for _, child in ipairs(g:GetChildren()) do
                     pcall(function() child.Parent = host end)
                 end
                 pcall(function() g:Destroy() end)
-
-                -- ÉP tất cả Frame con phải dãn theo host
-                ForceStretchToParent(host)
-
-                -- Lưu reference để cập nhật khi menu resize
-                if not _G.BananaCatHub_EmbedHosts then
-                    _G.BananaCatHub_EmbedHosts = {}
-                end
-                table.insert(_G.BananaCatHub_EmbedHosts, host)
             elseif g:IsA("GuiObject") then
                 pcall(function()
                     g.Parent = containerFrame
                     g.ZIndex = 5
-                    ForceStretchToParent(g)
                 end)
             end
         end
@@ -2266,28 +2223,6 @@ local function CreateFeatureTab(name, icon, codeContent)
     return featureData
 end
 
--- ===== TỰ ĐỘNG DÃN SCRIPT CON KHI MENU RESIZE =====
-task.spawn(function()
-    task.wait(1)
-    local lastSize = main.AbsoluteSize
-    while main and main.Parent do
-        task.wait(0.1)
-        if main.AbsoluteSize ~= lastSize then
-            lastSize = main.AbsoluteSize
-            if _G.BananaCatHub_EmbedHosts then
-                for _, host in ipairs(_G.BananaCatHub_EmbedHosts) do
-                    if host and host.Parent then
-                        pcall(function()
-                            host.Size = UDim2.new(1, 0, 1, 0)
-                            ForceStretchToParent(host)
-                        end)
-                    end
-                end
-            end
-        end
-    end
-end)
-
 local createFeatureTab = AddTab("Tạo Tính Năng", "➕", 5)
 
 local cy = 8
@@ -2350,86 +2285,9 @@ local createTabBtn = Button(createFeatureTab, "➕ Tạo Tab Tính Năng", 8, cy
 local clearFormBtn = Button(createFeatureTab, "🧹 Xóa Form", 196, cy, 100, 28, C.ORANGE)
 cy = cy + 34
 
-local grabSizeCodeBtn = Button(createFeatureTab, "📏 Lấy Code Kích Thước (Auto-Lưu)", 8, cy, 280, 26, C.PURPLE)
-cy = cy + 32
-
 local createStatus = Label(createFeatureTab, "", cy)
 createStatus.TextColor3=C.YELLOW; createStatus.TextSize=9; createStatus.ZIndex=6
 cy = cy + 14
-
--- Xử lý nút "📏 Lấy Code Kích Thước"
-grabSizeCodeBtn.Activated:Connect(function()
-    local currentCode = featureCodeIn.Text
-    if #currentCode == 0 then
-        createStatus.Text = "⚠️ Ô code đang trống, không có gì để lấy!"
-        return
-    end
-
-    -- Bọc code với wrapper ép dãn
-    local wrappedCode = [[
--- ===== AUTO-GENERATED SIZE WRAPPER =====
--- Code này đã được tự động bọc để GUI con DÃN THEO CHA (menu chính).
--- Khi bạn kéo menu to ra, GUI này cũng to ra theo.
-
-local _AUTO_SIZE_WRAPPER = true
-
-local function _ForceStretch(obj)
-    if not obj then return end
-    pcall(function()
-        if obj:IsA("GuiObject") then
-            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
-                obj.Size = UDim2.new(1, 0, 1, 0)
-                obj.Position = UDim2.new(0, 0, 0, 0)
-            end
-        end
-    end)
-    for _, c in ipairs(obj:GetChildren()) do
-        _ForceStretch(c)
-    end
-end
-
-]] .. currentCode .. [[
-
-
--- Sau khi script gốc chạy xong, ép toàn bộ GUI con dãn theo cha
-task.defer(function()
-    task.wait(0.5)
-    for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
-        if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
-            pcall(function() _ForceStretch(g) end)
-        end
-    end
-    for _, g in ipairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
-        if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
-            pcall(function() _ForceStretch(g) end)
-        end
-    end
-end)
-]]
-
-    -- Tự động lưu vào danh sách Code Đã Lưu
-    local saveName = "AutoSize_"..os.date("%H%M%S")
-    local bn = saveName
-    local cnt = 1
-    while true do
-        local ex = false
-        for _, s in ipairs(scripts) do
-            if s.name == saveName then ex = true; break end
-        end
-        if not ex then break end
-        cnt += 1
-        saveName = bn.." ("..cnt..")"
-    end
-
-    table.insert(scripts, {name = saveName, code = wrappedCode, expanded = false})
-    if RebuildScripts then RebuildScripts() end
-
-    -- Đưa wrapped code vào ô nhập để người dùng có thể bấm "Tạo Tab Tính Năng" ngay
-    featureCodeIn.Text = wrappedCode
-    featureNameIn.Text = "AutoSize_"..os.date("%H%M%S")
-
-    createStatus.Text = "✅ Đã lấy code kích thước! Đã lưu vào 'Code Đã Lưu' với tên: "..saveName
-end)
 
 Label(createFeatureTab, "━━━━━━━━━━━━━━━━━━━━━━", cy)
 cy = cy + 16
@@ -2660,4 +2518,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.9: Code + Code Đã Lưu + Hỗ Trợ + AI AI (retry 429) + Tạo Tính Năng (Auto-Dãn + Lấy Code Kích Thước) — sẵn sàng!")
+print("✅ Banana Cat Hub v3.8: Code + Code Đã Lưu + Hỗ Trợ + AI AI (retry 429) + Tạo Tính Năng — sẵn sàng!")
