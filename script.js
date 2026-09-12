@@ -1,9 +1,10 @@
 --[[
-    🍌 Banana Cat Hub v4.1 — FULL CODE
-    + FIX TỌA ĐỘ ĐẦY ĐỦ: POSITION + SIZE + ROTATION + LOOK + STATE + HP
-    + GIỮ NGUYÊN toàn bộ tính năng: Code, Code Đã Lưu, Hỗ Trợ, AI AI, Tạo Tính Năng
-    + Cache chống spam UI mỗi frame
-    + Fallback đa tầng: RootPart → HumanoidRootPart → PrimaryPart → UpperTorso/Torso
+    🍌 Banana Cat Hub v4.2 — FULL CODE
+    + THÊM: Phân Tích Tọa Độ Vị Trí (Dưới Chân)
+    + THÊM: Phân Tích Tọa Độ Vật Thể (Click vào vật thể)
+    + THÊM: Raycast từ camera → chuột để lấy vật thể
+    + THÊM: Hiển thị Position + Size + Rotation + Look + Material + Name của vật thể
+    + GIỮ NGUYÊN toàn bộ tính năng cũ
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -13,6 +14,7 @@ local HttpService = game:GetService("HttpService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+local camera = workspace.CurrentCamera
 
 local targetGui = playerGui
 pcall(function()
@@ -139,7 +141,7 @@ Corner(titleBar, UDim.new(0,10))
 New("TextLabel", {
     Size=UDim2.new(1,-90,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="🍌 Banana Cat Executor Hub v4.1",
+    Text="🍌 Banana Cat Executor Hub v4.2",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -779,6 +781,125 @@ posY = posY + 18
 Label(supportTab, "━━━━━━━━━━━━━━━━━━━━━━", posY)
 posY = posY + 16
 
+-- ===== NÚT BẬT/TẮT PHÂN TÍCH VẬT THỂ =====
+local analyzeObjectEnabled = false
+local objectAnalyzeBtn = Button(supportTab, "🎯 Phân Tích Vật Thể: TẮT", 8, posY, 220, 26, C.GRAY)
+local clearObjectBtn = Button(supportTab, "🧹 Xóa Kết Quả", 234, posY, 100, 26, C.RED)
+posY = posY + 32
+
+Label(supportTab, "💡 Bật lên rồi click vào vật thể (tường, đất, part...)", posY)
+posY = posY + 16
+
+-- ===== PANEL HIỂN THỊ KẾT QUẢ VẬT THỂ =====
+local objResultPanel = New("Frame", {
+    Size=UDim2.new(1,-16,0,190),
+    Position=UDim2.new(0,8,0,posY),
+    BackgroundColor3=Color3.fromRGB(20, 25, 35),
+    BackgroundTransparency=0,
+    BorderSizePixel=0,
+    ZIndex=6,
+    Visible=false,
+}, supportTab)
+Corner(objResultPanel, UDim.new(0,6))
+Stroke(objResultPanel, C.GREEN, 1.5)
+
+local objTitleLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,4),
+    Text="🎯 VẬT THỂ ĐƯỢC CHỌN", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(100, 255, 150),
+    Font=Enum.Font.GothamBold, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objNameLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,22),
+    Text="Name: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255, 255, 100),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objClassLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,38),
+    Text="Class: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(200, 200, 255),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objPosLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,54),
+    Text="Position: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255, 180, 180),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objSizeLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,70),
+    Text="Size: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(180, 255, 180),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objRotLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,86),
+    Text="Rotation: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(180, 220, 255),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objLookLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,102),
+    Text="Look: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(220, 200, 255),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objMatLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,118),
+    Text="Material: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255, 220, 180),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objColorLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,134),
+    Text="Color: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255, 180, 220),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, objResultPanel)
+
+local objPathLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,150),
+    Text="Path: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(180, 255, 220),
+    Font=Enum.Font.Code, TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+    TextTruncate=Enum.TextTruncate.AtEnd,
+}, objResultPanel)
+
+local copyObjBtn = New("TextButton", {
+    Size=UDim2.new(0,120,0,20), Position=UDim2.new(0,8,0,168),
+    Text="📋 Copy Tọa Độ", BackgroundColor3=C.BLUE, BackgroundTransparency=0.1,
+    TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
+}, objResultPanel)
+Corner(copyObjBtn, UDim.new(0,4))
+
+local copyPathBtn = New("TextButton", {
+    Size=UDim2.new(0,120,0,20), Position=UDim2.new(0,134,0,168),
+    Text="📋 Copy Path", BackgroundColor3=C.PURPLE, BackgroundTransparency=0.1,
+    TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
+}, objResultPanel)
+Corner(copyPathBtn, UDim.new(0,4))
+
+posY = posY + 198
+
 Label(supportTab, "📍 Tọa Độ Hiện Tại (Real-time)", posY)
 posY = posY + 16
 
@@ -810,10 +931,9 @@ local function CreateCoordRow(parent, yPos, labelText, labelColor, valueDefault)
     }, parent)
 end
 
--- POSITION
 New("TextLabel", {
     Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,4),
-    Text="📍 POSITION", BackgroundTransparency=1,
+    Text="📍 POSITION (DƯỚI CHÂN)", BackgroundTransparency=1,
     TextColor3=Color3.fromRGB(255, 200, 100),
     Font=Enum.Font.GothamBold, TextSize=9,
     TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
@@ -823,7 +943,6 @@ local xValLbl = CreateCoordRow(coordDisplay, 20, "X:", Color3.fromRGB(255,100,10
 local yValLbl = CreateCoordRow(coordDisplay, 36, "Y:", Color3.fromRGB(100,255,100), "0.000")
 local zValLbl = CreateCoordRow(coordDisplay, 52, "Z:", Color3.fromRGB(100,150,255), "0.000")
 
--- SIZE
 New("TextLabel", {
     Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,72),
     Text="📦 SIZE", BackgroundTransparency=1,
@@ -836,7 +955,6 @@ local sizeXValLbl = CreateCoordRow(coordDisplay, 88, "Size X:", Color3.fromRGB(2
 local sizeYValLbl = CreateCoordRow(coordDisplay, 104, "Size Y:", Color3.fromRGB(150,255,150), "0.000")
 local sizeZValLbl = CreateCoordRow(coordDisplay, 120, "Size Z:", Color3.fromRGB(150,180,255), "0.000")
 
--- ROTATION
 New("TextLabel", {
     Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,140),
     Text="🧭 ROTATION", BackgroundTransparency=1,
@@ -849,7 +967,6 @@ local rotPValLbl = CreateCoordRow(coordDisplay, 156, "Pitch (X):", Color3.fromRG
 local rotYValLbl = CreateCoordRow(coordDisplay, 172, "Yaw (Y):", Color3.fromRGB(150,255,150), "0.0°")
 local rotRValLbl = CreateCoordRow(coordDisplay, 188, "Roll (Z):", Color3.fromRGB(150,180,255), "0.0°")
 
--- LOOK / STATE / HP
 New("TextLabel", {
     Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,206),
     Text="👁 LOOK / STATE / HP", BackgroundTransparency=1,
@@ -899,6 +1016,40 @@ local lastLook = Vector3.new()
 local lastState = ""
 local lastHp = -1
 
+local function GetRootPart()
+    local char = player.Character
+    if not char then return nil end
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    local rootPart = (humanoid and humanoid.RootPart)
+        or char:FindFirstChild("HumanoidRootPart")
+        or char.PrimaryPart
+        or char:FindFirstChild("UpperTorso")
+        or char:FindFirstChild("Torso")
+    return rootPart
+end
+
+-- Hàm lấy tọa độ DƯỚI CHÂN (raycast xuống từ nhân vật)
+local function GetGroundPosition()
+    local char = player.Character
+    if not char then return nil end
+    local rootPart = GetRootPart()
+    if not rootPart then return nil end
+
+    local origin = rootPart.Position
+    local direction = Vector3.new(0, -500, 0)
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = {char}
+    params.IgnoreWater = false
+
+    local result = workspace:Raycast(origin, direction, params)
+    if result then
+        return result.Position, result.Instance, result.Normal, result.Material
+    end
+    return nil
+end
+
 local coordUpdateConn = RunService.RenderStepped:Connect(function()
     local char = player.Character
     if not char then
@@ -912,20 +1063,7 @@ local coordUpdateConn = RunService.RenderStepped:Connect(function()
     end
 
     local humanoid = char:FindFirstChildOfClass("Humanoid")
-
-    local rootPart = nil
-    if humanoid and humanoid.RootPart then
-        rootPart = humanoid.RootPart
-    end
-    if not rootPart then
-        rootPart = char:FindFirstChild("HumanoidRootPart")
-    end
-    if not rootPart and char.PrimaryPart then
-        rootPart = char.PrimaryPart
-    end
-    if not rootPart then
-        rootPart = char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-    end
+    local rootPart = GetRootPart()
 
     if not rootPart then
         xValLbl.Text = "N/A"; yValLbl.Text = "N/A"; zValLbl.Text = "N/A"
@@ -934,17 +1072,20 @@ local coordUpdateConn = RunService.RenderStepped:Connect(function()
         return
     end
 
+    -- Lấy vị trí DƯỚI CHÂN qua raycast
+    local groundPos, groundInst, groundNormal, groundMat = GetGroundPosition()
+    local displayPos = groundPos or rootPart.CFrame.Position
+
     local cf = rootPart.CFrame
-    local pos = cf.Position
     local size = rootPart.Size
     local rx, ry, rz = cf:ToOrientation()
     local look = cf.LookVector
 
-    if (pos - lastPos).Magnitude > 0.001 then
-        lastPos = pos
-        xValLbl.Text = string.format("%.3f", pos.X)
-        yValLbl.Text = string.format("%.3f", pos.Y)
-        zValLbl.Text = string.format("%.3f", pos.Z)
+    if (displayPos - lastPos).Magnitude > 0.001 then
+        lastPos = displayPos
+        xValLbl.Text = string.format("%.3f", displayPos.X)
+        yValLbl.Text = string.format("%.3f", displayPos.Y)
+        zValLbl.Text = string.format("%.3f", displayPos.Z)
     end
 
     if (size - lastSize).Magnitude > 0.001 then
@@ -994,23 +1135,148 @@ local coordUpdateConn = RunService.RenderStepped:Connect(function()
 end)
 trackConn(coordUpdateConn)
 
+-- ===== XỬ LÝ CLICK VẬT THỂ =====
+local function GetFullPath(obj)
+    if not obj then return "nil" end
+    local parts = {}
+    local cur = obj
+    while cur and cur ~= game do
+        table.insert(parts, 1, cur.Name)
+        cur = cur.Parent
+    end
+    return table.concat(parts, ".")
+end
+
+trackConn(UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end
+    if not analyzeObjectEnabled then return end
+    if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
+        return
+    end
+
+    -- Kiểm tra click có nằm trên GUI hub không
+    local objs = playerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
+    for _, o in ipairs(objs) do
+        if o:IsDescendantOf(gui) then return end
+    end
+
+    -- Raycast từ camera qua vị trí chuột
+    local mousePos = input.Position
+    local unitRay = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    local filterList = {}
+    if player.Character then table.insert(filterList, player.Character) end
+    if gui then table.insert(filterList, gui) end
+    params.FilterDescendantsInstances = filterList
+    params.IgnoreWater = false
+
+    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 5000, params)
+
+    if result and result.Instance then
+        local inst = result.Instance
+        local hitPos = result.Position
+        local hitNormal = result.Normal
+        local hitMat = result.Material
+
+        objResultPanel.Visible = true
+        objNameLbl.Text = "Name: "..inst.Name
+        objClassLbl.Text = "Class: "..inst.ClassName
+        objPosLbl.Text = string.format("Position: %.3f, %.3f, %.3f", hitPos.X, hitPos.Y, hitPos.Z)
+
+        if inst:IsA("BasePart") then
+            local size = inst.Size
+            local cf = inst.CFrame
+            local rx, ry, rz = cf:ToOrientation()
+            local look = cf.LookVector
+            local color = inst.Color
+            local material = inst.Material
+
+            objSizeLbl.Text = string.format("Size: %.3f, %.3f, %.3f", size.X, size.Y, size.Z)
+            objRotLbl.Text = string.format("Rotation: P=%.1f° Y=%.1f° R=%.1f°",
+                math.deg(rx), math.deg(ry), math.deg(rz))
+            objLookLbl.Text = string.format("Look: %.3f, %.3f, %.3f", look.X, look.Y, look.Z)
+            objMatLbl.Text = "Material: "..tostring(material):gsub("Enum.Material.", "")
+            objColorLbl.Text = string.format("Color: R=%d G=%d B=%d",
+                math.floor(color.R*255), math.floor(color.G*255), math.floor(color.B*255))
+        else
+            objSizeLbl.Text = "Size: N/A (không phải BasePart)"
+            objRotLbl.Text = "Rotation: N/A"
+            objLookLbl.Text = "Look: N/A"
+            objMatLbl.Text = "Material: N/A"
+            objColorLbl.Text = "Color: N/A"
+        end
+
+        objPathLbl.Text = "Path: "..GetFullPath(inst)
+
+        -- Lưu để copy
+        objResultPanel:SetAttribute("LastHitPos", tostring(hitPos))
+        objResultPanel:SetAttribute("LastPath", GetFullPath(inst))
+        objResultPanel:SetAttribute("LastNormal", tostring(hitNormal))
+        objResultPanel:SetAttribute("LastMaterial", tostring(hitMat))
+    else
+        objResultPanel.Visible = true
+        objNameLbl.Text = "Name: (không hit gì)"
+        objClassLbl.Text = "Class: N/A"
+        objPosLbl.Text = "Position: N/A"
+        objSizeLbl.Text = "Size: N/A"
+        objRotLbl.Text = "Rotation: N/A"
+        objLookLbl.Text = "Look: N/A"
+        objMatLbl.Text = "Material: N/A"
+        objColorLbl.Text = "Color: N/A"
+        objPathLbl.Text = "Path: N/A"
+    end
+end))
+
+objectAnalyzeBtn.Activated:Connect(function()
+    analyzeObjectEnabled = not analyzeObjectEnabled
+    if analyzeObjectEnabled then
+        objectAnalyzeBtn.Text = "🎯 Phân Tích Vật Thể: BẬT"
+        objectAnalyzeBtn.BackgroundColor3 = C.GREEN
+    else
+        objectAnalyzeBtn.Text = "🎯 Phân Tích Vật Thể: TẮT"
+        objectAnalyzeBtn.BackgroundColor3 = C.GRAY
+    end
+end)
+
+clearObjectBtn.Activated:Connect(function()
+    objResultPanel.Visible = false
+end)
+
+copyObjBtn.Activated:Connect(function()
+    local pos = objResultPanel:GetAttribute("LastHitPos")
+    if pos and pos ~= "" then
+        if setclipboard then pcall(setclipboard, pos) elseif toclipboard then pcall(toclipboard, pos) end
+        copyObjBtn.Text = "✅ Đã Copy!"
+        task.delay(1.2, function()
+            if copyObjBtn and copyObjBtn.Parent then copyObjBtn.Text = "📋 Copy Tọa Độ" end
+        end)
+    end
+end)
+
+copyPathBtn.Activated:Connect(function()
+    local path = objResultPanel:GetAttribute("LastPath")
+    if path and path ~= "" then
+        if setclipboard then pcall(setclipboard, path) elseif toclipboard then pcall(toclipboard, path) end
+        copyPathBtn.Text = "✅ Đã Copy!"
+        task.delay(1.2, function()
+            if copyPathBtn and copyPathBtn.Parent then copyPathBtn.Text = "📋 Copy Path" end
+        end)
+    end
+end)
+
 posY = posY + 6
 
-local copyCoordBtn = Button(supportTab, "📋 Copy Tọa Độ Hiện Tại", 8, posY, 160, 26, C.BLUE)
+local copyCoordBtn = Button(supportTab, "📋 Copy Tọa Độ Dưới Chân", 8, posY, 200, 26, C.BLUE)
 posY = posY + 32
 
 copyCoordBtn.Activated:Connect(function()
-    local char = player.Character
-    if not char then return end
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    local rootPart = (humanoid and humanoid.RootPart)
-        or char:FindFirstChild("HumanoidRootPart")
-        or char.PrimaryPart
-        or char:FindFirstChild("UpperTorso")
-        or char:FindFirstChild("Torso")
-    if not rootPart then return end
-    local pos = rootPart.CFrame.Position
-    local text = string.format("%.3f, %.3f, %.3f", pos.X, pos.Y, pos.Z)
+    local groundPos = GetGroundPosition()
+    local rootPart = GetRootPart()
+    local finalPos = groundPos or (rootPart and rootPart.CFrame.Position)
+    if not finalPos then return end
+    local text = string.format("%.3f, %.3f, %.3f", finalPos.X, finalPos.Y, finalPos.Z)
     if setclipboard then
         pcall(setclipboard, text)
     elseif toclipboard then
@@ -1019,7 +1285,7 @@ copyCoordBtn.Activated:Connect(function()
     copyCoordBtn.Text = "✅ Đã Copy: "..text
     task.delay(2, function()
         if copyCoordBtn and copyCoordBtn.Parent then
-            copyCoordBtn.Text = "📋 Copy Tọa Độ Hiện Tại"
+            copyCoordBtn.Text = "📋 Copy Tọa Độ Dưới Chân"
         end
     end)
 end)
@@ -1059,35 +1325,22 @@ Corner(tpZIn, UDim.new(0,4)); Stroke(tpZIn, Color3.fromRGB(100,150,255), 1.2)
 
 posY = posY + 30
 
-local fillCurrentBtn = Button(supportTab, "📍 Lấy Vị Trí Hiện Tại", 8, posY, 130, 24, C.ORANGE)
-local tpBtn = Button(supportTab, "🚀 Teleport", 144, posY, 90, 24, C.GREEN)
+local fillCurrentBtn = Button(supportTab, "📍 Lấy Vị Trí Dưới Chân", 8, posY, 150, 24, C.ORANGE)
+local tpBtn = Button(supportTab, "🚀 Teleport", 164, posY, 90, 24, C.GREEN)
 posY = posY + 30
 
 fillCurrentBtn.Activated:Connect(function()
-    local char = player.Character
-    if not char then return end
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    local rootPart = (humanoid and humanoid.RootPart)
-        or char:FindFirstChild("HumanoidRootPart")
-        or char.PrimaryPart
-        or char:FindFirstChild("UpperTorso")
-        or char:FindFirstChild("Torso")
-    if not rootPart then return end
-    local p = rootPart.CFrame.Position
+    local groundPos = GetGroundPosition()
+    local rootPart = GetRootPart()
+    local p = groundPos or (rootPart and rootPart.CFrame.Position)
+    if not p then return end
     tpXIn.Text = string.format("%.3f", p.X)
     tpYIn.Text = string.format("%.3f", p.Y)
     tpZIn.Text = string.format("%.3f", p.Z)
 end)
 
 tpBtn.Activated:Connect(function()
-    local char = player.Character
-    if not char then return end
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    local rootPart = (humanoid and humanoid.RootPart)
-        or char:FindFirstChild("HumanoidRootPart")
-        or char.PrimaryPart
-        or char:FindFirstChild("UpperTorso")
-        or char:FindFirstChild("Torso")
+    local rootPart = GetRootPart()
     if not rootPart then return end
     local x = tonumber(tpXIn.Text) or 0
     local y = tonumber(tpYIn.Text) or 0
@@ -1131,14 +1384,7 @@ local waypoints = {}
 local RebuildWaypoints
 
 saveWpBtn.Activated:Connect(function()
-    local char = player.Character
-    if not char then return end
-    local humanoid = char:FindFirstChildOfClass("Humanoid")
-    local rootPart = (humanoid and humanoid.RootPart)
-        or char:FindFirstChild("HumanoidRootPart")
-        or char.PrimaryPart
-        or char:FindFirstChild("UpperTorso")
-        or char:FindFirstChild("Torso")
+    local rootPart = GetRootPart()
     if not rootPart then return end
     local name = wpNameIn.Text
     if #name == 0 then name = "WP "..(#waypoints+1) end
@@ -1189,14 +1435,7 @@ RebuildWaypoints = function()
         }, row)
         Corner(goBtn, UDim.new(0,4))
         goBtn.Activated:Connect(function()
-            local char = player.Character
-            if not char then return end
-            local humanoid = char:FindFirstChildOfClass("Humanoid")
-            local rootPart = (humanoid and humanoid.RootPart)
-                or char:FindFirstChild("HumanoidRootPart")
-                or char.PrimaryPart
-                or char:FindFirstChild("UpperTorso")
-                or char:FindFirstChild("Torso")
+            local rootPart = GetRootPart()
             if not rootPart then return end
             rootPart.CFrame = CFrame.new(wp.pos)
         end)
@@ -1904,8 +2143,7 @@ local function AskGemini(question)
                 end
             end
 
-            if #fullText == 0 then
-                if finishReason == "SAFETY" then
+            if #fullText == 0 then                if finishReason == "SAFETY" then
                     return false, "⚠️ Gemini từ chối trả lời vì lý do an toàn (SAFETY). Hãy thử diễn đạt lại câu hỏi."
                 elseif finishReason == "RECITATION" then
                     return false, "⚠️ Gemini dừng vì lý do bản quyền (RECITATION)."
@@ -2779,4 +3017,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v4.1: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+STATE+HP) + AI AI + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v4.2: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ) + AI AI + Tạo Tính Năng — sẵn sàng!")
