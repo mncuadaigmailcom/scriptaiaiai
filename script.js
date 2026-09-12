@@ -1,20 +1,11 @@
 --[[
-    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (v3.9.3 FINAL)
+    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
     + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
     + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT + RETRY 429
     + TAB "TẠO TÍNH NĂNG" — TỰ ĐỘNG DÃN SCRIPT THEO MENU + NÚT "📏 LẤY CODE KÍCH THƯỚC"
     + FIX HTTP 404: gemini-2.5-flash
     + FIX MAX_TOKENS: maxOutputTokens = 8192
     + FIX HTTP 429: RETRY với exponential backoff (3 lần, 2s → 4s → 8s)
-    + FIX v3.9.3:
-        - RunFeatureIsolated dùng task.spawn (không dùng coroutine.resume)
-          → script con yield đúng ở task.wait, GUI tạo được
-        - Scan GUI chạy BACKGROUND (task.spawn), KHÔNG block hub
-        - Scan liên tục 12s, ghi nhận GUI mới bất kỳ lúc nào
-        - Status báo rõ nếu script không tạo GUI mới
-        - ForceStretchToParent chỉ ép root, KHÔNG đệ quy phá con
-        - Tên Embedded_ random, ResetOnSpawn=false
-        - StopFeature kill runner khi đóng/xóa tab
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
@@ -51,67 +42,6 @@ end
 pcall(function() RunService:UnbindFromRenderStep("Fly") end)
 pcall(function() RunService:UnbindFromRenderStep("Carpet") end)
 
--- ==================== FEATURE SANDBOX RUNNER v3.9.3 ====================
-local FeatureRunners = {}
-
-local function NewFeatureEnv(featureId)
-    local env = setmetatable({}, {__index = _G, __newindex = _G})
-    env._FEATURE_ID = featureId
-    env.print = function(...) print(("[Feature:%s]"):format(featureId), ...) end
-    env.warn  = function(...) warn(("[Feature:%s]"):format(featureId), ...) end
-    env._FeatureConnections = {}
-    env.TrackConn = function(conn)
-        table.insert(env._FeatureConnections, conn)
-        return conn
-    end
-    return env
-end
-
-local function RunFeatureIsolated(featureId, code, name)
-    if FeatureRunners[featureId] then
-        local old = FeatureRunners[featureId]
-        if old.thread then pcall(task.cancel, old.thread) end
-        if old.conns then
-            for _, c in ipairs(old.conns) do pcall(function() c:Disconnect() end) end
-        end
-        FeatureRunners[featureId] = nil
-    end
-
-    local env = NewFeatureEnv(featureId)
-    local runner = { env = env, conns = env._FeatureConnections, stopped = false }
-    FeatureRunners[featureId] = runner
-
-    local fn, lerr = loadstring(code, "@Feature_"..featureId)
-    if not fn then
-        return false, "loadstring thất bại: "..tostring(lerr)
-    end
-
-    if setfenv then
-        pcall(setfenv, fn, env)
-    end
-
-    runner.thread = task.spawn(function()
-        local ok, err = pcall(fn)
-        if not ok then
-            warn(("[Feature:%s] Runtime error: %s"):format(featureId, tostring(err)))
-        end
-    end)
-
-    return true
-end
-
-local function StopFeature(featureId)
-    local r = FeatureRunners[featureId]
-    if not r then return end
-    r.stopped = true
-    if r.thread then pcall(task.cancel, r.thread) end
-    if r.conns then
-        for _, c in ipairs(r.conns) do pcall(function() c:Disconnect() end) end
-    end
-    FeatureRunners[featureId] = nil
-end
-
--- ==================== COLORS ====================
 local C = {
     WHITE = Color3.fromRGB(255, 255, 255),
     DARK = Color3.fromRGB(40, 40, 45),
@@ -813,7 +743,7 @@ end
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 RebuildScripts()
 
--- ==================== TAB 3: HỖ TRỢ ====================
+-- ==================== TAB 3: HỖ TRỢ — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ ====================
 local supportTab = AddTab("Hỗ Trợ", "🛠", 3)
 
 local posY = 8
@@ -1147,7 +1077,7 @@ end
 
 RebuildWaypoints()
 
--- ==================== TAB 4: AI AI ====================
+-- ==================== TAB 4: AI AI — MINI WEB CHAT ====================
 local aiTab = AddTab("AI AI", "🤖", 4)
 
 aiTab.BackgroundTransparency = 1
@@ -1189,6 +1119,7 @@ New("UIPadding", {
     PaddingRight=UDim.new(0,8),
 }, aiInner)
 
+-- HEADER
 local headerFrame = New("Frame", {
     Size=UDim2.new(1,-16,0,56),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1254,6 +1185,7 @@ local statusText = New("TextLabel", {
     ZIndex=7,
 }, headerFrame)
 
+-- API KEY PANEL
 local keyPanel = New("Frame", {
     Size=UDim2.new(1,-16,0,86),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1353,6 +1285,7 @@ local keyStatus = New("TextLabel", {
     ZIndex=7,
 }, keyPanel)
 
+-- KHUNG CHAT
 local chatPanel = New("Frame", {
     Size=UDim2.new(1,-16,0,340),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1390,6 +1323,7 @@ New("UIListLayout", {
     HorizontalAlignment=Enum.HorizontalAlignment.Left,
 }, chatScroll)
 
+-- Tách text thành các đoạn: text thường và code block
 local function ParseSegments(text)
     local segments = {}
     local remaining = text
@@ -1419,6 +1353,7 @@ local function ParseSegments(text)
     return segments
 end
 
+-- Hàm thêm tin nhắn vào khung chat
 local function AddMessage(sender, text, isUser)
     local bubbleColor = isUser and Color3.fromRGB(50, 120, 220) or Color3.fromRGB(35, 40, 55)
     local textColor = isUser and C.WHITE or Color3.fromRGB(230, 235, 245)
@@ -1547,6 +1482,7 @@ end
 
 AddMessage("🤖 Gemini", "Xin chào! Tôi là AI Mini. Hãy nhập API key ở trên (nếu chưa có) rồi đặt câu hỏi bên dưới nhé!", false)
 
+-- Ô NHẬP CÂU HỎI
 local inputBar = New("Frame", {
     Size=UDim2.new(1,-16,0,36),
     BackgroundColor3=Color3.fromRGB(25, 28, 36),
@@ -1592,6 +1528,7 @@ local sendBtn = New("TextButton", {
 }, inputBar)
 Corner(sendBtn, UDim.new(0,6))
 
+-- THANH CÔNG CỤ
 local toolBar = New("Frame", {
     Size=UDim2.new(1,-16,0,30),
     BackgroundTransparency=1,
@@ -1644,6 +1581,7 @@ local clearChatBtn = New("TextButton", {
 }, toolBar)
 Corner(clearChatBtn, UDim.new(0,6))
 
+-- XỬ LÝ API KEY
 local apiKeyFile = "banana_cat_gemini_key.txt"
 
 local function SaveApiKey(key)
@@ -1716,6 +1654,7 @@ toggleKeyBtn.Activated:Connect(function()
     end
 end)
 
+-- SYSTEM PROMPT: Ép AI viết code đầy đủ + biết cách dãn GUI
 local SYSTEM_PROMPT = [[Bạn là trợ lý lập trình chuyên nghiệp cho Roblox Lua.
 
 QUY TẮC BẮT BUỘC:
@@ -1735,6 +1674,7 @@ QUY TẮC ĐẶC BIỆT CHO GUI (RẤT QUAN TRỌNG):
 - Điều này để khi menu chính của hub kéo to ra, GUI này cũng tự dãn theo.
 - Nếu script dùng ScreenGui riêng, hãy đặt Parent là CoreGui hoặc PlayerGui và dùng Size tự dãn.]]
 
+-- GỬI CÂU HỎI (có retry 429)
 local function AskGemini(question)
     local key = LoadApiKey()
     if not key or #key == 0 then
@@ -1962,6 +1902,7 @@ clearChatBtn.Activated:Connect(function()
     chatScroll.CanvasPosition = Vector2.new(0, 0)
 end)
 
+-- Cập nhật CanvasSize tab AI
 aiTab.CanvasSize = UDim2.new(0, 0, 0, 0)
 aiInner:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
     aiTab.CanvasSize = UDim2.new(0, 0, 0, aiInner.AbsoluteSize.Y + 20)
@@ -2004,15 +1945,26 @@ local function ScanNewGuis(beforeGuis)
     return found
 end
 
-local function ForceStretchToParent(obj, isRoot)
+-- Hàm ép tất cả Frame con phải dãn theo cha
+local function ForceStretchToParent(obj)
     if not obj then return end
-    if isRoot then
-        pcall(function()
-            if obj:IsA("GuiObject") then
-                obj.Size = UDim2.new(1, 0, 1, 0)
-                obj.Position = UDim2.new(0, 0, 0, 0)
+    pcall(function()
+        if obj:IsA("GuiObject") then
+            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
+                local s = obj.Size
+                -- Nếu kích thước là offset (cố định), ép thành scale
+                if s.X.Scale < 0.9 and s.X.Offset > 0 then
+                    obj.Size = UDim2.new(1, 0, s.Y.Scale > 0 and s.Y.Scale or 1, 0)
+                end
+                -- Nếu Position là offset, đưa về 0
+                if obj.Position.X.Offset ~= 0 or obj.Position.Y.Offset ~= 0 then
+                    obj.Position = UDim2.new(0, 0, 0, 0)
+                end
             end
-        end)
+        end
+    end)
+    for _, child in ipairs(obj:GetChildren()) do
+        ForceStretchToParent(child)
     end
 end
 
@@ -2027,91 +1979,82 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
     if indicator then indicator.BackgroundColor3 = C.RED end
     if statusLabel then statusLabel.Text = "⏳ Đang thực thi..." end
 
-    local beforeGuis = {}
-    for _, g in ipairs(playerGui:GetChildren()) do beforeGuis[g] = true end
-    for _, g in ipairs(targetGui:GetChildren()) do beforeGuis[g] = true end
-    pcall(function()
-        local cg = game:GetService("CoreGui")
-        if cg and cg ~= targetGui then
-            for _, g in ipairs(cg:GetChildren()) do beforeGuis[g] = true end
-        end
-    end)
+    local ok, err = pcall(function()
+        local fn, lerr = loadstring(code)
+        if not fn then error("loadstring thất bại: "..tostring(lerr)) end
 
-    local featureId = tostring(name).."_"..tostring(os.time()).."_"..tostring(math.random(1000,9999))
-    local runOk, runErr = RunFeatureIsolated(featureId, code, name)
-    if not runOk then
-        if indicator then indicator.BackgroundColor3 = C.RED end
-        if statusLabel then statusLabel.Text = "❌ "..tostring(runErr) end
-        return false, runErr
-    end
-    containerFrame:SetAttribute("FeatureId", featureId)
-    if not _G.BananaCatHub_FeatureIds then _G.BananaCatHub_FeatureIds = {} end
-    table.insert(_G.BananaCatHub_FeatureIds, featureId)
+        local beforeGuis = {}
+        for _, g in ipairs(playerGui:GetChildren()) do beforeGuis[g] = true end
+        for _, g in ipairs(targetGui:GetChildren()) do beforeGuis[g] = true end
+        pcall(function()
+            local cg = game:GetService("CoreGui")
+            if cg and cg ~= targetGui then
+                for _, g in ipairs(cg:GetChildren()) do beforeGuis[g] = true end
+            end
+        end)
 
-    task.spawn(function()
-        local scanned = {}
-        local startScan = tick()
-        local lastNew = 0
+        fn()
 
-        while tick() - startScan < 12 do
-            task.wait(0.25)
-
+        local newGuis = {}
+        for i = 1, 12 do
+            task.wait(0.2)
             local found = ScanNewGuis(beforeGuis)
-            for _, g in ipairs(found) do
-                if not scanned[g] then
-                    scanned[g] = true
-                    lastNew = tick()
+            for _, g in ipairs(found) do table.insert(newGuis, g) end
+            if #newGuis > 0 then break end
+        end
 
-                    if g:IsA("ScreenGui") or g:IsA("Folder") then
-                        pcall(function()
-                            if g:IsA("ScreenGui") then
-                                g.ResetOnSpawn = false
-                            end
-                        end)
-
-                        local hostName = "Embedded_"..g.Name.."_"..tostring(math.random(1000,9999))
-                        local host = New("Frame", {
-                            Size = UDim2.new(1,0,1,0),
-                            Position = UDim2.new(0,0,0,0),
-                            BackgroundTransparency = 1,
-                            BorderSizePixel = 0,
-                            ZIndex = 5,
-                            Name = hostName,
-                            ClipsDescendants = false,
-                        }, containerFrame)
-
-                        for _, child in ipairs(g:GetChildren()) do
-                            pcall(function() child.Parent = host end)
-                        end
-                        pcall(function() g:Destroy() end)
-
-                        ForceStretchToParent(host, true)
-
-                        if not _G.BananaCatHub_EmbedHosts then
-                            _G.BananaCatHub_EmbedHosts = {}
-                        end
-                        table.insert(_G.BananaCatHub_EmbedHosts, host)
-                    elseif g:IsA("GuiObject") then
-                        pcall(function()
-                            g.Parent = containerFrame
-                            g.ZIndex = 5
-                        end)
+        for _, g in ipairs(newGuis) do
+            if g:IsA("ScreenGui") or g:IsA("Folder") then
+                -- Xóa host cũ nếu có (tránh chồng khi chạy lại)
+                for _, existing in ipairs(containerFrame:GetChildren()) do
+                    if existing.Name == "Embedded_"..g.Name then
+                        existing:Destroy()
                     end
                 end
-            end
-        end
 
-        if indicator then indicator.BackgroundColor3 = C.GREEN end
-        if statusLabel then
-            if lastNew > 0 then
-                statusLabel.Text = "✅ Hoàn thành!"
-            else
-                statusLabel.Text = "⚠️ Script chạy nhưng không tạo GUI mới."
+                local host = New("Frame", {
+                    Size = UDim2.new(1,0,1,0),
+                    Position = UDim2.new(0,0,0,0),
+                    BackgroundTransparency = 1,
+                    BorderSizePixel = 0,
+                    ZIndex = 5,
+                    Name = "Embedded_"..g.Name,
+                    ClipsDescendants = false,
+                }, containerFrame)
+
+                for _, child in ipairs(g:GetChildren()) do
+                    pcall(function() child.Parent = host end)
+                end
+                pcall(function() g:Destroy() end)
+
+                -- ÉP tất cả Frame con phải dãn theo host
+                ForceStretchToParent(host)
+
+                -- Lưu reference để cập nhật khi menu resize
+                if not _G.BananaCatHub_EmbedHosts then
+                    _G.BananaCatHub_EmbedHosts = {}
+                end
+                table.insert(_G.BananaCatHub_EmbedHosts, host)
+            elseif g:IsA("GuiObject") then
+                pcall(function()
+                    g.Parent = containerFrame
+                    g.ZIndex = 5
+                    ForceStretchToParent(g)
+                end)
             end
         end
     end)
 
-    return true
+    if ok then
+        if indicator then indicator.BackgroundColor3 = C.GREEN end
+        if statusLabel then statusLabel.Text = "✅ Hoàn thành!" end
+        return true
+    else
+        if indicator then indicator.BackgroundColor3 = C.RED end
+        if statusLabel then statusLabel.Text = "❌ Lỗi: "..tostring(err) end
+        warn("[BananaCatHub] Feature script error:", err)
+        return false, err
+    end
 end
 
 local function CreateFeatureTab(name, icon, codeContent)
@@ -2316,8 +2259,6 @@ local function CreateFeatureTab(name, icon, codeContent)
     end)
 
     closeFeatureBtn.Activated:Connect(function()
-        local fid = embedHost:GetAttribute("FeatureId")
-        if fid then StopFeature(fid) end
         ClearHost()
         SwitchTab(1)
     end)
@@ -2325,6 +2266,7 @@ local function CreateFeatureTab(name, icon, codeContent)
     return featureData
 end
 
+-- ===== TỰ ĐỘNG DÃN SCRIPT CON KHI MENU RESIZE =====
 task.spawn(function()
     task.wait(1)
     local lastSize = main.AbsoluteSize
@@ -2337,6 +2279,7 @@ task.spawn(function()
                     if host and host.Parent then
                         pcall(function()
                             host.Size = UDim2.new(1, 0, 1, 0)
+                            ForceStretchToParent(host)
                         end)
                     end
                 end
@@ -2414,6 +2357,7 @@ local createStatus = Label(createFeatureTab, "", cy)
 createStatus.TextColor3=C.YELLOW; createStatus.TextSize=9; createStatus.ZIndex=6
 cy = cy + 14
 
+-- Xử lý nút "📏 Lấy Code Kích Thước"
 grabSizeCodeBtn.Activated:Connect(function()
     local currentCode = featureCodeIn.Text
     if #currentCode == 0 then
@@ -2421,12 +2365,49 @@ grabSizeCodeBtn.Activated:Connect(function()
         return
     end
 
+    -- Bọc code với wrapper ép dãn
     local wrappedCode = [[
 -- ===== AUTO-GENERATED SIZE WRAPPER =====
+-- Code này đã được tự động bọc để GUI con DÃN THEO CHA (menu chính).
+-- Khi bạn kéo menu to ra, GUI này cũng to ra theo.
+
 local _AUTO_SIZE_WRAPPER = true
 
-]] .. currentCode
+local function _ForceStretch(obj)
+    if not obj then return end
+    pcall(function()
+        if obj:IsA("GuiObject") then
+            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
+                obj.Size = UDim2.new(1, 0, 1, 0)
+                obj.Position = UDim2.new(0, 0, 0, 0)
+            end
+        end
+    end)
+    for _, c in ipairs(obj:GetChildren()) do
+        _ForceStretch(c)
+    end
+end
 
+]] .. currentCode .. [[
+
+
+-- Sau khi script gốc chạy xong, ép toàn bộ GUI con dãn theo cha
+task.defer(function()
+    task.wait(0.5)
+    for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
+        if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
+            pcall(function() _ForceStretch(g) end)
+        end
+    end
+    for _, g in ipairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
+        if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
+            pcall(function() _ForceStretch(g) end)
+        end
+    end
+end)
+]]
+
+    -- Tự động lưu vào danh sách Code Đã Lưu
     local saveName = "AutoSize_"..os.date("%H%M%S")
     local bn = saveName
     local cnt = 1
@@ -2443,6 +2424,7 @@ local _AUTO_SIZE_WRAPPER = true
     table.insert(scripts, {name = saveName, code = wrappedCode, expanded = false})
     if RebuildScripts then RebuildScripts() end
 
+    -- Đưa wrapped code vào ô nhập để người dùng có thể bấm "Tạo Tab Tính Năng" ngay
     featureCodeIn.Text = wrappedCode
     featureNameIn.Text = "AutoSize_"..os.date("%H%M%S")
 
@@ -2513,17 +2495,6 @@ local function RebuildFeatureList()
             end
             if idx then
                 if activeTab == ft.frame then SwitchTab(1) end
-                pcall(function()
-                    local host = ft.frame:FindFirstChild("ScriptHost")
-                    if host then
-                        local fid = host:GetAttribute("FeatureId")
-                        if fid then StopFeature(fid) end
-                        for _, child in ipairs(host:GetChildren()) do
-                            local cid = child:GetAttribute("FeatureId")
-                            if cid then StopFeature(cid) end
-                        end
-                    end
-                end)
                 ft.btn:Destroy()
                 ft.frame:Destroy()
                 table.remove(tabs, idx)
@@ -2689,4 +2660,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.9.3: Code + Code Đã Lưu + Hỗ Trợ + AI AI + Tạo Tính Năng (Sandbox task.spawn + Scan Background) — sẵn sàng!")
+print("✅ Banana Cat Hub v3.9: Code + Code Đã Lưu + Hỗ Trợ + AI AI (retry 429) + Tạo Tính Năng (Auto-Dãn + Lấy Code Kích Thước) — sẵn sàng!")
