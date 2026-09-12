@@ -1,8 +1,9 @@
 --[[
     🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
     + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
-    + TAB "AI AI" — MINI WEB CHAT + RENDER CODE BLOCK (đã fix)
+    + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT (đã fix AI viết code đầy đủ)
     + FIX HTTP 404: gemini-2.5-flash
+    + FIX MAX_TOKENS: maxOutputTokens = 8192, cảnh báo khi bị cắt
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
@@ -1320,14 +1321,6 @@ New("UIListLayout", {
     HorizontalAlignment=Enum.HorizontalAlignment.Left,
 }, chatScroll)
 
--- Phát hiện tin nhắn có code
-local function LooksLikeCode(text)
-    if not text then return false end
-    if text:find("```") then return true end
-    if text:find("\n    ") or text:find("\n\t") then return true end
-    return false
-end
-
 -- Tách text thành các đoạn: text thường và code block
 local function ParseSegments(text)
     local segments = {}
@@ -1399,7 +1392,6 @@ local function AddMessage(sender, text, isUser)
         ZIndex=10,
     }, bubble)
 
-    -- Container nội dung
     local contentContainer = New("Frame", {
         Size=UDim2.new(1,-16,0,0),
         Position=UDim2.new(0,8,0,4),
@@ -1416,7 +1408,6 @@ local function AddMessage(sender, text, isUser)
         PaddingBottom=UDim.new(0,6),
     }, contentContainer)
 
-    -- Phân đoạn
     local segments
     if isUser then
         segments = {{type = "text", content = text}}
@@ -1426,7 +1417,6 @@ local function AddMessage(sender, text, isUser)
 
     for idx, seg in ipairs(segments) do
         if seg.type == "code" then
-            -- Đoạn code block
             local codeFrame = New("Frame", {
                 Size=UDim2.new(1,0,0,0),
                 BackgroundColor3=Color3.fromRGB(12, 14, 18),
@@ -1462,7 +1452,6 @@ local function AddMessage(sender, text, isUser)
                 PaddingBottom=UDim.new(0,8),
             }, codeFrame)
         else
-            -- Đoạn text thường
             local textLbl = New("TextLabel", {
                 Size=UDim2.new(1,0,0,0),
                 BackgroundTransparency=1,
@@ -1480,7 +1469,6 @@ local function AddMessage(sender, text, isUser)
         end
     end
 
-    -- Tự cuộn xuống cuối sau khi thêm tin nhắn
     task.defer(function()
         task.wait(0.1)
         local maxY = math.max(0, chatScroll.AbsoluteCanvasSize.Y - chatScroll.AbsoluteWindowSize.Y)
@@ -1564,6 +1552,19 @@ local copyAnswerBtn = New("TextButton", {
     ZIndex=7,
 }, toolBar)
 Corner(copyAnswerBtn, UDim.new(0,6))
+
+local continueBtn = New("TextButton", {
+    Size=UDim2.new(0,120,1,0),
+    Text="▶ Viết tiếp",
+    BackgroundColor3=Color3.fromRGB(180, 120, 40),
+    BackgroundTransparency=0,
+    TextColor3=C.WHITE,
+    Font=Enum.Font.GothamBold,
+    TextSize=9,
+    BorderSizePixel=0,
+    ZIndex=7,
+}, toolBar)
+Corner(continueBtn, UDim.new(0,6))
 
 local clearChatBtn = New("TextButton", {
     Size=UDim2.new(0,120,1,0),
@@ -1651,6 +1652,18 @@ toggleKeyBtn.Activated:Connect(function()
     end
 end)
 
+-- SYSTEM PROMPT: Ép AI viết code đầy đủ
+local SYSTEM_PROMPT = [[Bạn là trợ lý lập trình chuyên nghiệp cho Roblox Lua.
+
+QUY TẮC BẮT BUỘC:
+1. Khi người dùng yêu cầu viết code/script, PHẢI viết ĐẦY ĐỦ, HOÀN CHỈNH, có thể chạy được ngay.
+2. TUYỆT ĐỐI KHÔNG dùng "..." hoặc "-- tiếp tục" hoặc "phần còn lại tương tự" để rút gọn code.
+3. Nếu code quá dài, hãy chia thành nhiều khối ```lua ... ``` riêng biệt và viết hết tất cả.
+4. KHÔNG giải thích dài dòng. Chỉ viết code + vài dòng ghi chú ngắn.
+5. Code phải dùng đúng API Roblox Lua, không dùng Python/JavaScript.
+6. Nếu người dùng hỏi bằng tiếng Việt, trả lời bằng tiếng Việt.
+7. Nếu câu hỏi không liên quan lập trình, trả lời ngắn gọn, trực tiếp.]]
+
 -- GỬI CÂU HỎI
 local function AskGemini(question)
     local key = LoadApiKey()
@@ -1661,15 +1674,40 @@ local function AskGemini(question)
         return false, "⚠️ Vui lòng nhập câu hỏi!"
     end
 
+    pcall(function()
+        if HttpService.HttpEnabled == false then
+            HttpService.HttpEnabled = true
+        end
+    end)
+
     local url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="..key
 
     local body = HttpService:JSONEncode({
+        system_instruction = {
+            parts = {
+                { text = SYSTEM_PROMPT }
+            }
+        },
         contents = {
             {
+                role = "user",
                 parts = {
                     { text = question }
                 }
             }
+        },
+        generationConfig = {
+            temperature = 0.7,
+            topP = 0.95,
+            topK = 40,
+            maxOutputTokens = 8192,
+            candidateCount = 1
+        },
+        safetySettings = {
+            { category = "HARM_CATEGORY_HARASSMENT", threshold = "BLOCK_NONE" },
+            { category = "HARM_CATEGORY_HATE_SPEECH", threshold = "BLOCK_NONE" },
+            { category = "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold = "BLOCK_NONE" },
+            { category = "HARM_CATEGORY_DANGEROUS_CONTENT", threshold = "BLOCK_NONE" }
         }
     })
 
@@ -1691,7 +1729,7 @@ local function AskGemini(question)
     if not result.Success then
         local bodyPreview = ""
         if result.Body then
-            bodyPreview = tostring(result.Body):sub(1, 300)
+            bodyPreview = tostring(result.Body):sub(1, 500)
         end
         return false, "❌ HTTP "..tostring(result.StatusCode)..": "..tostring(result.StatusMessage).."\n"..bodyPreview
     end
@@ -1708,12 +1746,37 @@ local function AskGemini(question)
         return false, "❌ API Error: "..tostring(data.error.message or "unknown")
     end
 
-    if data.candidates and data.candidates[1] and data.candidates[1].content
-       and data.candidates[1].content.parts and data.candidates[1].content.parts[1] then
-        return true, data.candidates[1].content.parts[1].text
+    if not (data.candidates and data.candidates[1]) then
+        return false, "❌ Không có candidates trong phản hồi"
     end
 
-    return false, "❌ Không có câu trả lời từ Gemini"
+    local cand = data.candidates[1]
+    local finishReason = cand.finishReason or "STOP"
+
+    local fullText = ""
+    if cand.content and cand.content.parts then
+        for _, part in ipairs(cand.content.parts) do
+            if part.text then
+                fullText = fullText .. part.text
+            end
+        end
+    end
+
+    if #fullText == 0 then
+        if finishReason == "SAFETY" then
+            return false, "⚠️ Gemini từ chối trả lời vì lý do an toàn (SAFETY). Hãy thử diễn đạt lại câu hỏi."
+        elseif finishReason == "RECITATION" then
+            return false, "⚠️ Gemini dừng vì lý do bản quyền (RECITATION)."
+        else
+            return false, "❌ Không có text trong phản hồi. finishReason = "..tostring(finishReason)
+        end
+    end
+
+    if finishReason == "MAX_TOKENS" then
+        fullText = fullText .. "\n\n⚠️ [AI bị cắt do giới hạn token. Hãy gõ 'viết tiếp phần còn lại' hoặc bấm nút '▶ Viết tiếp' để lấy code tiếp.]"
+    end
+
+    return true, fullText
 end
 
 local isSending = false
@@ -1733,10 +1796,13 @@ local function SendQuestion()
     AddMessage("👤 Bạn", q, true)
 
     task.spawn(function()
+        local startTime = tick()
         local ok, response = AskGemini(q)
+        local elapsed = tick() - startTime
+
         if ok then
             AddMessage("🤖 Gemini", response, false)
-            statusText.Text = "Đang hoạt động"
+            statusText.Text = string.format("Đang hoạt động (%.1fs)", elapsed)
             statusDot.BackgroundColor3 = C.GREEN
         else
             AddMessage("⚠️ Lỗi", response, false)
@@ -1755,6 +1821,13 @@ questionIn.FocusLost:Connect(function(enter)
     if enter then
         SendQuestion()
     end
+end)
+
+-- NÚT VIẾT TIẾP
+continueBtn.Activated:Connect(function()
+    if isSending then return end
+    questionIn.Text = "Viết tiếp phần code còn lại của câu trả lời trước, KHÔNG lặp lại phần đã viết. Viết đầy đủ, không rút gọn."
+    SendQuestion()
 end)
 
 -- COPY CHAT
@@ -2421,4 +2494,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.6: Code + Code Đã Lưu + Hỗ Trợ + AI AI (Mini Web Chat, hiển thị code block) + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v3.7: Code + Code Đã Lưu + Hỗ Trợ + AI AI (System Prompt, maxTokens 8192, nút Viết tiếp) + Tạo Tính Năng — sẵn sàng!")
