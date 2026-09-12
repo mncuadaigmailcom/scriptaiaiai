@@ -1,17 +1,19 @@
 --[[
-    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX v3.9.2)
+    🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (v3.9.3 FINAL)
     + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
     + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT + RETRY 429
     + TAB "TẠO TÍNH NĂNG" — TỰ ĐỘNG DÃN SCRIPT THEO MENU + NÚT "📏 LẤY CODE KÍCH THƯỚC"
     + FIX HTTP 404: gemini-2.5-flash
     + FIX MAX_TOKENS: maxOutputTokens = 8192
     + FIX HTTP 429: RETRY với exponential backoff (3 lần, 2s → 4s → 8s)
-    + FIX v3.9.2:
-        - ForceStretchToParent KHÔNG đệ quy sâu → bảo toàn layout GUI con
-        - Scan GUI timeout 10s, không break sớm
-        - Tên Embedded_ thêm random → không trùng
-        - Giữ ResetOnSpawn = false cho ScreenGui con
-        - Sandbox script con bằng setfenv + coroutine độc lập
+    + FIX v3.9.3:
+        - RunFeatureIsolated dùng task.spawn (không dùng coroutine.resume)
+          → script con yield đúng ở task.wait, GUI tạo được
+        - Scan GUI chạy BACKGROUND (task.spawn), KHÔNG block hub
+        - Scan liên tục 12s, ghi nhận GUI mới bất kỳ lúc nào
+        - Status báo rõ nếu script không tạo GUI mới
+        - ForceStretchToParent chỉ ép root, KHÔNG đệ quy phá con
+        - Tên Embedded_ random, ResetOnSpawn=false
         - StopFeature kill runner khi đóng/xóa tab
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
@@ -49,7 +51,7 @@ end
 pcall(function() RunService:UnbindFromRenderStep("Fly") end)
 pcall(function() RunService:UnbindFromRenderStep("Carpet") end)
 
--- ==================== FEATURE SANDBOX RUNNER ====================
+-- ==================== FEATURE SANDBOX RUNNER v3.9.3 ====================
 local FeatureRunners = {}
 
 local function NewFeatureEnv(featureId)
@@ -76,7 +78,7 @@ local function RunFeatureIsolated(featureId, code, name)
     end
 
     local env = NewFeatureEnv(featureId)
-    local runner = { env = env, conns = env._FeatureConnections }
+    local runner = { env = env, conns = env._FeatureConnections, stopped = false }
     FeatureRunners[featureId] = runner
 
     local fn, lerr = loadstring(code, "@Feature_"..featureId)
@@ -88,17 +90,20 @@ local function RunFeatureIsolated(featureId, code, name)
         pcall(setfenv, fn, env)
     end
 
-    runner.thread = coroutine.create(fn)
-    local ok, err = coroutine.resume(runner.thread)
-    if not ok then
-        return false, tostring(err)
-    end
+    runner.thread = task.spawn(function()
+        local ok, err = pcall(fn)
+        if not ok then
+            warn(("[Feature:%s] Runtime error: %s"):format(featureId, tostring(err)))
+        end
+    end)
+
     return true
 end
 
 local function StopFeature(featureId)
     local r = FeatureRunners[featureId]
     if not r then return end
+    r.stopped = true
     if r.thread then pcall(task.cancel, r.thread) end
     if r.conns then
         for _, c in ipairs(r.conns) do pcall(function() c:Disconnect() end) end
@@ -808,7 +813,7 @@ end
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
 RebuildScripts()
 
--- ==================== TAB 3: HỖ TRỢ — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ ====================
+-- ==================== TAB 3: HỖ TRỢ ====================
 local supportTab = AddTab("Hỗ Trợ", "🛠", 3)
 
 local posY = 8
@@ -1142,7 +1147,7 @@ end
 
 RebuildWaypoints()
 
--- ==================== TAB 4: AI AI — MINI WEB CHAT ====================
+-- ==================== TAB 4: AI AI ====================
 local aiTab = AddTab("AI AI", "🤖", 4)
 
 aiTab.BackgroundTransparency = 1
@@ -1999,7 +2004,6 @@ local function ScanNewGuis(beforeGuis)
     return found
 end
 
--- ===== v3.9.2 FIX: KHÔNG đệ quy sâu, chỉ ép Frame ROOT =====
 local function ForceStretchToParent(obj, isRoot)
     if not obj then return end
     if isRoot then
@@ -2010,7 +2014,6 @@ local function ForceStretchToParent(obj, isRoot)
             end
         end)
     end
-    -- KHÔNG đệ quy — bảo toàn layout con của script gốc
 end
 
 local function RunFeatureScript(code, name, containerFrame, indicator, statusLabel)
@@ -2024,98 +2027,91 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
     if indicator then indicator.BackgroundColor3 = C.RED end
     if statusLabel then statusLabel.Text = "⏳ Đang thực thi..." end
 
-    local ok, err = pcall(function()
-        local beforeGuis = {}
-        for _, g in ipairs(playerGui:GetChildren()) do beforeGuis[g] = true end
-        for _, g in ipairs(targetGui:GetChildren()) do beforeGuis[g] = true end
-        pcall(function()
-            local cg = game:GetService("CoreGui")
-            if cg and cg ~= targetGui then
-                for _, g in ipairs(cg:GetChildren()) do beforeGuis[g] = true end
-            end
-        end)
-
-        -- Chạy script con trong sandbox riêng
-        local featureId = tostring(name).."_"..tostring(os.time()).."_"..tostring(math.random(1000,9999))
-        local runOk, runErr = RunFeatureIsolated(featureId, code, name)
-        if not runOk then
-            error("Feature runner lỗi: "..tostring(runErr))
+    local beforeGuis = {}
+    for _, g in ipairs(playerGui:GetChildren()) do beforeGuis[g] = true end
+    for _, g in ipairs(targetGui:GetChildren()) do beforeGuis[g] = true end
+    pcall(function()
+        local cg = game:GetService("CoreGui")
+        if cg and cg ~= targetGui then
+            for _, g in ipairs(cg:GetChildren()) do beforeGuis[g] = true end
         end
-        containerFrame:SetAttribute("FeatureId", featureId)
-        if not _G.BananaCatHub_FeatureIds then _G.BananaCatHub_FeatureIds = {} end
-        table.insert(_G.BananaCatHub_FeatureIds, featureId)
+    end)
 
-        -- v3.9.2 FIX: scan 10s, không break sớm
-        local newGuis = {}
+    local featureId = tostring(name).."_"..tostring(os.time()).."_"..tostring(math.random(1000,9999))
+    local runOk, runErr = RunFeatureIsolated(featureId, code, name)
+    if not runOk then
+        if indicator then indicator.BackgroundColor3 = C.RED end
+        if statusLabel then statusLabel.Text = "❌ "..tostring(runErr) end
+        return false, runErr
+    end
+    containerFrame:SetAttribute("FeatureId", featureId)
+    if not _G.BananaCatHub_FeatureIds then _G.BananaCatHub_FeatureIds = {} end
+    table.insert(_G.BananaCatHub_FeatureIds, featureId)
+
+    task.spawn(function()
+        local scanned = {}
         local startScan = tick()
-        while tick() - startScan < 10 do
-            task.wait(0.3)
+        local lastNew = 0
+
+        while tick() - startScan < 12 do
+            task.wait(0.25)
+
             local found = ScanNewGuis(beforeGuis)
             for _, g in ipairs(found) do
-                if not table.find(newGuis, g) then
-                    table.insert(newGuis, g)
+                if not scanned[g] then
+                    scanned[g] = true
+                    lastNew = tick()
+
+                    if g:IsA("ScreenGui") or g:IsA("Folder") then
+                        pcall(function()
+                            if g:IsA("ScreenGui") then
+                                g.ResetOnSpawn = false
+                            end
+                        end)
+
+                        local hostName = "Embedded_"..g.Name.."_"..tostring(math.random(1000,9999))
+                        local host = New("Frame", {
+                            Size = UDim2.new(1,0,1,0),
+                            Position = UDim2.new(0,0,0,0),
+                            BackgroundTransparency = 1,
+                            BorderSizePixel = 0,
+                            ZIndex = 5,
+                            Name = hostName,
+                            ClipsDescendants = false,
+                        }, containerFrame)
+
+                        for _, child in ipairs(g:GetChildren()) do
+                            pcall(function() child.Parent = host end)
+                        end
+                        pcall(function() g:Destroy() end)
+
+                        ForceStretchToParent(host, true)
+
+                        if not _G.BananaCatHub_EmbedHosts then
+                            _G.BananaCatHub_EmbedHosts = {}
+                        end
+                        table.insert(_G.BananaCatHub_EmbedHosts, host)
+                    elseif g:IsA("GuiObject") then
+                        pcall(function()
+                            g.Parent = containerFrame
+                            g.ZIndex = 5
+                        end)
+                    end
                 end
             end
         end
 
-        for _, g in ipairs(newGuis) do
-            if g:IsA("ScreenGui") or g:IsA("Folder") then
-                -- v3.9.2 FIX: giữ ResetOnSpawn = false
-                pcall(function()
-                    if g:IsA("ScreenGui") then
-                        g.ResetOnSpawn = false
-                    end
-                end)
-
-                -- v3.9.2 FIX: tên host random tránh trùng
-                local hostName = "Embedded_"..g.Name.."_"..tostring(math.random(1000,9999))
-                for _, existing in ipairs(containerFrame:GetChildren()) do
-                    if existing.Name:sub(1, 9) == "Embedded_" then
-                        -- không xóa host của GUI khác, chỉ xóa nếu trùng tên gốc
-                    end
-                end
-
-                local host = New("Frame", {
-                    Size = UDim2.new(1,0,1,0),
-                    Position = UDim2.new(0,0,0,0),
-                    BackgroundTransparency = 1,
-                    BorderSizePixel = 0,
-                    ZIndex = 5,
-                    Name = hostName,
-                    ClipsDescendants = false,
-                }, containerFrame)
-
-                for _, child in ipairs(g:GetChildren()) do
-                    pcall(function() child.Parent = host end)
-                end
-                pcall(function() g:Destroy() end)
-
-                -- v3.9.2 FIX: chỉ ép host, KHÔNG đệ quy con
-                ForceStretchToParent(host, true)
-
-                if not _G.BananaCatHub_EmbedHosts then
-                    _G.BananaCatHub_EmbedHosts = {}
-                end
-                table.insert(_G.BananaCatHub_EmbedHosts, host)
-            elseif g:IsA("GuiObject") then
-                pcall(function()
-                    g.Parent = containerFrame
-                    g.ZIndex = 5
-                end)
+        if indicator then indicator.BackgroundColor3 = C.GREEN end
+        if statusLabel then
+            if lastNew > 0 then
+                statusLabel.Text = "✅ Hoàn thành!"
+            else
+                statusLabel.Text = "⚠️ Script chạy nhưng không tạo GUI mới."
             end
         end
     end)
 
-    if ok then
-        if indicator then indicator.BackgroundColor3 = C.GREEN end
-        if statusLabel then statusLabel.Text = "✅ Hoàn thành!" end
-        return true
-    else
-        if indicator then indicator.BackgroundColor3 = C.RED end
-        if statusLabel then statusLabel.Text = "❌ Lỗi: "..tostring(err) end
-        warn("[BananaCatHub] Feature script error:", err)
-        return false, err
-    end
+    return true
 end
 
 local function CreateFeatureTab(name, icon, codeContent)
@@ -2320,7 +2316,6 @@ local function CreateFeatureTab(name, icon, codeContent)
     end)
 
     closeFeatureBtn.Activated:Connect(function()
-        -- v3.9.2: dừng runner riêng, KHÔNG ảnh hưởng hub
         local fid = embedHost:GetAttribute("FeatureId")
         if fid then StopFeature(fid) end
         ClearHost()
@@ -2330,7 +2325,6 @@ local function CreateFeatureTab(name, icon, codeContent)
     return featureData
 end
 
--- ===== TỰ ĐỘNG DÃN SCRIPT CON KHI MENU RESIZE =====
 task.spawn(function()
     task.wait(1)
     local lastSize = main.AbsoluteSize
@@ -2343,7 +2337,6 @@ task.spawn(function()
                     if host and host.Parent then
                         pcall(function()
                             host.Size = UDim2.new(1, 0, 1, 0)
-                            -- v3.9.2: chỉ ép host, không đệ quy
                         end)
                     end
                 end
@@ -2432,37 +2425,7 @@ grabSizeCodeBtn.Activated:Connect(function()
 -- ===== AUTO-GENERATED SIZE WRAPPER =====
 local _AUTO_SIZE_WRAPPER = true
 
-local function _ForceStretch(obj, isRoot)
-    if not obj then return end
-    if isRoot then
-        pcall(function()
-            if obj:IsA("GuiObject") then
-                if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
-                    obj.Size = UDim2.new(1, 0, 1, 0)
-                    obj.Position = UDim2.new(0, 0, 0, 0)
-                end
-            end
-        end)
-    end
-end
-
-]] .. currentCode .. [[
-
-
-task.defer(function()
-    task.wait(0.5)
-    for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
-        if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
-            pcall(function() _ForceStretch(g, true) end)
-        end
-    end
-    for _, g in ipairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
-        if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
-            pcall(function() _ForceStretch(g, true) end)
-        end
-    end
-end)
-]]
+]] .. currentCode
 
     local saveName = "AutoSize_"..os.date("%H%M%S")
     local bn = saveName
@@ -2550,7 +2513,6 @@ local function RebuildFeatureList()
             end
             if idx then
                 if activeTab == ft.frame then SwitchTab(1) end
-                -- v3.9.2: dừng runner trước khi xóa
                 pcall(function()
                     local host = ft.frame:FindFirstChild("ScriptHost")
                     if host then
@@ -2727,4 +2689,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.9.2: Code + Code Đã Lưu + Hỗ Trợ + AI AI + Tạo Tính Năng (Auto-Dãn An Toàn + Sandbox Độc Lập) — sẵn sàng!")
+print("✅ Banana Cat Hub v3.9.3: Code + Code Đã Lưu + Hỗ Trợ + AI AI + Tạo Tính Năng (Sandbox task.spawn + Scan Background) — sẵn sàng!")
