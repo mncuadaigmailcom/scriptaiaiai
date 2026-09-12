@@ -1,10 +1,9 @@
 --[[
-    🍌 Banana Cat Hub v4.4 — FULL CODE
-    + THÊM: Tính năng đo tốc độ di chuyển (hiện tại, cao nhất, tốc độ tối đa game)
-    + THÊM: Nút đặt lại tốc độ cao nhất
-    + THÊM: Nút bật/tắt theo dõi tốc độ
-    + GIỮ NGUYÊN toàn bộ tính năng cũ của v4.3
-    + FIX: Menu hiển thị đúng, tính năng tốc độ nằm an toàn trong Tab Hỗ Trợ
+    🍌 Banana Cat Hub v4.3 — FULL CODE
+    + THÊM: Highlight viền tím khi click vật thể (dùng Highlight instance)
+    + THÊM: Tự động xóa highlight cũ khi click vật mới
+    + THÊM: Nút bật/tắt highlight
+    + GIỮ NGUYÊN toàn bộ tính năng cũ
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -141,7 +140,7 @@ Corner(titleBar, UDim.new(0,10))
 New("TextLabel", {
     Size=UDim2.new(1,-90,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="🍌 Banana Cat Executor Hub v4.4",
+    Text="🍌 Banana Cat Executor Hub v4.3",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -1231,6 +1230,7 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
             objColorLbl.Text = string.format("Color: R=%d G=%d B=%d",
                 math.floor(color.R*255), math.floor(color.G*255), math.floor(color.B*255))
 
+            -- Tạo highlight tím nếu bật
             if highlightEnabled then
                 CreateHighlight(inst)
             end
@@ -1513,236 +1513,6 @@ RebuildWaypoints = function()
 end
 
 RebuildWaypoints()
-
--- ==================== TÍNH NĂNG TỐC ĐỘ DI CHUYỂN ====================
--- Đặt trong Frame riêng, không dùng posY, tự tính vị trí sau khi waypoint render xong
-local speedSectionFrame = New("Frame", {
-    Size = UDim2.new(1, -16, 0, 176),
-    Position = UDim2.new(0, 8, 0, 0),
-    BackgroundTransparency = 1,
-    BorderSizePixel = 0,
-    ZIndex = 6,
-}, supportTab)
-
-task.defer(function()
-    task.wait(0.15)
-    local wpBottom = 0
-    if wpListFrame and wpListFrame.Parent then
-        wpBottom = wpListFrame.Position.Y.Offset + wpListFrame.Size.Y.Offset
-    end
-    if wpBottom < posY then wpBottom = posY end
-    speedSectionFrame.Position = UDim2.new(0, 8, 0, wpBottom + 16)
-
-    local neededBottom = speedSectionFrame.Position.Y.Offset + speedSectionFrame.Size.Y.Offset + 20
-    local currentCanvas = supportTab.CanvasSize.Y.Offset
-    if neededBottom > currentCanvas then
-        supportTab.CanvasSize = UDim2.new(0, 0, 0, neededBottom)
-    end
-end)
-
-Label(speedSectionFrame, "━━━━━━━━━━━━━━━━━━━━━━", 0)
-Label(speedSectionFrame, "🏃 TỐC ĐỘ DI CHUYỂN", 16)
-
-local speedPanel = New("Frame", {
-    Size = UDim2.new(1, 0, 0, 140),
-    Position = UDim2.new(0, 0, 0, 34),
-    BackgroundColor3 = Color3.fromRGB(30, 35, 45),
-    BackgroundTransparency = 0,
-    BorderSizePixel = 0,
-    ZIndex = 6,
-}, speedSectionFrame)
-Corner(speedPanel, UDim.new(0, 6))
-Stroke(speedPanel, C.GREEN, 1.5)
-
-local speedCurrentLbl = New("TextLabel", {
-    Size = UDim2.new(1, -16, 0, 18),
-    Position = UDim2.new(0, 8, 0, 22),
-    Text = "Tốc độ hiện tại: 0.00 studs/s",
-    BackgroundTransparency = 1,
-    TextColor3 = Color3.fromRGB(255, 255, 100),
-    Font = Enum.Font.Code,
-    TextSize = 12,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    ZIndex = 7,
-}, speedPanel)
-
-local speedMaxLbl = New("TextLabel", {
-    Size = UDim2.new(1, -16, 0, 18),
-    Position = UDim2.new(0, 8, 0, 44),
-    Text = "Tốc độ cao nhất: 0.00 studs/s",
-    BackgroundTransparency = 1,
-    TextColor3 = Color3.fromRGB(255, 150, 100),
-    Font = Enum.Font.Code,
-    TextSize = 12,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    ZIndex = 7,
-}, speedPanel)
-
-local speedGameMaxLbl = New("TextLabel", {
-    Size = UDim2.new(1, -16, 0, 18),
-    Position = UDim2.new(0, 8, 0, 66),
-    Text = "Tốc độ tối đa game: Đang phân tích...",
-    BackgroundTransparency = 1,
-    TextColor3 = Color3.fromRGB(150, 220, 255),
-    Font = Enum.Font.Code,
-    TextSize = 11,
-    TextXAlignment = Enum.TextXAlignment.Left,
-    ZIndex = 7,
-}, speedPanel)
-
-local resetSpeedMaxBtn = Button(speedPanel, "🔄 Đặt Lại Tốc Độ Cao Nhất", 8, 90, 220, 24, C.ORANGE)
-local speedTrackEnabled = true
-local speedToggleBtn = Button(speedPanel, "⏸ Tạm Dừng Theo Dõi", 234, 90, 180, 24, C.GRAY)
-
-local maxSpeedReached = 0
-local lastSpeedPos = nil
-local lastSpeedTime = nil
-local speedSampleTimer = 0
-local speedSampleInterval = 0.1
-local gameMaxSpeed = 0
-local gameMaxSpeedAnalyzed = false
-local speedHistory = {}
-local speedHistoryMaxSize = 50
-
-local function GetSpeedRootPart()
-    local char = player.Character
-    if not char then return nil end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if hum and hum.RootPart then return hum.RootPart end
-    return char:FindFirstChild("HumanoidRootPart")
-        or char.PrimaryPart
-        or char:FindFirstChild("UpperTorso")
-        or char:FindFirstChild("Torso")
-end
-
-local function AnalyzeGameMaxSpeed()
-    local maxFound = 0
-    local scanned = 0
-    local function scanContainer(container)
-        if not container then return end
-        for _, obj in ipairs(container:GetChildren()) do
-            if obj:IsA("Humanoid") then
-                scanned = scanned + 1
-                local ws = obj.WalkSpeed
-                if ws and ws > maxFound then
-                    maxFound = ws
-                end
-            end
-            if obj:IsA("Model") or obj:IsA("Folder") or obj:IsA("Character") then
-                pcall(scanContainer, obj)
-            end
-        end
-    end
-    pcall(scanContainer, workspace)
-
-    if maxFound <= 0 then
-        maxFound = 16
-    end
-
-    local rounded = math.ceil(maxFound / 10) * 10
-    if rounded < 16 then rounded = 16 end
-
-    return rounded, maxFound, scanned
-end
-
-local function UpdateSpeedUI()
-    if not speedTrackEnabled then return end
-
-    local rootPart = GetSpeedRootPart()
-    if not rootPart then
-        speedCurrentLbl.Text = "Tốc độ hiện tại: N/A"
-        speedCurrentLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
-        return
-    end
-
-    local now = tick()
-    local currentPos = rootPart.Position
-
-    if lastSpeedPos and lastSpeedTime then
-        local dt = now - lastSpeedTime
-        if dt > 0 then
-            local horizDist = Vector3.new(currentPos.X - lastSpeedPos.X, 0, currentPos.Z - lastSpeedPos.Z).Magnitude
-            local speed = horizDist / dt
-
-            if speed < 1000 then
-                speedCurrentLbl.Text = string.format("Tốc độ hiện tại: %.2f studs/s", speed)
-                speedCurrentLbl.TextColor3 = Color3.fromRGB(255, 255, 100)
-
-                if speed > maxSpeedReached then
-                    maxSpeedReached = speed
-                end
-                speedMaxLbl.Text = string.format("Tốc độ cao nhất: %.2f studs/s", maxSpeedReached)
-                speedMaxLbl.TextColor3 = Color3.fromRGB(255, 150, 100)
-
-                table.insert(speedHistory, speed)
-                if #speedHistory > speedHistoryMaxSize then
-                    table.remove(speedHistory, 1)
-                end
-            end
-        end
-    end
-
-    lastSpeedPos = currentPos
-    lastSpeedTime = now
-end
-
-resetSpeedMaxBtn.Activated:Connect(function()
-    maxSpeedReached = 0
-    speedHistory = {}
-    speedMaxLbl.Text = "Tốc độ cao nhất: 0.00 studs/s"
-    resetSpeedMaxBtn.Text = "✅ Đã Đặt Lại!"
-    task.delay(1.5, function()
-        if resetSpeedMaxBtn and resetSpeedMaxBtn.Parent then
-            resetSpeedMaxBtn.Text = "🔄 Đặt Lại Tốc Độ Cao Nhất"
-        end
-    end)
-end)
-
-speedToggleBtn.Activated:Connect(function()
-    speedTrackEnabled = not speedTrackEnabled
-    if speedTrackEnabled then
-        speedToggleBtn.Text = "⏸ Tạm Dừng Theo Dõi"
-        speedToggleBtn.BackgroundColor3 = C.GRAY
-        lastSpeedPos = nil
-        lastSpeedTime = nil
-    else
-        speedToggleBtn.Text = "▶ Tiếp Tục Theo Dõi"
-        speedToggleBtn.BackgroundColor3 = C.GREEN
-        speedCurrentLbl.Text = "Tốc độ hiện tại: (đã tạm dừng)"
-        speedCurrentLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
-    end
-end)
-
-task.spawn(function()
-    task.wait(2)
-    local rounded, raw, scanned = AnalyzeGameMaxSpeed()
-    gameMaxSpeed = rounded
-    gameMaxSpeedAnalyzed = true
-    speedGameMaxLbl.Text = string.format("Tốc độ tối đa game: %d studs/s (quét %d Humanoid)", rounded, scanned)
-    speedGameMaxLbl.TextColor3 = Color3.fromRGB(100, 255, 200)
-
-    if maxSpeedReached > gameMaxSpeed then
-        gameMaxSpeed = math.ceil(maxSpeedReached / 10) * 10
-        speedGameMaxLbl.Text = string.format("Tốc độ tối đa game: %d studs/s (phát hiện vượt ngưỡng)", gameMaxSpeed)
-    end
-end)
-
-local speedUpdateConn = RunService.Heartbeat:Connect(function(dt)
-    if not speedTrackEnabled then return end
-    speedSampleTimer = speedSampleTimer + dt
-    if speedSampleTimer >= speedSampleInterval then
-        speedSampleTimer = 0
-        UpdateSpeedUI()
-    end
-
-    if gameMaxSpeedAnalyzed and maxSpeedReached > gameMaxSpeed then
-        local newMax = math.ceil(maxSpeedReached / 10) * 10
-        gameMaxSpeed = newMax
-        speedGameMaxLbl.Text = string.format("Tốc độ tối đa game: %d studs/s (tự động cập nhật)", newMax)
-        speedGameMaxLbl.TextColor3 = Color3.fromRGB(255, 200, 100)
-    end
-end)
-trackConn(speedUpdateConn)
 
 -- ==================== TAB 4: AI AI — MINI WEB CHAT ====================
 local aiTab = AddTab("AI AI", "🤖", 4)
@@ -3301,4 +3071,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v4.4: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM+TỐC ĐỘ) + AI AI + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v4.3: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + AI AI + Tạo Tính Năng — sẵn sàng!")
