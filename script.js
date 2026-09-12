@@ -1,8 +1,8 @@
 --[[
-    🍌 Banana Cat Hub v4.0 — BẢN FIX TỌA ĐỘ CHÍNH XÁC THEO GAME
-    + FIX TỌA ĐỘ: Humanoid.RootPart + CFrame + ToOrientation + Camera LookVector
+    🍌 Banana Cat Hub v4.1 — FULL CODE
+    + FIX TỌA ĐỘ ĐẦY ĐỦ: POSITION + SIZE + ROTATION + LOOK + STATE + HP
     + GIỮ NGUYÊN toàn bộ tính năng: Code, Code Đã Lưu, Hỗ Trợ, AI AI, Tạo Tính Năng
-    + Thêm cache chống spam UI mỗi frame
+    + Cache chống spam UI mỗi frame
     + Fallback đa tầng: RootPart → HumanoidRootPart → PrimaryPart → UpperTorso/Torso
 --]]
 local Players = game:GetService("Players")
@@ -139,7 +139,7 @@ Corner(titleBar, UDim.new(0,10))
 New("TextLabel", {
     Size=UDim2.new(1,-90,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="🍌 Banana Cat Executor Hub v4.0",
+    Text="🍌 Banana Cat Executor Hub v4.1",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -782,8 +782,9 @@ posY = posY + 16
 Label(supportTab, "📍 Tọa Độ Hiện Tại (Real-time)", posY)
 posY = posY + 16
 
+-- ===== PANEL TỌA ĐỘ ĐẦY ĐỦ (POS + SIZE + ROTATION + LOOK + STATE + HP) =====
 local coordDisplay = New("Frame", {
-    Size=UDim2.new(1,-16,0,110),
+    Size=UDim2.new(1,-16,0,290),
     Position=UDim2.new(0,8,0,posY),
     BackgroundColor3=Color3.fromRGB(30, 35, 45),
     BackgroundTransparency=0,
@@ -793,73 +794,120 @@ local coordDisplay = New("Frame", {
 Corner(coordDisplay, UDim.new(0,6))
 Stroke(coordDisplay, C.BLUE, 1.5)
 
+local function CreateCoordRow(parent, yPos, labelText, labelColor, valueDefault)
+    New("TextLabel", {
+        Size=UDim2.new(0,90,0,16), Position=UDim2.new(0,8,0,yPos),
+        Text=labelText, BackgroundTransparency=1, TextColor3=labelColor,
+        Font=Enum.Font.GothamBold, TextSize=10,
+        TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+    }, parent)
+    return New("TextLabel", {
+        Size=UDim2.new(1,-100,0,16), Position=UDim2.new(0,100,0,yPos),
+        Text=valueDefault or "...", BackgroundTransparency=1,
+        TextColor3=Color3.fromRGB(255,255,255),
+        Font=Enum.Font.Code, TextSize=10,
+        TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+    }, parent)
+end
+
+-- POSITION
 New("TextLabel", {
-    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,8,0,8),
-    Text="X:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 100, 100),
-    Font=Enum.Font.GothamBold, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+    Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,4),
+    Text="📍 POSITION", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255, 200, 100),
+    Font=Enum.Font.GothamBold, TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
 }, coordDisplay)
 
-local xValLbl = New("TextLabel", {
-    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,40,0,8),
-    Text="0.000", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 255, 255),
-    Font=Enum.Font.Code, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
-}, coordDisplay)
+local xValLbl = CreateCoordRow(coordDisplay, 20, "X:", Color3.fromRGB(255,100,100), "0.000")
+local yValLbl = CreateCoordRow(coordDisplay, 36, "Y:", Color3.fromRGB(100,255,100), "0.000")
+local zValLbl = CreateCoordRow(coordDisplay, 52, "Z:", Color3.fromRGB(100,150,255), "0.000")
 
+-- SIZE
 New("TextLabel", {
-    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,8,0,30),
-    Text="Y:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(100, 255, 100),
-    Font=Enum.Font.GothamBold, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+    Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,72),
+    Text="📦 SIZE", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255, 200, 100),
+    Font=Enum.Font.GothamBold, TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
 }, coordDisplay)
 
-local yValLbl = New("TextLabel", {
-    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,40,0,30),
-    Text="0.000", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 255, 255),
-    Font=Enum.Font.Code, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
-}, coordDisplay)
+local sizeXValLbl = CreateCoordRow(coordDisplay, 88, "Size X:", Color3.fromRGB(255,150,150), "0.000")
+local sizeYValLbl = CreateCoordRow(coordDisplay, 104, "Size Y:", Color3.fromRGB(150,255,150), "0.000")
+local sizeZValLbl = CreateCoordRow(coordDisplay, 120, "Size Z:", Color3.fromRGB(150,180,255), "0.000")
 
+-- ROTATION
 New("TextLabel", {
-    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,8,0,52),
-    Text="Z:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(100, 150, 255),
-    Font=Enum.Font.GothamBold, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+    Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,140),
+    Text="🧭 ROTATION", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255, 200, 100),
+    Font=Enum.Font.GothamBold, TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
 }, coordDisplay)
 
-local zValLbl = New("TextLabel", {
-    Size=UDim2.new(1,-16,0,20), Position=UDim2.new(0,40,0,52),
-    Text="0.000", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 255, 255),
-    Font=Enum.Font.Code, TextSize=12, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
-}, coordDisplay)
+local rotPValLbl = CreateCoordRow(coordDisplay, 156, "Pitch (X):", Color3.fromRGB(255,150,150), "0.0°")
+local rotYValLbl = CreateCoordRow(coordDisplay, 172, "Yaw (Y):", Color3.fromRGB(150,255,150), "0.0°")
+local rotRValLbl = CreateCoordRow(coordDisplay, 188, "Roll (Z):", Color3.fromRGB(150,180,255), "0.0°")
 
+-- LOOK / STATE / HP
 New("TextLabel", {
-    Size=UDim2.new(0,80,0,20), Position=UDim2.new(0,8,0,76),
-    Text="Rotation:", BackgroundTransparency=1, TextColor3=Color3.fromRGB(255, 220, 100),
-    Font=Enum.Font.GothamBold, TextSize=11, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+    Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,206),
+    Text="👁 LOOK / STATE / HP", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255, 200, 100),
+    Font=Enum.Font.GothamBold, TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
 }, coordDisplay)
 
-local rotValLbl = New("TextLabel", {
-    Size=UDim2.new(1,-100,0,20), Position=UDim2.new(0,90,0,76),
-    Text="Y: 0°  |  P: 0°  |  R: 0°", BackgroundTransparency=1, TextColor3=Color3.fromRGB(200, 200, 200),
-    Font=Enum.Font.Code, TextSize=10, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+local lookValLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,222),
+    Text="Look: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(200,220,255),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+local stateValLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,240),
+    Text="State: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(200,255,200),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+}, coordDisplay)
+
+local hpValLbl = New("TextLabel", {
+    Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,258),
+    Text="HP: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(255,200,200),
+    Font=Enum.Font.Code, TextSize=10,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
 }, coordDisplay)
 
 local placeLbl = New("TextLabel", {
-    Size=UDim2.new(1,-16,0,18), Position=UDim2.new(0,8,0,94),
-    Text="Place: ...", BackgroundTransparency=1, TextColor3=Color3.fromRGB(150, 200, 255),
-    Font=Enum.Font.GothamMedium, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
+    Size=UDim2.new(1,-16,0,14), Position=UDim2.new(0,8,0,274),
+    Text="Place: ...", BackgroundTransparency=1,
+    TextColor3=Color3.fromRGB(150, 200, 255),
+    Font=Enum.Font.GothamMedium, TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left, ZIndex=7,
 }, coordDisplay)
 
-posY = posY + 118
+posY = posY + 298
 
--- ===== FIX: LẤY TỌA ĐỘ CHÍNH XÁC THEO GAME =====
 local lastPos = Vector3.new()
+local lastSize = Vector3.new()
 local lastRot = Vector3.new()
+local lastLook = Vector3.new()
+local lastState = ""
+local lastHp = -1
 
 local coordUpdateConn = RunService.RenderStepped:Connect(function()
     local char = player.Character
     if not char then
-        xValLbl.Text = "N/A"
-        yValLbl.Text = "N/A"
-        zValLbl.Text = "N/A"
-        rotValLbl.Text = "N/A"
+        xValLbl.Text = "N/A"; yValLbl.Text = "N/A"; zValLbl.Text = "N/A"
+        sizeXValLbl.Text = "N/A"; sizeYValLbl.Text = "N/A"; sizeZValLbl.Text = "N/A"
+        rotPValLbl.Text = "N/A"; rotYValLbl.Text = "N/A"; rotRValLbl.Text = "N/A"
+        lookValLbl.Text = "Look: N/A"
+        stateValLbl.Text = "State: N/A"
+        hpValLbl.Text = "HP: N/A"
         return
     end
 
@@ -880,16 +928,17 @@ local coordUpdateConn = RunService.RenderStepped:Connect(function()
     end
 
     if not rootPart then
-        xValLbl.Text = "N/A"
-        yValLbl.Text = "N/A"
-        zValLbl.Text = "N/A"
-        rotValLbl.Text = "N/A"
+        xValLbl.Text = "N/A"; yValLbl.Text = "N/A"; zValLbl.Text = "N/A"
+        sizeXValLbl.Text = "N/A"; sizeYValLbl.Text = "N/A"; sizeZValLbl.Text = "N/A"
+        rotPValLbl.Text = "N/A"; rotYValLbl.Text = "N/A"; rotRValLbl.Text = "N/A"
         return
     end
 
     local cf = rootPart.CFrame
     local pos = cf.Position
+    local size = rootPart.Size
     local rx, ry, rz = cf:ToOrientation()
+    local look = cf.LookVector
 
     if (pos - lastPos).Magnitude > 0.001 then
         lastPos = pos
@@ -898,11 +947,42 @@ local coordUpdateConn = RunService.RenderStepped:Connect(function()
         zValLbl.Text = string.format("%.3f", pos.Z)
     end
 
+    if (size - lastSize).Magnitude > 0.001 then
+        lastSize = size
+        sizeXValLbl.Text = string.format("%.3f", size.X)
+        sizeYValLbl.Text = string.format("%.3f", size.Y)
+        sizeZValLbl.Text = string.format("%.3f", size.Z)
+    end
+
     local newRot = Vector3.new(rx, ry, rz)
     if (newRot - lastRot).Magnitude > 0.001 then
         lastRot = newRot
-        rotValLbl.Text = string.format("Y: %.1f°  |  P: %.1f°  |  R: %.1f°",
-            math.deg(ry), math.deg(rx), math.deg(rz))
+        rotPValLbl.Text = string.format("%.1f°", math.deg(rx))
+        rotYValLbl.Text = string.format("%.1f°", math.deg(ry))
+        rotRValLbl.Text = string.format("%.1f°", math.deg(rz))
+    end
+
+    if (look - lastLook).Magnitude > 0.001 then
+        lastLook = look
+        lookValLbl.Text = string.format("Look: %.3f, %.3f, %.3f", look.X, look.Y, look.Z)
+    end
+
+    if humanoid then
+        local state = humanoid:GetState()
+        local stateName = tostring(state):gsub("Enum.HumanoidStateType.", "")
+        if stateName ~= lastState then
+            lastState = stateName
+            stateValLbl.Text = "State: "..stateName
+        end
+
+        local hp = math.floor(humanoid.Health)
+        if hp ~= lastHp then
+            lastHp = hp
+            hpValLbl.Text = string.format("HP: %d / %d", hp, math.floor(humanoid.MaxHealth))
+        end
+    else
+        stateValLbl.Text = "State: No Humanoid"
+        hpValLbl.Text = "HP: N/A"
     end
 
     if placeLbl.Text == "Place: ..." then
@@ -2699,4 +2779,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v4.0: Code + Code Đã Lưu + Hỗ Trợ (Fix Tọa Độ) + AI AI + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v4.1: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+STATE+HP) + AI AI + Tạo Tính Năng — sẵn sàng!")
