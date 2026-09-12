@@ -1,9 +1,10 @@
 --[[
     🍌 Banana Cat Hub — BẢN TÍCH HỢP SCRIPT CON VÀO MENU (ĐÃ FIX)
     + TAB "HỖ TRỢ" — SCRIPT NHANH + PHÂN TÍCH TỌA ĐỘ
-    + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT (đã fix AI viết code đầy đủ)
+    + TAB "AI AI" — MINI WEB CHAT + RENDER CODE + SYSTEM PROMPT
     + FIX HTTP 404: gemini-2.5-flash
-    + FIX MAX_TOKENS: maxOutputTokens = 8192, cảnh báo khi bị cắt
+    + FIX MAX_TOKENS: maxOutputTokens = 8192
+    + FIX HTTP 429: RETRY với exponential backoff (3 lần, 2s → 4s → 8s)
     - GIỮ NGUYÊN toàn bộ tính năng gốc
 --]]
 local Players = game:GetService("Players")
@@ -1664,7 +1665,7 @@ QUY TẮC BẮT BUỘC:
 6. Nếu người dùng hỏi bằng tiếng Việt, trả lời bằng tiếng Việt.
 7. Nếu câu hỏi không liên quan lập trình, trả lời ngắn gọn, trực tiếp.]]
 
--- GỬI CÂU HỎI
+-- GỬI CÂU HỎI (có retry 429)
 local function AskGemini(question)
     local key = LoadApiKey()
     if not key or #key == 0 then
@@ -1711,72 +1712,95 @@ local function AskGemini(question)
         }
     })
 
-    local ok, result = pcall(function()
-        return HttpService:RequestAsync({
-            Url = url,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = body
-        })
-    end)
+    -- Retry cho lỗi 429 (rate limit): tối đa 3 lần, chờ 2s → 4s → 8s
+    local maxRetries = 3
+    local baseDelay = 2
 
-    if not ok then
-        return false, "❌ Lỗi kết nối: "..tostring(result)
-    end
+    for attempt = 1, maxRetries do
+        local ok, result = pcall(function()
+            return HttpService:RequestAsync({
+                Url = url,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = body
+            })
+        end)
 
-    if not result.Success then
-        local bodyPreview = ""
-        if result.Body then
-            bodyPreview = tostring(result.Body):sub(1, 500)
+        if not ok then
+            return false, "❌ Lỗi kết nối: "..tostring(result)
         end
-        return false, "❌ HTTP "..tostring(result.StatusCode)..": "..tostring(result.StatusMessage).."\n"..bodyPreview
-    end
 
-    local parseOk, data = pcall(function()
-        return HttpService:JSONDecode(result.Body)
-    end)
+        -- Thành công: parse và trả về
+        if result.Success then
+            local parseOk, data = pcall(function()
+                return HttpService:JSONDecode(result.Body)
+            end)
 
-    if not parseOk then
-        return false, "❌ Không parse được JSON trả về"
-    end
-
-    if data.error then
-        return false, "❌ API Error: "..tostring(data.error.message or "unknown")
-    end
-
-    if not (data.candidates and data.candidates[1]) then
-        return false, "❌ Không có candidates trong phản hồi"
-    end
-
-    local cand = data.candidates[1]
-    local finishReason = cand.finishReason or "STOP"
-
-    local fullText = ""
-    if cand.content and cand.content.parts then
-        for _, part in ipairs(cand.content.parts) do
-            if part.text then
-                fullText = fullText .. part.text
+            if not parseOk then
+                return false, "❌ Không parse được JSON trả về"
             end
-        end
-    end
 
-    if #fullText == 0 then
-        if finishReason == "SAFETY" then
-            return false, "⚠️ Gemini từ chối trả lời vì lý do an toàn (SAFETY). Hãy thử diễn đạt lại câu hỏi."
-        elseif finishReason == "RECITATION" then
-            return false, "⚠️ Gemini dừng vì lý do bản quyền (RECITATION)."
+            if data.error then
+                return false, "❌ API Error: "..tostring(data.error.message or "unknown")
+            end
+
+            if not (data.candidates and data.candidates[1]) then
+                return false, "❌ Không có candidates trong phản hồi"
+            end
+
+            local cand = data.candidates[1]
+            local finishReason = cand.finishReason or "STOP"
+
+            local fullText = ""
+            if cand.content and cand.content.parts then
+                for _, part in ipairs(cand.content.parts) do
+                    if part.text then
+                        fullText = fullText .. part.text
+                    end
+                end
+            end
+
+            if #fullText == 0 then
+                if finishReason == "SAFETY" then
+                    return false, "⚠️ Gemini từ chối trả lời vì lý do an toàn (SAFETY). Hãy thử diễn đạt lại câu hỏi."
+                elseif finishReason == "RECITATION" then
+                    return false, "⚠️ Gemini dừng vì lý do bản quyền (RECITATION)."
+                else
+                    return false, "❌ Không có text trong phản hồi. finishReason = "..tostring(finishReason)
+                end
+            end
+
+            if finishReason == "MAX_TOKENS" then
+                fullText = fullText .. "\n\n⚠️ [AI bị cắt do giới hạn token. Hãy gõ 'viết tiếp phần còn lại' hoặc bấm nút '▶ Viết tiếp' để lấy code tiếp.]"
+            end
+
+            return true, fullText
+        end
+
+        -- Lỗi 429: chờ rồi retry
+        if result.StatusCode == 429 then
+            if attempt < maxRetries then
+                local waitTime = baseDelay * (2 ^ (attempt - 1)) -- 2, 4, 8
+                -- Cập nhật status
+                pcall(function()
+                    statusText.Text = string.format("⏳ Bị giới hạn (429). Chờ %ds rồi thử lại (%d/%d)...", waitTime, attempt, maxRetries)
+                    statusDot.BackgroundColor3 = C.YELLOW
+                end)
+                task.wait(waitTime)
+            else
+                local bodyPreview = result.Body and tostring(result.Body):sub(1, 400) or ""
+                return false, "❌ HTTP 429 — Vượt giới hạn yêu cầu/phút của Gemini (gói miễn phí ~10-15 RPM).\n\nVui lòng chờ khoảng 1 phút rồi gửi lại.\nHoặc nâng cấp API key lên gói trả phí để tăng giới hạn.\n\n"..bodyPreview
+            end
         else
-            return false, "❌ Không có text trong phản hồi. finishReason = "..tostring(finishReason)
+            -- Các lỗi HTTP khác: trả về ngay
+            local bodyPreview = result.Body and tostring(result.Body):sub(1, 500) or ""
+            return false, "❌ HTTP "..tostring(result.StatusCode)..": "..tostring(result.StatusMessage).."\n"..bodyPreview
         end
     end
 
-    if finishReason == "MAX_TOKENS" then
-        fullText = fullText .. "\n\n⚠️ [AI bị cắt do giới hạn token. Hãy gõ 'viết tiếp phần còn lại' hoặc bấm nút '▶ Viết tiếp' để lấy code tiếp.]"
-    end
-
-    return true, fullText
+    return false, "❌ Không thể kết nối sau nhiều lần thử."
 end
 
 local isSending = false
@@ -2494,4 +2518,4 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v3.7: Code + Code Đã Lưu + Hỗ Trợ + AI AI (System Prompt, maxTokens 8192, nút Viết tiếp) + Tạo Tính Năng — sẵn sàng!")
+print("✅ Banana Cat Hub v3.8: Code + Code Đã Lưu + Hỗ Trợ + AI AI (retry 429) + Tạo Tính Năng — sẵn sàng!")
