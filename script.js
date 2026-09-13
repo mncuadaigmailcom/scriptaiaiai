@@ -1,10 +1,68 @@
 --[[
-    🍌 Banana Cat Hub v4.3 — FULL CODE
+    🍌 Banana Cat Hub v4.4f — FULL CODE
+    + SỬA "Phân Tích Vật Thể" (TRỌNG TÂM của bản này):
+        • Đổi cách chọn vật sang CHUỘT PHẢI (lệt) — chuột trái đi bắn/kéo/mở menu bình thường,
+          KHÔNG còn bị chiếm input hay tự chọn vật khi bạn bấm lộn.
+        • Trên mobile: GIỮ NGÓN 0.4s tại vị trí muốn chọn = chuột phải (chạm nhẹ đi/kéo joystick
+          bình thường không bị bắt nhờ vào độ dịch >12px).
+        • Chống hit nhầm 3 lớp:
+            1) kiểm tra cả PlayerGui LẪN CoreGui (không còn raycast xuyên nút bắn/joystick
+               -> không còn "nhấn vào nút game mà chọn vật đằng sau")
+            2) tự nhận nút (GuiButton/Active) + các element đặc (transparency <0.5)
+            3) nếu raycast trượt (bầu trời) thì GIỮ NGUYÊN kết quả cũ + highlight cũ,
+               chỉ hiện thông báo 1s rồi trả lại nhãn cũ — không còn bị mất vật đang phân tích
+               khi rê chuột lướt qua không khí.
+        • Tăng tầm raycast 5000 → 10000 studs cho game mở thế giới.
+    + v4.4e: nút 🎯 "Tâm" trên mỗi tab tính năng — bật/tắt vòng tròn niêm tâm ở GIỮA
+           MÀN HÌNH GAME (ngoài menu, ScreenGui riêng, luôn trên cùng).
+    + THÊM: code mẫu (📋 Copy Code Mẫu Cho AI) giờ có sẵn khối EXTERNAL OVERLAY hướng dẫn
+           viết ESP/crosshair/HUD nằm ngoài khung menu — gửi cho người khác/AI cũng biết
+           cách tạo vòng tròn/đường kẻ/bảng thông tin trên màn hình mà KHÔNG bị hub ép
+           vào trong ô tab (đánh dấu ScreenGui bằng BCHub_External=true).
+    + THÊM: API:ExternalGui() / API:Crosshair() cho script tính năng can thiệp bên ngoài.
+    + SỬA: _G.BananaCatHubAPI.HubGui trước đây ghi thành biến `hubGui` không tồn tại
+           -> trả về nil; nay trả đúng GUI của hub.
+    + SỬA (QUAN TRỌNG — đúng cái bạn gặp): "TẠO TÍNH NĂNG → ▶ Chạy Script" làm bạn
+           KHÔNG quay chuột / KHÔNG bắn được và làm LỖI vài nút của game. 3 nguyên nhân:
+             • TextBox của hub còn focus -> Roblox chặn input người chơi. Giờ hub tự nhả focus
+               mỗi khi chạy code / đổi tab / đóng menu.
+             • ForceStretchToParent ép Size=(1,0,1,0) lên TỪNG frame con (kể cả GUI của game)
+               -> frame trong suốt full-màn-hình nuốt click. Giờ CHỈ chỉnh root.
+             • ScanNewGuis bốc bừa ScreenGui "mới xuất hiện" (bao gồm GUI của game) rồi Destroy
+               -> mất nút game + script bị nhúng hỏng. Giờ: hook Instance.new để biết GUI nào
+               THỰC SỰ thuộc script, không quét CoreGui, không Destroy GUI gốc.
+    + THÊM: nút 🧩 "Nhúng vào Tab: BẬT/TẮT" — TẮT = hub không đụng gì tới GUI (chế độ an toàn)
+    + THÊM: ✕ trên tab tính năng giờ TRẢ GUI về nguyên trạng (Position/Size/Parent cũ), hết kiểu
+           "đóng tab là GUI của script bị hỏng luôn"
+    + THÊM: host nhúng tự co giãn theo kích thước menu bằng Scale tương đối (không còn phá layout)
+    + SỬA: "📏 Lấy Code Kích Thước" không còn quét CoreGui/PlayerGui (trước đây nó đè UI của game
+           và của script khác), không còn ghi đè code trong ô nhập; wrapper cũ đã lưu sẽ được
+           tự vô hại hoá khi nạp
+    + SỬA: "🔄 Nạp lại" không còn ghi đè file lưu (nguy cơ mất dữ liệu khi file JSON hỏng)
+           và có dựng lại danh sách Waypoint
+    ============================================================================
+    (lịch sử cũ) v4.4a:
+    + SỬA: "TẠO TÍNH NĂNG" giờ cũng ĐƯỢC LƯU XUỐNG ĐĨA — tab tính năng bạn tạo
+           thoát game vào lại VẪN CÒN, nằm đúng trong mục "Danh Sách Tab Tính Năng Đã Tạo"
+           (trước đây nó biến mất, nên phải chép sang tab Code để giữ -> lưu nhầm chỗ)
+    + ĐỔI: nút "💾 Lưu Vào DS" trong tab tính năng -> "📤 Chép sang Code" cho rõ nghĩa:
+           nó CHÉP MỘT BẢN sang tab Code Đã Lưu, không phải là cách lưu tính năng
+    + THÊM: sửa code trong tab tính năng (✏️ Áp Dụng) cũng được lưu
+    + THÊM: nhãn trạng thái ở tab Code Đã Lưu hiện thêm số tab tính năng
+    + SỬA: "Code Đã Lưu" + "Waypoint" giờ ĐƯỢC LƯU XUỐNG ĐĨA (file banana_cat_saved.json)
+           -> thoát game / vào lại / chạy lại script VẪN CÒN NGUYÊN dữ liệu
+           -> có nhãn trạng thái lưu + nút "🔄 Nạp lại" ở tab Code Đã Lưu
+           -> executor không có writefile thì tự fallback lưu trong _G (giữ được khi chạy lại script)
+    + SỬA: Chạy code xong status bị kẹt "⏳ Đang thực thi..." (race curThread/task.spawn)
+    + SỬA: Xóa 1 tab tính năng làm các tab còn lại mở SAI tab (closure giữ index cũ)
+    + SỬA: Nút "💾 Lưu" khi API key đang ẨN sẽ ghi đè key thật bằng chuỗi che -> MẤT KEY
+    + SỬA: Nút "▶ Viết tiếp" của AI vô dụng vì không gửi lịch sử hội thoại cho Gemini
+    + SỬA: Khung xem code ở tab "Code Đã Lưu" không cuộn được (CanvasSize = 0)
+    + SỬA: Click vào menu vẫn raycast ra vật thể phía sau (guard dùng nhầm PlayerGui)
     + THÊM: Highlight viền tím khi click vật thể (dùng Highlight instance)
     + THÊM: Tự động xóa highlight cũ khi click vật mới
     + THÊM: Nút bật/tắt highlight
-    + THÊM: Tab GitHub — chọn kho/nhánh/file, lưu và nhập thư viện, PAT chỉ giữ trong RAM
-    + GIỮ NGUYÊN toàn bộ tính năng cũ
+    + GIỮ NGUYÊN toàn bộ tính năng cũ (Fly/Carpet đã bị bỏ từ v4.3, không phải ở bản này)
 --]]
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -32,6 +90,14 @@ if _G.BananaCatHub_Connections then
     end
 end
 _G.BananaCatHub_Connections = {}
+
+-- Dọn crosshair/menu cũ nếu script bị chạy lại (tránh đè 2 vòng tròn / 2 menu)
+for _, parent in ipairs({targetGui, playerGui, game:GetService("CoreGui")}) do
+    pcall(function()
+        local old = parent:FindFirstChild("BananaCatHub_Crosshair")
+        if old then old:Destroy() end
+    end)
+end
 
 local function trackConn(conn)
     table.insert(_G.BananaCatHub_Connections, conn)
@@ -76,6 +142,49 @@ local function Tween(o, p, d, e)
     TweenService:Create(o, TweenInfo.new(d or 1.5, e or Enum.EasingStyle.Quad), p):Play()
 end
 
+-- ============================================================================
+-- v4.4b — SỬA LỖI "chạy tính năng xong không quay chuột / không bắn được"
+-- Nguyên nhân gốc (3 chỗ, đều được sửa ở dưới):
+--   1) TextBox của hub còn đang FOCUS. Khi có TextBox focused, PlayerModule mặc định của
+--      Roblox chặn toàn bộ input người chơi -> không đi, không quay chuột, không bắn.
+--      -> ReleaseHubFocus() được gọi trước mỗi lần chạy code / đổi tab / đóng menu.
+--   2) ForceStretchToParent ĐỆ QUY ép MỌI Frame (kể cả của game) về Size=(1,0,1,0) +
+--      Position=(0,0) -> một frame con trong suốt biến thành full-màn-hình và nuốt hết click.
+--      -> chuyển thành CHỈ xử lý root (maxDepth mặc định 0).
+--   3) ScanNewGuis "đoán bừa": hễ ScreenGui nào mới xuất hiện trong 2.4s là bốc con sang tab
+--      + Destroy ScreenGui gốc -> mất nút của game, và script được nhúng hỏng vì
+--      `gui.Enabled`/`gui:Destroy()` của nó không còn tác dụng.
+--      -> biết chính xác GUI nào là của script (hook Instance.new), không quét CoreGui,
+--         không Destroy GUI gốc, thêm nút 🧩 BẬT/TẮT nhúng và ✕ trả GUI về nguyên trạng.
+-- v4.4c — SỬA "menu tính năng không cùng kích thước menu chính"
+--   Bản 4.4b chỉ CO GUI (clamp <= 1) nên GUI hard-code nhỏ (vd 300x200) nằm lọt thỏm trong
+--   tab 620x384 thay vì llen bằng menu. Nay S.FitEmbedded đo bounding box nội dung rồi NHÂN
+--   ĐỒNG ĐỀU mọi Offset (Size/Position/UICorner/UIPadding/UIStroke/TextSize) của cả subtree
+--   lên cùng 1 hệ số s = min(khổ tab / nội dung), clamp [0.35, 3.0] -> vừa PÓNG TO được,
+--   vừa co lại được, mà tỉ lệ giữa các phần tử không đổi (không méo, không ép Size=(1,0,1,0)).
+--   Sau đó tịnh tiến khung nội dung về góc tab + canh giữa; phần thừa bị ClipsDescendants chặn.
+--   Vì s tính từ bounding box nên nội dung LUÔN nằm trong ô tab -> không thể tràn ra nuốt click
+--   của game (đúng cái lỗi của 4.4a). Mọi giá trị gốc được chụp lại (entry.snap) và trả nguyên
+--   trạng khi ✕ / 🧩 TẮT / xoá tab. Kéo corner menu hay đổi tab -> BcFit() re-fit (debounce
+--   0.05s) nên GUI của tab luôn "bằng kích thước menu chính" theo thời gian thực.
+-- v4.4d — "COPY CODE MẪU" + API kích thước cho script tính năng
+--   Người dùng cần: bấm 1 nút -> ra code -> gửi cho người khác/AI viết tiếp -> dán lại ->
+--   ▶ Chạy Script là GUI TỰ VỪA ô menu và tự theo khi kéo menu to/nhỏ.
+--   -> _G.BananaCatHubAPI (TabArea / OnResize / FeatureTabHost / FitToTab / EmbedGui) để script
+--      bên ngoài đọc được khổ menu; S.FeatureTemplate() sinh code mẫu có khối "SIZE CONTRACT"
+--      (chạy được ngay, tự canh size cả khi hub TẮT nhúng); nút 📋 trong "Tạo Tính Năng" copy
+--      clipboard + lưu vào Code Đã Lưu + chỉ điền vào ô code khi ô đang trống (không mất code).
+--   + sửa: tab "Tạo Tính Năng" có CanvasSize=0 nên mấy dòng dưới không cuộn tới được.
+-- ============================================================================
+local function ReleaseHubFocus()
+    pcall(function()
+        local tb = UserInputService:GetFocusedTextBox()
+        if tb then tb:ReleaseFocus() end
+    end)
+    -- một số executor game-input vẫn bị giữ bởi ComboBox/TextBox đã Destroy
+    pcall(function() playerGui:ReleaseFocus() end)
+end
+
 if targetGui:FindFirstChild("ExMenu") then
     targetGui.ExMenu:Destroy()
 end
@@ -115,6 +224,42 @@ local main = New("Frame", {
 Corner(main, UDim.new(0,10))
 Stroke(main, Color3.fromRGB(180,185,200), 2)
 
+-- ===== HIT-TEST KHÔNG PHỤ THUỘC VÀO PARENT CỦA GUI =====
+-- PlayerGui:GetGuiObjectsAtPosition() CHỈ quét PlayerGui. Khi hub nằm trong gethui()/CoreGui
+-- (đường mặc định của script này) thì nó trả về rỗng -> mọi guard "click trúng menu" thành code chết.
+-- Hai hàm dưới đây tự tính bằng AbsolutePosition/AbsoluteSize nên đúng với MỌI parent.
+--
+-- ĐÓNG GÓI VÀO BẢNG `Hit` (thay vì 2 biến local riêng): main chunk của script này đã dùng
+-- 189/200 biến local cấp cao nhất. Lua/Luau giới hạn 200 local mỗi function, vượt là
+-- lỗi biên dịch "too many local variables" và TOÀN BỘ script không chạy được.
+local Hit = {}
+
+function Hit.inObject(o, x, y)
+    if not o then return false end
+    local ok, res = pcall(function()
+        if not o.Visible then return false end
+        local p, s = o.AbsolutePosition, o.AbsoluteSize
+        return x >= p.X and x <= p.X + s.X and y >= p.Y and y <= p.Y + s.Y
+    end)
+    return ok and res == true
+end
+
+function Hit.onHub(x, y)
+    -- 1) thử API gốc trước (chạy đúng khi hub nằm trong PlayerGui)
+    local ok, objs = pcall(function()
+        return playerGui:GetGuiObjectsAtPosition(x, y)
+    end)
+    if ok and type(objs) == "table" then
+        for _, o in ipairs(objs) do
+            if o == gui or o:IsDescendantOf(gui) then return true end
+        end
+    end
+    -- 2) fallback: tự đo khung cửa sổ chính + nút chuối
+    if Hit.inObject(main, x, y) then return true end
+    if Hit.inObject(togBtn, x, y) then return true end
+    return false
+end
+
 local bgPattern = New("ImageLabel", {
     Name = "CheckeredBG",
     Size = UDim2.new(1, 0, 1, 0),
@@ -141,7 +286,7 @@ Corner(titleBar, UDim.new(0,10))
 New("TextLabel", {
     Size=UDim2.new(1,-90,1,0),
     Position=UDim2.new(0,12,0,0),
-    Text="🍌 Banana Cat Executor Hub v4.3",
+    Text="🍌 Banana Cat Executor Hub v4.4f",
     BackgroundTransparency=1,
     TextColor3=C.DARK,
     Font=Enum.Font.GothamBold,
@@ -175,6 +320,17 @@ local closeBtn = New("TextButton", {
 }, titleBar)
 
 local minW, minH = 440, 260
+
+-- v4.4c: "menu kéo to/nhỏ -> GUI của tab co giãn theo". Khu S.* được khai báo phía dưới nên
+-- ở đây chỉ gọi qua hook _G; BcFit() tự debounce để không chạy mỗi frame khi đang drag.
+function BcFit()
+    local fn = _G.BananaCatHub_SyncEmbeds
+    if type(fn) ~= "function" then return end
+    local ok, now = pcall(os.clock)
+    if ok and _G.BcFitLast and now - _G.BcFitLast < 0.05 then return end
+    _G.BcFitLast = ok and now or 0
+    task.defer(fn)
+end
 
 local function SetupResizeHandle(btn, cornerType)
     local resizing, sizeStart, posStart, inputStart
@@ -239,15 +395,11 @@ local function CreateHandle(icon, pos)
     return btn
 end
 
-local handleTL = CreateHandle("↖", UDim2.new(0, 2, 0, 2))
-local handleTR = CreateHandle("↗", UDim2.new(1, -22, 0, 2))
-local handleBL = CreateHandle("↙", UDim2.new(0, 2, 1, -22))
-local handleBR = CreateHandle("↘", UDim2.new(1, -22, 1, -22))
-
-SetupResizeHandle(handleTL, "TL")
-SetupResizeHandle(handleTR, "TR")
-SetupResizeHandle(handleBL, "BL")
-SetupResizeHandle(handleBR, "BR")
+-- inline: 4 bien handle chi duoc dung 1 lan -> bo bot 4 slot local (Luau gioi han 200)
+SetupResizeHandle(CreateHandle("↖", UDim2.new(0, 2, 0, 2)), "TL")
+SetupResizeHandle(CreateHandle("↗", UDim2.new(1, -22, 0, 2)), "TR")
+SetupResizeHandle(CreateHandle("↙", UDim2.new(0, 2, 1, -22)), "BL")
+SetupResizeHandle(CreateHandle("↘", UDim2.new(1, -22, 1, -22)), "BR")
 
 local tabs = {}
 local tabContent = {}
@@ -283,6 +435,7 @@ local contentArea = New("Frame", {
 local activeTab = nil
 
 local function SwitchTab(index)
+    ReleaseHubFocus()   -- v4.4b: đổi tab mà để TextBox còn focus là game chặn input (không đi/không bắn)
     for _, t in ipairs(tabContent) do t.Visible = false end
     for _, b in ipairs(tabs) do
         b.BackgroundColor3 = C.BG
@@ -294,6 +447,7 @@ local function SwitchTab(index)
         tabs[index].BackgroundTransparency = 0.2
         activeTab = tabContent[index]
     end
+    BcFit()   -- v4.4c: tab vừa hiện -> đo lại để GUI nằm vừa đúng ô của tab
 end
 
 local function AddTab(name, icon, order, customContent)
@@ -334,10 +488,12 @@ local function AddTab(name, icon, order, customContent)
         }, contentArea)
     end
 
-    local tabIdx = #tabs + 1
+    -- KHONG bat chet index: khi mot tab bi xoa, vi tri trong `tabs`/`tabContent` dich lai
+    -- va index cu se mo SAI tab (hoac khong mo gi ca -> UI trang). Tra cuu dong theo nut.
     btn.Activated:Connect(function()
-        local currentIndex = table.find(tabContent, sf)
-        if currentIndex then SwitchTab(currentIndex) end
+        for i, b in ipairs(tabs) do
+            if b == btn then SwitchTab(i); break end
+        end
     end)
 
     table.insert(tabs, btn)
@@ -351,18 +507,264 @@ local savedCodeTab = AddTab("Code Đã Lưu", "💾", 2)
 
 SwitchTab(1)
 
+-- Bang trang thai. Chua ca cac bien keo/tha menu: Luau gioi han 200 bien local moi function
+-- (loi "Out of local registers ... exceeded limit 200"), main chunk cua script nay da gan
+-- nguong do nen moi bien dem duoc deu phai nam trong bang thay vi la local rieng.
 local S = {
-    dragMenu=false,
+    dragMenu     = false,
+    dragging     = false,
+    dragStart    = nil,
+    startPos     = nil,
+    togDragging  = false,
+    togDragStart = nil,
+    togStartPos  = nil,
+    togMoved     = false,
+    -- v4.4b: trạng thái của cơ chế nhúng GUI (đặt trong bảng để KHÔNG tốn slot local —
+    -- main chunk đang ở ~184/200, thêm local tự do là lỗi biên dịch "too many local variables")
+    embedEnabled = true,     -- tab 5 có nút 🧩 để tắt hoàn toàn việc nhúng
+    embedGuessNew = false,   -- 🕵 nhận cả ScreenGui "lạ" mới xuất hiện (mạnh hơn nhưng dễ ăn GUI game)
+    embeds       = {},       -- registry: {host, gui, recs={{child,origParent,origPos,origSize}}, conns={}}
 }
 
+-- v4.4b: vô hại hoá các wrapper "AUTO-GENERATED SIZE WRAPPER" đời cũ (v4.4a) đã bị lưu lại
+-- trong file JSON. Wrapper đó gọi _ForceStretch(g) lên MỌI ScreenGui trong CoreGui+PlayerGui
+-- -> đè layout của game. Chỉ cần cắt đúng lời gọi đó là cả khối trở thành no-op hợp lệ,
+-- code còn lại của người dùng không bị đụng tới.
+S.WRAP_MARK_OLD = "-- ===== AUTO-GENERATED SIZE WRAPPER"
+S.WRAP_MARK_NEW = "-- ===== AUTO-GENERATED FIT WRAPPER"
+function S.SanitizeCode(c)
+    if type(c) ~= "string" then return c end
+    if not c:find(S.WRAP_MARK_OLD, 1, true) then return c end
+    local out = (c:gsub(
+        "pcall%s*%(%s*function%s*%(%)%s*_ForceStretch%s*%(%s*g%s*%)%s*end%s*%)",
+        ""))
+    return out
+end
+
 local scripts = {}
--- Filled by the GitHub tab; local saving works even before connecting.
-local GitHubSync = {Changed=function() end}
+local waypoints = {}          -- khai báo sớm để khối lưu trữ bên dưới dùng được
+local featureTabs = {}        -- nt: khai báo sớm để Store.serialize() và nhãn trạng thái dùng được
+local featureTabIndex = 5
 local totalRuns, cancelled = 0, false
 local curThread, curIndicator = nil, nil
+local runActive = false       -- cờ trạng thái chạy (không dựa vào curThread nữa)
+
+-- ==================== LƯU TRỮ DỮ LIỆU (SCRIPT ĐÃ LƯU + WAYPOINT) ====================
+-- v4.3 chỉ ghi API key xuống đĩa, còn scripts/waypoints chỉ nằm trong RAM -> thoát game là mất sạch.
+-- Khối này ghi toàn bộ ra 1 file JSON trong workspace của executor (sống qua cả lần rejoin
+-- và cả khi chạy lại script).
+--
+-- ĐÓNG GÓI VÀO BẢNG `Store`: main chunk đã dùng gần hết 200 slot local cho phép.
+-- Nếu khai báo ~20 biến local riêng ở cấp cao nhất, script sẽ lỗi biên dịch
+-- "too many local variables" và KHÔNG CHẠY ĐƯỢC. Dùng field của bảng thì tốn đúng 1 slot.
+local Store = {}
+
+Store.SAVE_FILE      = "banana_cat_saved.json"
+Store.SAVE_VERSION   = 2
+Store.mode           = "none"   -- "file" | "memory" | "empty" | "none"
+Store.lastError      = nil
+Store.lastSavedAt    = nil
+Store.saveCount      = 0
+Store.loadedScripts  = 0
+Store.loadedWp       = 0
+Store.loadedFeatures = {}     -- dữ liệu thô đọc từ đĩa; TAB5 sẽ dựng thành tab thật
+Store.restoreFeatures = nil   -- TAB5 gán hàm dựng lại tab tính năng vào đây
+Store.restoreWaypoints = nil  -- TAB3 gán RebuildWaypoints vào đây (TAB2 cần mà chưa tồn tại)
+Store.statusLbl      = nil      -- tab "Code Đã Lưu" gán nhãn trạng thái vào đây
+Store.reloadBtn      = nil
+Store._scheduled     = false
+Store.refreshStatus  = nil      -- tab "Code Đã Lưu" gán hàm cập nhật nhãn vào đây
+
+function Store.canWrite()
+    return type(writefile) == "function" and type(readfile) == "function"
+end
+
+function Store.isFinite(n)
+    return type(n) == "number" and n == n and n ~= math.huge and n ~= -math.huge
+end
+
+function Store.write(data)
+    local okEnc, json = pcall(function() return HttpService:JSONEncode(data) end)
+    if not okEnc then
+        Store.mode = "memory"
+        Store.lastError = "Không mã hoá được JSON: " .. tostring(json)
+        _G.BananaCatHub_SavedData = data
+        return false
+    end
+
+    if not Store.canWrite() then
+        Store.mode = "memory"
+        Store.lastError = "Executor không có writefile — chỉ giữ được trong phiên chơi này"
+        _G.BananaCatHub_SavedData = data
+        return false
+    end
+
+    local okW, errW = pcall(writefile, Store.SAVE_FILE, json)
+    if not okW then
+        Store.mode = "memory"
+        Store.lastError = "Ghi file thất bại: " .. tostring(errW)
+        _G.BananaCatHub_SavedData = data
+        return false
+    end
+
+    Store.mode = "file"
+    Store.lastError = nil
+    Store.saveCount = Store.saveCount + 1
+    pcall(function() Store.lastSavedAt = os.date("%H:%M:%S") end)
+    _G.BananaCatHub_SavedData = data
+    return true
+end
+
+function Store.read()
+    -- 1) đọc từ file trong workspace executor
+    if Store.canWrite() then
+        local hasFile = true
+        if type(isfile) == "function" then
+            local okI, r = pcall(isfile, Store.SAVE_FILE)
+            hasFile = (okI and r == true)
+        end
+        if hasFile then
+            local okR, txt = pcall(readfile, Store.SAVE_FILE)
+            if okR and type(txt) == "string" and #txt > 0 then
+                local okD, data = pcall(function() return HttpService:JSONDecode(txt) end)
+                if okD and type(data) == "table" then
+                    Store.mode = "file"
+                    Store.lastError = nil
+                    return data
+                end
+                Store.lastError = "File lưu bị hỏng (JSON không đọc được) — đã bỏ qua"
+            end
+        end
+    end
+    -- 2) fallback: dữ liệu _G của cùng phiên chơi (giữ được khi chạy lại script)
+    --    NGOẠI LỆ (v4.4b): nếu file TỒN TẠI mà giải mã lỗi thì KHÔNG fallback. Trước đây fallback
+    --    khiến Store.save() ghi dữ liệu cũ đè lên file còn có thể cứu bằng tay -> MẤT DỮ LIỆU.
+    if Store.lastError and Store.lastError:find("bị hỏng", 1, true) then
+        Store.mode = "none"
+        return nil
+    end
+    if type(_G.BananaCatHub_SavedData) == "table" then
+        Store.mode = "memory"
+        return _G.BananaCatHub_SavedData
+    end
+    Store.mode = "none"
+    return nil
+end
+
+function Store.serialize()
+    local sOut = {}
+    for _, s in ipairs(scripts) do
+        table.insert(sOut, {
+            name     = tostring(s.name or ""),
+            code     = tostring(s.code or ""),
+            expanded = (s.expanded == true),
+        })
+    end
+    local wOut = {}
+    for _, w in ipairs(waypoints) do
+        local pos = w and w.pos
+        if pos and Store.isFinite(pos.X) and Store.isFinite(pos.Y) and Store.isFinite(pos.Z) then
+            table.insert(wOut, {name = tostring(w.name or ""), x = pos.X, y = pos.Y, z = pos.Z})
+        end
+    end
+    local fOut = {}
+    for _, f in ipairs(featureTabs) do
+        table.insert(fOut, {
+            name = tostring(f.name or ""),
+            icon = tostring(f.icon or "⚙️"),
+            code = tostring(f.code or ""),
+        })
+    end
+    return {version = Store.SAVE_VERSION, scripts = sOut, waypoints = wOut, features = fOut}
+end
+
+-- Ghi ngay (đồng bộ). Trả về true/false.
+function Store.save()
+    local ok = Store.write(Store.serialize())
+    if Store.refreshStatus then pcall(Store.refreshStatus) end
+    return ok
+end
+
+-- Ghi có debounce: gộp nhiều thay đổi liên tiếp (vd bấm expand liên tục) thành 1 lần ghi.
+function Store.saveSoon()
+    if Store._scheduled then return end
+    Store._scheduled = true
+    task.delay(0.3, function()
+        Store._scheduled = false
+        Store.save()
+    end)
+end
+
+-- Nạp dữ liệu đã lưu vào `scripts` và `waypoints`.
+-- PHẢI gọi trước RebuildScripts() và RebuildWaypoints() để danh sách hiện ra ngay.
+function Store.load()
+    local data = Store.read()
+    if type(data) ~= "table" then
+        Store.mode = Store.canWrite() and "empty" or "none"
+        Store.loadedScripts, Store.loadedWp = 0, 0
+        Store.loadedFeatures = {}
+        return
+    end
+
+    -- v4.4b: file đời mới hơn script này -> cảnh báo, không im lặng nạp thiếu
+    local fileVer = tonumber(data.version) or 1
+    if fileVer > Store.SAVE_VERSION then
+        Store.lastError = string.format(
+            "File lưu là version %d, script này chỉ hiểu tới v%d — một số mục có thể không nạp",
+            fileVer, Store.SAVE_VERSION)
+    end
+
+    local sOut = {}
+    if type(data.scripts) == "table" then
+        for _, s in ipairs(data.scripts) do
+            if type(s) == "table" and type(s.code) == "string" and #s.code > 0 then
+                table.insert(sOut, {
+                    name     = (type(s.name) == "string" and #s.name > 0) and s.name or ("Script " .. (#sOut + 1)),
+                    code     = S.SanitizeCode(s.code),
+                    expanded = (s.expanded == true),
+                })
+            end
+        end
+    end
+
+    local wOut = {}
+    if type(data.waypoints) == "table" then
+        for _, w in ipairs(data.waypoints) do
+            if type(w) == "table" and Store.isFinite(w.x) and Store.isFinite(w.y) and Store.isFinite(w.z) then
+                table.insert(wOut, {
+                    name = (type(w.name) == "string" and #w.name > 0) and w.name or ("WP " .. (#wOut + 1)),
+                    pos  = Vector3.new(w.x, w.y, w.z),
+                })
+            end
+        end
+    end
+
+    -- Tab tính năng: chỉ nạp DỮ LIỆU THÔ ở đây. Không dựng tab được vì hàm
+    -- CreateFeatureTab() mãi tới TAB5 mới tồn tại -> Store.restoreFeatures() làm việc đó.
+    local fOut = {}
+    if type(data.features) == "table" then
+        for _, f in ipairs(data.features) do
+            if type(f) == "table" and type(f.code) == "string" and #f.code > 0 then
+                table.insert(fOut, {
+                    name = (type(f.name) == "string" and #f.name > 0) and f.name or ("Tính Năng " .. (#fOut + 1)),
+                    icon = (type(f.icon) == "string" and #f.icon > 0) and f.icon or "⚙️",
+                    code = S.SanitizeCode(f.code),
+                })
+            end
+        end
+    end
+
+    scripts   = sOut
+    waypoints = wOut
+    Store.loadedFeatures = fOut
+    Store.loadedScripts, Store.loadedWp = #sOut, #wOut
+end
+
+Store.load()
 
 local function ExecOnce(code, name)
     if #name>0 then print("👤 Chạy bởi:", name) end
+    code = S.SanitizeCode(code)   -- v4.4b: cắt wrapper "tự dãn kích thước" độc hại của bản cũ
     return pcall(function()
         local fn, err = loadstring(code)
         if not fn then error(err) end
@@ -372,17 +774,24 @@ end
 
 local function Cancel()
     cancelled=true
+    runActive=false
     if curThread then pcall(task.cancel, curThread); curThread=nil end
     if curIndicator then curIndicator.BackgroundColor3=C.BLUE; curIndicator=nil end
 end
 
 local function RunCode(code, name, ind, times, delay)
     Cancel()
+    ReleaseHubFocus()   -- v4.4b: nhả focus TextBox, nếu không game chặn hết input (không đi/không bắn)
     if #code==0 then return false, "⚠️ Vui lòng nhập code!" end
     cancelled=false
     if ind then curIndicator=ind; ind.BackgroundColor3=C.RED end
     local okC, failC = 0, 0
+    -- LƯU Ý: task.spawn() chạy hàm NGAY LẬP TỨC tới chỗ yield đầu tiên rồi mới return thread.
+    -- Nên KHÔNG được dùng "curThread == nil" làm dấu hiệu kết thúc: nếu code không yield thì
+    -- "curThread=nil" bên trong chạy trước, rồi phép gán bên ngoài ghi đè bằng thread đã chết
+    -- -> vòng while bên ngoài quay vô hạn. Vì vậy dùng cờ runActive riêng.
     curThread=task.spawn(function()
+        runActive=true
         for i=1,times do
             if cancelled then break end
             if i>1 and delay>0 then
@@ -398,6 +807,7 @@ local function RunCode(code, name, ind, times, delay)
         end
         totalRuns+=okC+failC
         if ind then ind.BackgroundColor3=C.GREEN; if curIndicator==ind then curIndicator=nil end end
+        runActive=false
         curThread=nil
     end)
     return true, nil
@@ -514,11 +924,9 @@ minOpt.Activated:Connect(function() unitBtn.Text="Phút ▾"; ddFrame.Visible=fa
 trackConn(UserInputService.InputBegan:Connect(function(i,gp)
     if gp then return end
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
-        local objs = playerGui:GetGuiObjectsAtPosition(i.Position.X, i.Position.Y)
-        local f=false
-        for _,o in ipairs(objs) do
-            if o==unitBtn or o:IsDescendantOf(ddFrame) then f=true; break end
-        end
+        -- không dùng GetGuiObjectsAtPosition: nó chỉ thấy PlayerGui, còn hub nằm trong gethui()/CoreGui
+        local f = Hit.inObject(unitBtn, i.Position.X, i.Position.Y)
+            or Hit.inObject(ddFrame, i.Position.X, i.Position.Y)
         if not f then ddFrame.Visible=false end
     end
 end))
@@ -552,7 +960,7 @@ runBtn.Activated:Connect(function()
     else
         statusLbl.Text="⏳ Đang thực thi..."
         task.spawn(function()
-            while curThread do
+            while runActive do
                 if cancelled then statusLbl.Text="⏹️ Đã dừng"; return end
                 task.wait(0.1)
             end
@@ -578,9 +986,9 @@ saveBtn.Activated:Connect(function()
         cnt+=1; n=bn.." ("..cnt..")"
     end
     table.insert(scripts,{name=n, code=c, expanded=false})
-    GitHubSync.Changed("scripts")
     if RebuildScripts then RebuildScripts() end
-    statusLbl.Text="✅ Đã lưu vào Tab 'Code Đã Lưu'!"
+    Store.saveSoon()
+    statusLbl.Text="✅ Đã lưu vào Tab 'Code Đã Lưu'! (đã ghi xuống đĩa)"
 end)
 
 -- ==================== TAB 2: CODE ĐÃ LƯU ====================
@@ -599,6 +1007,66 @@ Corner(searchIn, UDim.new(0,5))
 Stroke(searchIn, Color3.fromRGB(180,180,200), 1.2)
 New("UIPadding", {PaddingLeft=UDim.new(0,6)}, searchIn)
 sy = sy + 32
+
+-- ===== NHÃN TRẠNG THÁI LƯU + NÚT NẠP LẠI TỪ ĐĨA =====
+-- Gắn vào Store.statusLbl / Store.reloadBtn (field của bảng) thay vì khai báo local mới,
+-- vì main chunk đã gần cạn 200 slot local cho phép.
+Store.statusLbl = New("TextLabel", {
+    Size=UDim2.new(1,-110,0,20), Position=UDim2.new(0,8,0,sy),
+    Text="💾 ...", BackgroundTransparency=1, TextColor3=C.GRAY,
+    Font=Enum.Font.GothamMedium, TextSize=9,
+    TextXAlignment=Enum.TextXAlignment.Left, TextYAlignment=Enum.TextYAlignment.Center,
+    TextTruncate=Enum.TextTruncate.AtEnd, ZIndex=7,
+}, savedCodeTab)
+
+Store.reloadBtn = New("TextButton", {
+    Size=UDim2.new(0,94,0,20), Position=UDim2.new(1,-102,0,sy),
+    Text="🔄 Nạp lại", BackgroundColor3=C.BLUE, BackgroundTransparency=0.1,
+    TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=8,
+}, savedCodeTab)
+Corner(Store.reloadBtn, UDim.new(0,5))
+Stroke(Store.reloadBtn, Color3.fromRGB(0,90,170), 1)
+
+Store.refreshStatus = function()
+    if not Store.statusLbl or not Store.statusLbl.Parent then return end
+    local ns, nw, nf = #scripts, #waypoints, #featureTabs
+    if Store.lastError then
+        Store.statusLbl.TextColor3 = Color3.fromRGB(220,120,60)
+        Store.statusLbl.Text = string.format("⚠️ %d script · %d WP · %d tab — %s", ns, nw, nf, Store.lastError)
+    elseif Store.mode == "file" then
+        Store.statusLbl.TextColor3 = Color3.fromRGB(0,150,80)
+        Store.statusLbl.Text = string.format("💾 %d script · %d WP · %d tab · %s%s", ns, nw, nf, Store.SAVE_FILE,
+            Store.lastSavedAt and (" · lưu lúc " .. Store.lastSavedAt) or "")
+    elseif Store.mode == "memory" then
+        Store.statusLbl.TextColor3 = Color3.fromRGB(220,170,0)
+        Store.statusLbl.Text = string.format("⚠️ %d script · %d WP · %d tab — chỉ giữ trong phiên chơi này (executor thiếu writefile)", ns, nw, nf)
+    elseif Store.mode == "empty" then
+        Store.statusLbl.TextColor3 = C.GRAY
+        Store.statusLbl.Text = string.format("💾 Chưa lưu gì · sẽ ghi vào %s khi bạn bấm Lưu", Store.SAVE_FILE)
+    else
+        Store.statusLbl.TextColor3 = C.GRAY
+        Store.statusLbl.Text = "💾 Chưa lưu gì (executor thiếu writefile — chỉ giữ trong phiên chơi)"
+    end
+end
+
+Store.reloadBtn.Activated:Connect(function()
+    -- Nạp lại từ đĩa. Hữu ích khi: file bị sửa tay, executor vừa cấp quyền ghi,
+    -- hoặc bạn copy file banana_cat_saved.json từ máy/executor khác sang.
+    Store.load()
+    RebuildScripts()
+    -- v4.4b: Waypoint cũng phải dựng lại (trước đây thiếu: local RebuildWaypoints được khai
+    -- báo ở TAB3, SAU closure này, nên gọi thẳng ở đây sẽ thành global nil -> lỗi).
+    if Store.restoreWaypoints then pcall(Store.restoreWaypoints) end
+    if Store.restoreFeatures then pcall(Store.restoreFeatures) end
+    -- v4.4b: BỎ Store.save() ở đây. Nạp lại là thao tác ĐỌC; lưu ngay sau đó sẽ ghi đè
+    -- file vừa đọc (đang muốn cứu) bằng dữ liệu trong RAM -> mất dữ liệu không cứu được.
+    Store.reloadBtn.Text = "✅ Đã nạp"
+    task.delay(1.4, function()
+        if Store.reloadBtn and Store.reloadBtn.Parent then Store.reloadBtn.Text = "🔄 Nạp lại" end
+    end)
+end)
+
+sy = sy + 24
 
 local scriptList = New("Frame", {
     Size=UDim2.new(1,-16,0,0), Position=UDim2.new(0,8,0,sy),
@@ -674,12 +1142,19 @@ RebuildScripts = function()
                 BackgroundColor3=Color3.fromRGB(240,242,250), BackgroundTransparency=0,
                 BorderSizePixel=0, ZIndex=8, ScrollBarThickness=4,
                 CanvasSize=UDim2.new(0,0,0,0),
+                AutomaticCanvasSize=Enum.AutomaticSize.Y,
+                ScrollingDirection=Enum.ScrollingDirection.Y,
+                ScrollingEnabled=true,
+                VerticalScrollBarInset=Enum.ScrollBarInset.ScrollBar,
             }, row)
             Corner(codeBoxFrame, UDim.new(0,5))
             Stroke(codeBoxFrame, Color3.fromRGB(190,195,210), 1)
 
             local codeLbl = New("TextBox", {
-                Size=UDim2.new(1,-8,1,-8), Position=UDim2.new(0,4,0,4),
+                -- AutomaticSize=Y de khung cha (AutomaticCanvasSize.Y) biet chieu cao that cua code
+                -- va sinh dung thanh cuon. Ban cu dung Size=(1,-8,1,-8) => cao = 0 => khong cuon duoc.
+                Size=UDim2.new(1,-8,0,0), Position=UDim2.new(0,4,0,4),
+                AutomaticSize=Enum.AutomaticSize.Y,
                 Text=d.code, TextColor3=Color3.fromRGB(30,30,30), BackgroundTransparency=1,
                 Font=Enum.Font.Code, TextSize=10, TextXAlignment=Enum.TextXAlignment.Left,
                 TextYAlignment=Enum.TextYAlignment.Top, MultiLine=true, TextWrapped=true,
@@ -717,11 +1192,21 @@ RebuildScripts = function()
         arrowBtn.Activated:Connect(function()
             d.expanded = not d.expanded
             RebuildScripts()
+            Store.saveSoon()
         end)
 
         runScriptBtn.Activated:Connect(function()
+            local prev = runScriptBtn.Text
             RunCode(d.code, d.name, runScriptBtn, 1, 0)
-            statusLbl.Text="⏳ Đang chạy: "..d.name
+            -- v4.4b: statusLbl thuộc TAB1 nên người dùng không nhìn thấy gì ở đây;
+            -- báo ngay trên nút cho chắc.
+            runScriptBtn.Text = "⏳ ..."
+            task.delay(0.9, function()
+                if runScriptBtn and runScriptBtn.Parent then runScriptBtn.Text = "✅ xong" end
+                task.delay(0.9, function()
+                    if runScriptBtn and runScriptBtn.Parent then runScriptBtn.Text = prev end
+                end)
+            end)
         end)
 
         delScriptBtn.Activated:Connect(function()
@@ -731,8 +1216,8 @@ RebuildScripts = function()
             end
             if origIdx then
                 table.remove(scripts, origIdx)
-                GitHubSync.Changed("scripts")
                 RebuildScripts()
+                Store.saveSoon()
             end
         end)
 
@@ -742,6 +1227,7 @@ RebuildScripts = function()
     local listH = math.max(totalHeight, 40)
     scriptList.Size = UDim2.new(1,-16,0,listH)
     savedCodeTab.CanvasSize = UDim2.new(0, 0, 0, sy + listH + 30)
+    if Store.refreshStatus then Store.refreshStatus() end
 end
 
 searchIn:GetPropertyChangedSignal("Text"):Connect(RebuildScripts)
@@ -798,8 +1284,9 @@ local highlightToggleBtn = Button(supportTab, "💜 Highlight Tím: BẬT", 8, p
 local removeHighlightBtn = Button(supportTab, "❌ Xóa Highlight", 214, posY, 90, 26, C.RED)
 posY = posY + 32
 
-Label(supportTab, "💡 Bật 'Phân Tích' rồi click vào vật thể (tường, đất, part...)", posY)
-posY = posY + 16
+Label(supportTab, "💡 Bật rồi NHẤP CHUỘT PHẢI (lệt) vào vật thể để chọn (chuột trái vẫn bắn/đi bình thường)", posY)
+Label(supportTab, "    Click xuyên qua nút HUD/menu của game sẽ được tự động bỏ qua, không hit nhầm vật phía sau", posY+14)
+posY = posY + 30
 
 -- ===== PANEL HIỂN THỊ KẾT QUẢ VẬT THỂ =====
 local objResultPanel = New("Frame", {
@@ -814,7 +1301,7 @@ local objResultPanel = New("Frame", {
 Corner(objResultPanel, UDim.new(0,6))
 Stroke(objResultPanel, C.PURPLE, 1.5)
 
-local objTitleLbl = New("TextLabel", {
+New("TextLabel", {   -- (objTitleLbl: bien local khong dung -> bo de tiet kiem slot local)
     Size=UDim2.new(1,-16,0,16), Position=UDim2.new(0,8,0,4),
     Text="🎯 VẬT THỂ ĐƯỢC CHỌN", BackgroundTransparency=1,
     TextColor3=Color3.fromRGB(180, 130, 255),
@@ -1184,21 +1671,49 @@ local function GetFullPath(obj)
     return table.concat(parts, ".")
 end
 
-trackConn(UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if not analyzeObjectEnabled then return end
-    if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
-        return
+-- v4.4e: tách logic chọn vật thành hàm riêng để dùng lại cho cả chuột phải và touch-hold.
+-- 3 lớp chống nhầm:
+--   1) bỏ qua nếu click trúng BẤT KỲ GUI nào (của hub, của game trong PlayerGui, của Roblox trong CoreGui)
+--   2) tăng tầm raycast lên 10000 studs + bỏ qua character của người chơi
+--   3) không tự đổi vật khi bạn click trượt: chỉ ghi nhận KHI raycast ra kết quả hợp lệ
+local function PickObjectAt(mousePos, isRightClick)
+    local x, y = mousePos.X, mousePos.Y
+
+    -- LỚP 1: có GUI nào nằm dưới con trỏ thì KHÔNG raycast -> không hit nhầm vật phía sau nút game
+    local blocked = false
+    -- a) GUI của hub
+    if Hit.onHub(x, y) then
+        return   -- click phải trên hub thì bỏ qua tuyệt đối
     end
-
-    local objs = playerGui:GetGuiObjectsAtPosition(input.Position.X, input.Position.Y)
-    for _, o in ipairs(objs) do
-        if o:IsDescendantOf(gui) then return end
+    -- b) GUI của game trong PlayerGui (joystick, nút bắn, chat, inventory...)
+    local ok, objs = pcall(function() return playerGui:GetGuiObjectsAtPosition(x, y) end)
+    if ok and type(objs) == "table" and #objs > 0 then
+        for _, o in ipairs(objs) do
+            if o:IsA("GuiButton") or o.Active then
+                blocked = true; break
+            end
+            local bgOk, bg = pcall(function() return o.BackgroundTransparency end)
+            local t = bgOk and bg or 1
+            if (o:IsA("TextBox") or o:IsA("ImageLabel") or o:IsA("TextLabel") or o:IsA("Frame"))
+               and t < 0.5 then
+                blocked = true; break
+            end
+        end
     end
+    -- c) GUI hệ thống trong CoreGui (menu Roblox, leaderboard, esc...)
+    if not blocked then
+        local coreGui = game:GetService("CoreGui")
+        local ok2, objs2 = pcall(function() return coreGui:GetGuiObjectsAtPosition(x, y) end)
+        if ok2 and type(objs2) == "table" and #objs2 > 0 then
+            for _, o in ipairs(objs2) do
+                if o:IsA("GuiButton") or o.Active then blocked = true; break end
+            end
+        end
+    end
+    if blocked then return end
 
-    local mousePos = input.Position
-    local unitRay = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-
+    -- LỚP 2: raycast chính xác hơn
+    local unitRay = camera:ViewportPointToRay(x, y)
     local params = RaycastParams.new()
     params.FilterType = Enum.RaycastFilterType.Exclude
     local filterList = {}
@@ -1207,7 +1722,8 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
     params.FilterDescendantsInstances = filterList
     params.IgnoreWater = false
 
-    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 5000, params)
+    local result = workspace:Raycast(unitRay.Origin, unitRay.Direction * 10000, params)
+    objResultPanel.Visible = true
 
     if result and result.Instance then
         local inst = result.Instance
@@ -1215,7 +1731,6 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
         local hitNormal = result.Normal
         local hitMat = result.Material
 
-        objResultPanel.Visible = true
         objNameLbl.Text = "Name: "..inst.Name
         objClassLbl.Text = "Class: "..inst.ClassName
         objPosLbl.Text = string.format("Position: %.3f, %.3f, %.3f", hitPos.X, hitPos.Y, hitPos.Z)
@@ -1236,10 +1751,7 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
             objColorLbl.Text = string.format("Color: R=%d G=%d B=%d",
                 math.floor(color.R*255), math.floor(color.G*255), math.floor(color.B*255))
 
-            -- Tạo highlight tím nếu bật
-            if highlightEnabled then
-                CreateHighlight(inst)
-            end
+            if highlightEnabled then CreateHighlight(inst) end
         else
             objSizeLbl.Text = "Size: N/A (không phải BasePart)"
             objRotLbl.Text = "Rotation: N/A"
@@ -1250,33 +1762,68 @@ trackConn(UserInputService.InputBegan:Connect(function(input, gp)
         end
 
         objPathLbl.Text = "Path: "..GetFullPath(inst)
-
         objResultPanel:SetAttribute("LastHitPos", tostring(hitPos))
         objResultPanel:SetAttribute("LastPath", GetFullPath(inst))
         objResultPanel:SetAttribute("LastNormal", tostring(hitNormal))
         objResultPanel:SetAttribute("LastMaterial", tostring(hitMat))
     else
-        objResultPanel.Visible = true
-        objNameLbl.Text = "Name: (không hit gì)"
-        objClassLbl.Text = "Class: N/A"
-        objPosLbl.Text = "Position: N/A"
-        objSizeLbl.Text = "Size: N/A"
-        objRotLbl.Text = "Rotation: N/A"
-        objLookLbl.Text = "Look: N/A"
-        objMatLbl.Text = "Material: N/A"
-        objColorLbl.Text = "Color: N/A"
-        objPathLbl.Text = "Path: N/A"
-        RemoveCurrentHighlight()
+        -- LỚP 3: click vào khoảng không (bầu trời) -> KHÔNG thay đổi gì ngoài thông báo nhất thời,
+        -- kết quả cũ (name/path/highlight) vẫn được giữ nguyên để bạn còn copy / nhìn thấy.
+        local prevName = objNameLbl.Text
+        objNameLbl.Text = "⚠️ Không hit gì — giữ vật đang chọn"
+        task.delay(1.0, function()
+            if objNameLbl and objNameLbl.Parent and objNameLbl.Text == "⚠️ Không hit gì — giữ vật đang chọn" then
+                objNameLbl.Text = prevName
+            end
+        end)
+    end
+end
+
+trackConn(UserInputService.InputBegan:Connect(function(input, gp)
+    if gp then return end   -- Roblox đã xử lý input này (nút GUI / TextBox focus)
+    if not analyzeObjectEnabled then return end
+
+    -- v4.4e: CHỈ dùng CHUỘT PHẢI để chọn vật. Chuột trái / chạm nhẹ đi bắn bình thường.
+    -- Trên mobile không có chuột phải -> giữ ngón 0.4s (long-press) = "chuột phải"
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        PickObjectAt(input.Position, true)
+        return
+    end
+
+    if input.UserInputType == Enum.UserInputType.Touch then
+        local startTick = tick()
+        local startPos = input.Position
+        local holdConn, moveConn
+        holdConn = UserInputService.InputEnded:Connect(function(e)
+            if e == input then
+                holdConn:Disconnect()
+                if moveConn then moveConn:Disconnect() end
+                if tick() - startTick >= 0.4 then
+                    task.spawn(function() PickObjectAt(input.Position, false) end)
+                end
+            end
+        end)
+        moveConn = UserInputService.InputChanged:Connect(function(e)
+            if e == input then
+                local d = (e.Position - startPos).Magnitude
+                if d > 12 then
+                    -- ngón di chuyển quá xa -> đó là kéo joystick/chạm vuốt, không phải long-press
+                    holdConn:Disconnect()
+                    moveConn:Disconnect()
+                end
+            end
+        end)
+        return
     end
 end))
 
 objectAnalyzeBtn.Activated:Connect(function()
     analyzeObjectEnabled = not analyzeObjectEnabled
     if analyzeObjectEnabled then
-        objectAnalyzeBtn.Text = "🎯 Phân Tích Vật Thể: BẬT"
+        objectAnalyzeBtn.Text = "🎯 Phân Tích Vật: BẬT"
         objectAnalyzeBtn.BackgroundColor3 = C.GREEN
     else
-        objectAnalyzeBtn.Text = "🎯 Phân Tích Vật Thể: TẮT"
+        objectAnalyzeBtn.Text = "🎯 Phân Tích Vật: TẮT"
         objectAnalyzeBtn.BackgroundColor3 = C.GRAY
         RemoveCurrentHighlight()
     end
@@ -1438,7 +1985,8 @@ local wpListFrame = New("Frame", {
 }, supportTab)
 New("UIListLayout", {SortOrder=Enum.SortOrder.LayoutOrder, Padding=UDim.new(0,4)}, wpListFrame)
 
-local waypoints = {}
+-- (waypoints đã được khai báo ở đầu file để khối lưu trữ dùng chung — KHÔNG khai báo lại ở đây,
+--  nếu không sẽ tạo biến local mới che mất biến cũ và dữ liệu không bao giờ được ghi xuống đĩa)
 
 local RebuildWaypoints
 
@@ -1450,6 +1998,7 @@ saveWpBtn.Activated:Connect(function()
     table.insert(waypoints, {name = name, pos = rootPart.CFrame.Position})
     wpNameIn.Text = ""
     if RebuildWaypoints then RebuildWaypoints() end
+    Store.saveSoon()
 end)
 
 RebuildWaypoints = function()
@@ -1509,6 +2058,9 @@ RebuildWaypoints = function()
         delBtn.Activated:Connect(function()
             table.remove(waypoints, i)
             RebuildWaypoints()
+-- v4.4b: cho nút "🔄 Nạp lại" ở TAB2 gọi được (đóng gói qua Store vì lý do scope đã note ở đó)
+Store.restoreWaypoints = RebuildWaypoints
+            Store.saveSoon()
         end)
 
         totalH = totalH + 34
@@ -2027,9 +2579,9 @@ local function SaveApiKey(key)
 end
 
 local function LoadApiKey()
-    if _G.BananaCatHub_GeminiKey then
-        return _G.BananaCatHub_GeminiKey
-    end
+    -- v4.3 doc _G TRUOC file. Ma _G la moi truong chung voi moi script khac dang chay
+    -- (hub nay con nap Dex/Infinite Yield/SimpleSpy tu GitHub vao cung _G do) -> script khac
+    -- co the tiem key gia va chuyen huong toan bo request AI. Nay uu tien file, _G chi la fallback.
     if readfile and isfile then
         local ok, data = pcall(function()
             if isfile(apiKeyFile) then
@@ -2042,11 +2594,16 @@ local function LoadApiKey()
             return data
         end
     end
+    if _G.BananaCatHub_GeminiKey then
+        return _G.BananaCatHub_GeminiKey
+    end
     return nil
 end
 
 local function MaskKey(key)
-    if not key or #key < 8 then return key or "" end
+    if not key or #key == 0 then return "" end
+    -- Bản cũ: key ngắn hơn 8 ký tự được trả về NGUYÊN VĂN -> lộ hoàn toàn.
+    if #key <= 8 then return string.rep("•", #key) end
     return key:sub(1, 4)..string.rep("•", math.min(#key - 8, 20))..key:sub(-4)
 end
 
@@ -2058,10 +2615,23 @@ else
     keyStatus.Text = "⚠️ Chưa có key"
 end
 
+local keyVisible = true
+
 saveKeyBtn.Activated:Connect(function()
+    -- LỖI NGHIÊM TRỌNG ở v4.3: khi key đang ở chế độ "🙈 Ẩn", ô nhập chứa CHUỖI ĐÃ CHE
+    -- (vd "AIza••••••••xK9d"). Bấm "💾 Lưu" sẽ ghi chuỗi che đó đè lên key thật
+    -- ở CẢ file lẫn _G -> API key bị phá hủy vĩnh viễn.
+    if not keyVisible then
+        keyStatus.Text = "⚠️ Key đang ẨN — bấm '👁 Hiện' rồi mới bấm Lưu!"
+        return
+    end
     local k = apiKeyIn.Text
     if #k == 0 then
         keyStatus.Text = "⚠️ Nhập key trước!"
+        return
+    end
+    if k:find("•", 1, true) then
+        keyStatus.Text = "⚠️ Đây là chuỗi đã che, không phải key thật!"
         return
     end
     SaveApiKey(k)
@@ -2077,7 +2647,6 @@ clearKeyBtn.Activated:Connect(function()
     keyStatus.Text = "🗑 Đã xóa key"
 end)
 
-local keyVisible = true
 toggleKeyBtn.Activated:Connect(function()
     keyVisible = not keyVisible
     if keyVisible then
@@ -2088,6 +2657,12 @@ toggleKeyBtn.Activated:Connect(function()
         toggleKeyBtn.Text = "🙈 Ẩn"
     end
 end)
+
+-- LỊCH SỬ HỘI THOẠI: v4.3 chỉ gửi đúng 1 tin nhắn hiện tại lên Gemini, nên nút "▶ Viết tiếp"
+-- hoàn toàn vô dụng (model không biết "câu trả lời trước" là gì). Đây là mảng chứa các lượt cũ.
+local chatHistory = {}
+local HISTORY_CHAR_BUDGET = 60000   -- chặn không cho request phình quá to
+local HISTORY_MAX_TURNS   = 40      -- 40 message = 20 lượt hỏi/đáp
 
 local SYSTEM_PROMPT = [[Bạn là trợ lý lập trình chuyên nghiệp cho Roblox Lua.
 
@@ -2125,20 +2700,31 @@ local function AskGemini(question)
 
     local url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="..key
 
+    -- Dựng contents từ lịch sử cũ + câu hỏi mới (duyệt từ mới nhất ngược về, trong hạn mức ký tự)
+    local contents = {}
+    do
+        local used = 0
+        local picked = {}
+        for i = #chatHistory, 1, -1 do
+            local m = chatHistory[i]
+            local len = #(m.text or "")
+            if used + len > HISTORY_CHAR_BUDGET then break end
+            used = used + len
+            table.insert(picked, 1, {role = m.role, parts = {{text = m.text}}})
+        end
+        for _, m in ipairs(picked) do
+            table.insert(contents, m)
+        end
+    end
+    table.insert(contents, {role = "user", parts = {{text = question}}})
+
     local body = HttpService:JSONEncode({
         system_instruction = {
             parts = {
                 { text = SYSTEM_PROMPT }
             }
         },
-        contents = {
-            {
-                role = "user",
-                parts = {
-                    { text = question }
-                }
-            }
-        },
+        contents = contents,
         generationConfig = {
             temperature = 0.7,
             topP = 0.95,
@@ -2262,6 +2848,12 @@ local function SendQuestion()
         local elapsed = tick() - startTime
 
         if ok then
+            -- Ghi 2 lượt vào lịch sử để lượt sau (và nút "Viết tiếp") còn biết ngữ cảnh
+            table.insert(chatHistory, {role = "user",  text = q})
+            table.insert(chatHistory, {role = "model", text = response})
+            while #chatHistory > HISTORY_MAX_TURNS do
+                table.remove(chatHistory, 1)
+            end
             AddMessage("🤖 Gemini", response, false)
             statusText.Text = string.format("Đang hoạt động (%.1fs)", elapsed)
             statusDot.BackgroundColor3 = C.GREEN
@@ -2330,6 +2922,7 @@ clearChatBtn.Activated:Connect(function()
             child:Destroy()
         end
     end
+    chatHistory = {}   -- xóa cả ngữ cảnh gửi lên model, không chỉ xóa bong bóng trên UI
     AddMessage("🤖 Gemini", "Cuộc trò chuyện đã được xóa. Hãy đặt câu hỏi mới!", false)
     task.wait(0.1)
     chatScroll.CanvasPosition = Vector2.new(0, 0)
@@ -2345,40 +2938,77 @@ task.defer(function()
 end)
 
 -- ==================== TAB 5: TẠO TÍNH NĂNG ====================
-local featureTabs = {}
-local featureTabIndex = 5
+-- (featureTabs / featureTabIndex đã khai báo ở ĐẦU file để khối lưu trữ dùng chung.
+--  KHÔNG khai báo lại ở đây, nếu không sẽ tạo biến local mới che mất biến cũ
+--  và danh sách tab tính năng sẽ không bao giờ được ghi xuống đĩa.)
 
 local function NormalizeCode(c)
     if type(c) ~= "string" then return "" end
-    c = c:gsub("^%s+", ""):gsub("%s+$", "")
+    c = S.SanitizeCode(c)   -- v4.4b: cắt wrapper "SIZE WRAPPER" cũ (nó đè layout GUI của game)
     if c:match("^https?://") then
+        -- CHẶN: URL có " hoặc xuống dòng sẽ phá vỡ (hoặc chèn code vào) chuỗi sinh ra bên dưới
+        if c:find('[%c"\\]', 1) then
+            warn("[BananaCatHub] Link không hợp lệ (chứa ký tự xuống dòng/\") -> dùng nguyên văn")
+            return c
+        end
         return 'loadstring(game:HttpGet("'..c..'"))()'
     end
     return c
 end
 
-local function ScanNewGuis(beforeGuis)
-    local found = {}
+-- v4.4b: chỉ lấy GUI ở PlayerGui của game + container của hub (KHÔNG quét CoreGui nữa —
+-- CoreGui là nơi game và script khác đựng UI; bốc nhầm GUI của game là MẤT NÚT BẮN/MENU).
+-- GUI "lạ" còn phải qua 2 điều kiện: có ít nhất 1 GuiObject con và tên không nằm trong danh
+-- sách UI hệ thống. GUI mà hook Instance.new bắt được (mine) luôn được nhận — đó mới là của ta.
+local GAME_OWNED_GUI_NAMES = {
+    Topbar = true, TopbarContainer = true, PlayerList = true, Chat = true,
+    Backpack = true, DevConsoleUI = true, ScriptInvitationUI = true,
+    FollowPromptUI = true, TouchControlsFrame = true, Main = true, ExMenu = true,
+    Notifications = true, PauseMenu = true, InGame = true, CoreGui = true,
+}
+
+-- allowGuess=false: CHỈ nhận GUI mà hook bắt được (an toàn tuyệt đối, không bao giờ ăn GUI game)
+-- allowGuess=true : nhận thêm ScreenGui mới xuất hiện ở PlayerGui (GUI script tạo trễ),
+--                   vẫn chặn tên hệ thống + không quét CoreGui.
+local function ScanNewGuis(beforeGuis, mine, allowGuess)
+    local found, seen = {}, {}
+    local function take(g)
+        if not g or seen[g] then return end
+        seen[g] = true
+        table.insert(found, g)
+    end
+    if mine then
+        for _, g in ipairs(mine) do
+            if g:IsA("ScreenGui") or g:IsA("Folder") then take(g) end
+        end
+    end
     local function scan(container)
         if not container then return end
         for _, g in ipairs(container:GetChildren()) do
             if not beforeGuis[g] then
                 beforeGuis[g] = true
-                table.insert(found, g)
+                if allowGuess and (g:IsA("ScreenGui") or g:IsA("Folder")) and not GAME_OWNED_GUI_NAMES[g.Name] then
+                    local hasGuiChild = false
+                    for _, c in ipairs(g:GetChildren()) do
+                        if c:IsA("GuiObject") then hasGuiChild = true break end
+                    end
+                    if hasGuiChild then take(g) end
+                end
             end
         end
     end
     scan(playerGui)
-    scan(targetGui)
-    pcall(function()
-        local cg = game:GetService("CoreGui")
-        if cg and cg ~= targetGui then scan(cg) end
-    end)
+    if targetGui ~= playerGui then scan(targetGui) end
     return found
 end
 
-local function ForceStretchToParent(obj)
+-- v4.4b: MẶC ĐỊNH CHỈ chỉnh CHÍNH nó (root). Bản cũ ĐỆ QUY vào mọi con và ép từng frame về
+-- Size=(1,0,1,0)+Position=(0,0) -> sập layout lồng nhau, và tệ hơn: một Frame trong suốt bé xíu
+-- trở thành full-màn-hình, Active, NUỐT hết click của game (không quay chuột/không bắn được).
+-- Muốn phục hồi kiểu cũ thì gọi ForceStretchToParent(obj, 99) — nhưng đừng.
+local function ForceStretchToParent(obj, maxDepth)
     if not obj then return end
+    maxDepth = maxDepth or 0
     pcall(function()
         if obj:IsA("GuiObject") then
             if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
@@ -2392,9 +3022,954 @@ local function ForceStretchToParent(obj)
             end
         end
     end)
+    if maxDepth <= 0 then return end
     for _, child in ipairs(obj:GetChildren()) do
-        ForceStretchToParent(child)
+        ForceStretchToParent(child, maxDepth - 1)
     end
+end
+
+-- ==================== NHÚNG GUI: ĐĂNG KÝ / TRẠNG THÁI / HOÀN TÁC ====================
+-- Mọi thứ gắn vào bảng S (không thêm local cấp cao nhất — đã ~184/200 slot).
+--
+-- Mô hình mới: GUI của script bạn chạy VẪN NẰM Y NGUYÊN chỗ cũ (PlayerGui), hub chỉ
+-- "mượn" các frame con của nó đặt vào tab, và GHI LẠI Position/Size/Parent gốc để trả về
+-- khi bạn bấm ✕. ScreenGui gốc KHÔNG bị Destroy nên `gui.Enabled`, `gui:Destroy()`,
+-- `gui.Parent = nil`... trong script của bạn còn tác dụng (hub bắt tín hiệu phản chiếu).
+function S.RegisterEmbed(host, gui, recs)
+    local entry = {host = host, gui = gui, recs = recs or {}, conns = {}}
+    -- mỗi connection pcall RIÊNG: Folder không có property Enabled -> nếu gom chung một pcall
+    -- thì connection cuối (Destroying) bị bỏ luôn, tab sẽ không tự dọn khi script Destroy GUI.
+    pcall(function()
+        entry.conns[#entry.conns+1] = gui:GetPropertyChangedSignal("Enabled"):Connect(function()
+            pcall(function() host.Visible = gui.Enabled end)
+        end)
+    end)
+    pcall(function()
+        entry.conns[#entry.conns+1] = gui:GetPropertyChangedSignal("Parent"):Connect(function()
+            pcall(function() host.Visible = (gui.Parent ~= nil) and gui.Enabled end)
+        end)
+    end)
+    -- script tự Destroy GUI -> hub dọn host, không để lại khung rỗng
+    pcall(function()
+        entry.conns[#entry.conns+1] = gui.Destroying:Connect(function()
+            S.DropEmbed(entry, true)
+        end)
+    end)
+    S.embeds[#S.embeds+1] = entry
+    return entry
+end
+
+function S.FindEmbedByHost(host)
+    for i, e in ipairs(S.embeds) do
+        if e.host == host then return e, i end
+    end
+    return nil
+end
+
+function S.RemoveEmbedAt(i)
+    local e = S.embeds[i]
+    if not e then return end
+    for _, c in ipairs(e.conns) do pcall(function() c:Disconnect() end) end
+    table.remove(S.embeds, i)
+    return e
+end
+
+-- Xóa host nhưng KHÔNG trả GUI về (dùng khi chính GUI đã bị Destroy)
+function S.DropEmbed(entry, keepQuiet)
+    for i, e in ipairs(S.embeds) do
+        if e == entry then S.RemoveEmbedAt(i); break end
+    end
+    pcall(function() if entry.host and entry.host.Parent then entry.host:Destroy() end end)
+    if not keepQuiet then
+        print("[BananaCatHub] Đã gỡ host nhúng khỏi tab")
+    end
+end
+
+-- Trả toàn bộ frame con về ScreenGui gốc + khôi phục Position/Size -> GUI y như lúc chưa nhúng
+function S.RestoreEmbed(entry)
+    -- 1) khôi phục mọi giá trị mà hub đã scale (Position/Size/TextSize/UIPadding/...)
+    pcall(function() S.RestoreSnap(entry) end)
+    entry.snap = nil
+    -- 2) rồi mới trả Parent các frame con về ScreenGui gốc. Sau bước 1, Size/Position của chúng
+    --    đã là bản gốc do script đó dùng, nên không cần (và không nên) ghi đè thêm lần nữa.
+    for _, rec in ipairs(entry.recs or {}) do
+        pcall(function()
+            if rec.obj and rec.origParent then
+                rec.obj.Parent = rec.origParent
+            end
+        end)
+    end
+    for i, e in ipairs(S.embeds) do
+        if e == entry then S.RemoveEmbedAt(i); break end
+    end
+    pcall(function() if entry.host and entry.host.Parent then entry.host:Destroy() end end)
+end
+
+-- Dọn các entry đã chết (host/gui bị Destroy từ ngoài) — chống _G leak của bản cũ
+function S.PruneEmbeds()
+    for i = #S.embeds, 1, -1 do
+        local e = S.embeds[i]
+        local hostAlive = e.host and e.host.Parent
+        local guiAlive = e.gui and e.gui.Parent
+        if not hostAlive or not guiAlive then
+            if hostAlive then pcall(function() e.host:Destroy() end) end
+            S.RemoveEmbedAt(i)
+        end
+    end
+end
+
+-- ===== FIT: co/giãn GUI của tab cho VỪA KHÍT vùng tab =====
+-- Cách làm: nhân ĐỒNG ĐỀU mọi Offset (Size + Position + UICorner/UIPadding/UIStroke + TextSize)
+-- của cả subtree lên cùng 1 hệ số s, rồi tịnh tiến khung nội dung về góc tab (canh giữa nếu còn
+-- chỗ trống). KHÔNG có chuyện "ép Size=(1,0,1,0)" từng frame như bản 4.4a -> layout tương đối
+-- được giữ nguyên (tỉ lệ giữa các phần tử không đổi), chỉ to/nhỏ theo menu chính.
+-- Vì s được tính từ bounding box nên nội dung sau khi fit NẰM TRONG tab -> không thể tràn ra
+-- ngoài và nuốt click của game (điểm mà bản 4.4a làm ngược).
+
+-- Đo khung bao của các frame con trực tiếp của host (toạ độ tuyệt đối -> tính theo host)
+function S.MeasureHost(host)
+    local hx, hy = host.AbsolutePosition.X, host.AbsolutePosition.Y
+    local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
+    local n = 0
+    for _, ch in ipairs(host:GetChildren()) do
+        if ch:IsA("GuiObject") and ch.Visible ~= false then
+            local p, sz = ch.AbsolutePosition, ch.AbsoluteSize
+            if p and sz then
+                minX = math.min(minX, p.X); minY = math.min(minY, p.Y)
+                maxX = math.max(maxX, p.X + sz.X); maxY = math.max(maxY, p.Y + sz.Y)
+                n = n + 1
+            end
+        end
+    end
+    if n == 0 or maxX <= minX or maxY <= minY then return nil end
+    return { x = minX - hx, y = minY - hy, w = maxX - minX, h = maxY - minY }
+end
+
+-- Chụp lại mọi giá trị gốc của subtree (để trả về NGUYÊN TRẠNG khi rút khỏi tab)
+function S.SnapSubtree(list, node, isTop)
+    for _, c in ipairs(node:GetChildren()) do
+        if c:IsA("GuiObject") then
+            list[#list+1] = {
+                obj = c, top = isTop or nil,
+                Position = c.Position, Size = c.Size,
+                TextSize = ((c.TextSize and c.TextSize > 0) and not c.TextScaled) and c.TextSize or nil,
+            }
+            S.SnapSubtree(list, c, false)
+        elseif c:IsA("UICorner") then
+            list[#list+1] = { obj = c, CornerRadius = c.CornerRadius }
+        elseif c:IsA("UIPadding") then
+            list[#list+1] = { obj = c,
+                PadT = c.PaddingTop, PadB = c.PaddingBottom,
+                PadL = c.PaddingLeft, PadR = c.PaddingRight }
+        elseif c:IsA("UIStroke") then
+            list[#list+1] = { obj = c, Thick = c.Thickness }
+        end
+    end
+end
+
+function S.RestoreSnap(entry)
+    if not entry.snap then return end
+    for _, rec in ipairs(entry.snap) do
+        local o = rec.obj
+        if o and o.Parent then
+            pcall(function()
+                if rec.Position then o.Position = rec.Position end
+                if rec.Size then o.Size = rec.Size end
+                if rec.TextSize then o.TextSize = rec.TextSize end
+                if rec.CornerRadius then o.CornerRadius = rec.CornerRadius end
+                if rec.PadT then
+                    o.PaddingTop, o.PaddingBottom = rec.PadT, rec.PadB
+                    o.PaddingLeft, o.PaddingRight = rec.PadL, rec.PadR
+                end
+                if rec.Thick then o.Thickness = rec.Thick end
+            end)
+        end
+    end
+end
+
+function S.FitEmbedded(entry)
+    local host, gui = entry.host, entry.gui
+    if not host or not host.Parent then return end
+    -- 3 helper này đặt TRONG hàm để không tốn slot local của main chunk (Luau ~200 slot/chunk)
+    local function mulUDim(u, k)
+        return UDim2.new(u.X.Scale, math.floor(u.X.Offset * k + 0.5),
+                         u.Y.Scale, math.floor(u.Y.Offset * k + 0.5))
+    end
+    local function mulUDimShift(u, k, dx, dy)
+        return UDim2.new(u.X.Scale, math.floor(u.X.Offset * k + 0.5) + dx,
+                         u.Y.Scale, math.floor(u.Y.Offset * k + 0.5) + dy)
+    end
+    local function mulDim(u, k)
+        return UDim.new(u.Scale, math.floor(u.Offset * k + 0.5))
+    end
+
+    local area = host.Parent                      -- embedHost trong tab
+    local aw = area.AbsoluteSize.X - 6
+    local ah = area.AbsoluteSize.Y - 6
+    if aw < 40 or ah < 40 then return end
+
+    pcall(function()
+        host.Size = UDim2.new(1, 0, 1, 0)
+        host.Position = UDim2.new(0, 0, 0, 0)
+        host.BackgroundTransparency = 1
+        host.ClipsDescendants = true              -- phần dư (nếu có) vừa vô hình vừa không nhận click
+    end)
+
+    if not entry.snap then
+        entry.snap = {}
+        S.SnapSubtree(entry.snap, host, true)
+        if #entry.snap == 0 then return end
+    end
+
+    -- 1) đưa về mốc gốc (idempotent: gọi lại sau khi kéo to menu không cộng dồn scale)
+    S.RestoreSnap(entry)
+    local base = S.MeasureHost(host)
+    if not base then return end
+
+    -- 2) hệ số vừa khít: cho phép PHÓNG TO (GUI bé cũng llen bằng menu) lẫn co lại
+    local s = math.clamp(math.min(aw / base.w, ah / base.h), 0.35, 3.0)
+
+    local function apply(k)
+        for _, rec in ipairs(entry.snap) do
+            local o = rec.obj
+            if o and o.Parent then
+                pcall(function()
+                    if rec.Size then o.Size = mulUDim(rec.Size, k) end
+                    if rec.Position then
+                        if rec.top then
+                            o.Position = mulUDimShift(rec.Position, k, rec.dx or 0, rec.dy or 0)
+                        else
+                            o.Position = mulUDim(rec.Position, k)
+                        end
+                    end
+                    if rec.TextSize then o.TextSize = math.max(8, math.floor(rec.TextSize * k + 0.5)) end
+                    if rec.CornerRadius then
+                        o.CornerRadius = UDim.new(rec.CornerRadius.Scale,
+                            math.floor(rec.CornerRadius.Offset * k + 0.5))
+                    end
+                    if rec.PadT then
+                        o.PaddingTop    = mulDim(rec.PadT, k)
+                        o.PaddingBottom = mulDim(rec.PadB, k)
+                        o.PaddingLeft   = mulDim(rec.PadL, k)
+                        o.PaddingRight  = mulDim(rec.PadR, k)
+                    end
+                    if rec.Thick then o.Thickness = math.max(1, rec.Thick * k) end
+                end)
+            end
+        end
+    end
+
+    -- 3) canh chỉnh: kéo khung nội dung về góc tab, canh giữa nếu vẫn còn chỗ
+    --    (tries: GUI thuần Scale (1,0,1,0) sẽ không đổi gì khi thu -> phải chặn vòng lặp)
+    local hw, hh = area.AbsoluteSize.X, area.AbsoluteSize.Y
+    local function align(k, tries)
+        apply(k)
+        local m = S.MeasureHost(host)
+        if not m then return k end
+        local dx = math.floor(-m.x + math.max(0, (aw - m.w) / 2) + 0.5)
+        local dy = math.floor(-m.y + math.max(0, (ah - m.h) / 2) + 0.5)
+        if math.abs(dx) > 0.5 or math.abs(dy) > 0.5 then
+            for _, rec in ipairs(entry.snap) do
+                if rec.top then rec.dx, rec.dy = (rec.dx or 0) + dx, (rec.dy or 0) + dy end
+            end
+            apply(k)
+            m = S.MeasureHost(host) or m
+        end
+        -- 4) dây an toàn: nội dung TRÀN KHỔ HOST (không phải tràn vùng đã chừa 6px)
+        --    thì thu thêm 1 nấc; tối đa 2 lần để không bao giờ lặp vô hạn.
+        if m and tries < 2 and (m.w > hw + 1 or m.h > hh + 1) then
+            local k2 = k * math.min(hw / m.w, hh / m.h)
+            if k2 < k * 0.98 then
+                for _, rec in ipairs(entry.snap) do rec.dx, rec.dy = 0, 0 end
+                return align(math.max(k2, 0.15), tries + 1)
+            end
+        end
+        return k
+    end
+
+    s = align(s, 0)
+    entry.fitScale = s
+    return s
+end
+
+-- ===== KHU VỰC: API cho script tính năng (để GUI bên ngoài cũng tự vừa menu) =====
+-- Script được người khác/AI viết thường không biết gì về hub. Chỉ cần nó gọi
+-- _G.BananaCatHubAPI (nếu có) là tự canh size theo ô tab + tự theo khi kéo menu.
+function S.TabArea(nm)
+    local frame
+    if type(nm) == "string" and #nm > 0 then
+        for _, ft in ipairs(featureTabs) do
+            if ft.name == nm then frame = ft.frame break end
+        end
+    end
+    frame = frame or activeTab
+    if not frame then return nil end
+    local host = frame:FindFirstChild("ScriptHost")
+    local area = host or frame
+    local sz = area.AbsoluteSize
+    return Vector2.new(math.max(0, sz.X - 6), math.max(0, sz.Y - 6))
+end
+
+S.resizedCbs = {}
+function S.OnResized(fn)
+    if type(fn) ~= "function" then return nil end
+    table.insert(S.resizedCbs, fn)
+    return { Disconnect = function()
+        for i, f in ipairs(S.resizedCbs) do
+            if f == fn then table.remove(S.resizedCbs, i) break end
+        end
+    end }
+end
+function S.NotifyResize()
+    local a = S.TabArea()
+    local cbs = {}
+    for _, f in ipairs(S.resizedCbs) do cbs[#cbs+1] = f end
+    for _, f in ipairs(cbs) do pcall(f, a) end
+end
+
+-- Script có thể tự xin được nhúng vào tab của nó (thay vì chờ hub "bắt" GUI)
+function S.FeatureTabHost(nm)
+    if type(nm) == "string" and #nm > 0 then
+        for _, ft in ipairs(featureTabs) do
+            if ft.name == nm then
+                local h = ft.frame and ft.frame:FindFirstChild("ScriptHost")
+                if h then return h end
+            end
+        end
+    end
+    return activeTab and activeTab:FindFirstChild("ScriptHost")
+end
+
+-- Không cần nhúng vẫn vừa menu: chỉnh 1 frame phủ khít ô tab hiện tại
+function S.FitToTab(obj, nm)
+    if not obj then return nil end
+    local host = S.FeatureTabHost(nm)
+    if host and obj.Parent ~= host then
+        pcall(function() obj.Parent = host end)
+    end
+    pcall(function()
+        obj.Size = UDim2.new(1, 0, 1, 0)
+        obj.Position = UDim2.new(0, 0, 0, 0)
+    end)
+    return obj
+end
+
+_G.BananaCatHubAPI = {
+    Version = "4.4e",
+    HubGui = gui,     -- v4.4e: sửa lỗi cũ — biến tên là `gui`, không phải `hubGui` (trước đây là nil)
+    Main = main,
+    -- gọi bằng dấu hai chấm: API:TabArea("Tên Tab")  ->  Vector2 khổ vùng nội dung của tab
+    TabArea = function(self, nm) return S.TabArea(nm) end,
+    OnResize = function(self, fn) return S.OnResized(fn) end,      -- API:OnResize(f) -> {Disconnect=}
+    FeatureTabHost = function(self, nm) return S.FeatureTabHost(nm) end,
+    FitToTab = function(self, obj, nm) return S.FitToTab(obj, nm) end,
+    EmbedGui = function(self, guiOrFrame, nm)                        -- xin hub mượn GUI vào tab
+        local scr = guiOrFrame
+        if scr and not scr:IsA("ScreenGui") then scr = scr:FindFirstAncestorOfClass("ScreenGui") end
+        local host = S.FeatureTabHost(nm)
+        if not scr or not host then return nil end
+        return S.EmbedGui(scr, host)
+    end,
+    MakeTemplate = function(self, nm, icon) return S.FeatureTemplate(nm, icon) end,
+    ReleaseFocus = function(self) pcall(ReleaseHubFocus) end,
+    -- v4.4e: API cho external overlay / crosshair
+    ExternalGui = function(self, props)
+        -- Tạo ScreenGui nằm NGOÀI tab (không bị nhúng) dùng cho ESP/crosshair/bảng HUD.
+        -- props: {Name, DisplayOrder, IgnoreGuiInset}
+        props = props or {}
+        local g = Instance.new("ScreenGui")
+        g.Name = props.Name or ("BC_External_" .. tostring(math.random(10000, 99999)))
+        g.IgnoreGuiInset = props.IgnoreGuiInset ~= false
+        g.ResetOnSpawn = false
+        g.ZIndexBehavior = Enum.ZIndexBehavior.Global
+        g.DisplayOrder = tonumber(props.DisplayOrder) or 9000
+        g:SetAttribute("BCHub_External", true) -- báo cho hub biết đừng nhúng GUI này
+        g.Parent = (gethui and gethui()) or game:GetService("CoreGui")
+                    or (player and player:WaitForChild("PlayerGui"))
+        return g
+    end,
+    Crosshair = function(self, on)
+        -- true/false = bật/tắt; gọi không tham số = toggle; trả về trạng thái hiện tại
+        if on == nil then return S.ToggleCrosshair() end
+        S.SetCrosshair(on and true or false)
+        return S.crosshairOn
+    end,
+}
+
+-- ===== FEATURE TEMPLATE (bắt đầu) ==========================
+function S.FeatureTemplate(nm, icon, stamp)
+    if type(nm) ~= "string" or #nm == 0 then nm = "Tính Năng Mới" end
+    if type(icon) ~= "string" or #icon == 0 then icon = "⚙️" end
+    if type(stamp) ~= "string" then stamp = "" end
+    local head = [==[
+-- ===========================================================================
+--  __BC_NAME__  ·  tính năng cho Banana Cat Hub  (bản MẪU, chạy được ngay)
+--  Icon: __BC_ICON__   ·   khổ thiết kế gốc: 620 x 384 px   ·   __BC_STAMP__
+-- ---------------------------------------------------------------------------
+--  [ ĐỌC HẾT PHẦN NÀY TRƯỚC KHI SỬA — dành cho người/AI nhận code ]
+--   1) Code này CHẠY ĐƯỢC NGAY (có sẵn khung giao diện + 1 nút bật/tắt).
+--      Việc duy nhất của bạn: thay phần trong khối "FEATURE LOGIC" bằng thuật
+--      toán thật. Các phần khác giữ nguyên.
+--   2) KHÔNG đổi tên các biến: gui, root, panel, bcToggle, bcStatus, bcEnabled,
+--      bcClose, BC. Hub (và người dán) dựa vào tên đó để nhúng + hoàn tác.
+--      Muốn đóng tính năng từ code của bạn: bcClose()  (hoặc _G.BC_FEATURES[tên].Close()).
+--   3) MẶC ĐỊNH CHỈ dùng đúng 1 ScreenGui (gui) đã tạo ở đây cho phần nhúng trong
+--      tab. Widget bên trong tab phải là CON của `panel` hoặc `root`.
+--      NGOẠI LỆ (quan trọng cho tính năng can thiệp ngoài màn hình): bạn được phép
+--      tạo ScreenGui thứ hai cho EXTERNAL OVERLAY (crosshair / ESP / bảng HUD nằm
+--      trên màn hình game, NGOÀI menu). Khi tạo, PHẢI:
+--        a) đặt trong gethui()/CoreGui/PlayerGui (KHÔNG được parent vào root/panel),
+--        b) gọi extGui:SetAttribute("BCHub_External", true) để hub KHÔNG nhúng nó
+--           vào trong ô tab (không thì overlay bị kéo vào menu = hỏng).
+--        c) nếu có API hub thì dùng API:ExternalGui({...}) cho tiện.
+--      KHÔNG Destroy/ẩn GUI của game.
+--   4) CỨ viết Size/Position bằng pixel theo khổ 620x384 (offset bình thường).
+--      Banana Cat Hub TỰ động nhân đồng đều mọi offset (Size, Position,
+--      UICorner, UIPadding, UIStroke, TextSize) theo kích thước thật của ô tab,
+--      nên kéo menu to ra / thu nhỏ lại thì GUI to theo / nhỏ theo và KHÔNG méo.
+--      Vì vậy: KHÔNG tự ép UDim2.fromScale(1,1) cho widget bên trong, KHÔNG đọc
+--      AbsoluteSize của màn hình, KHÔNG đặt Position âm hay vượt 620x384.
+--   5) GIỮ NGUYÊN khối từ "SIZE CONTRACT" đến "END SIZE CONTRACT" (khối đó làm
+--      GUI vừa khít menu kể cả khi script được chạy NGOÀI hub / hub tắt nhúng).
+--   6) CẤM: while true thiếu task.wait, setclipboard, loadstring/HttpGet link lạ
+--      nếu chưa được yêu cầu, viết _G bừa (dùng biến local), gethui/getgenv để
+--      sửa GUI của game. Dùng `pcall` quanh phần logic có thể lỗi.
+--   7) Cách test: mở menu -> tab "Tạo Tính Năng" -> dán code -> bấm ▶ Chạy Script.
+--      Muốn trả GUI về nguyên trạng: bấm ✕ trên tab tính năng.
+-- ===========================================================================
+
+local BC = { Name = "__BC_NAME__", Icon = "__BC_ICON__", DesignW = 620, DesignH = 384 }
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local pg = player and player:WaitForChild("PlayerGui")
+if not pg then return end
+
+local gui = Instance.new("ScreenGui")
+gui.Name = BC.Name
+gui.ResetOnSpawn = false
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = pg
+
+local root = Instance.new("Frame")
+root.Name = "Root"
+root.Size = UDim2.new(0, BC.DesignW, 0, BC.DesignH)
+root.Position = UDim2.new(0.5, -BC.DesignW / 2, 0.5, -BC.DesignH / 2)
+root.BackgroundColor3 = Color3.fromRGB(24, 26, 38)
+root.BorderSizePixel = 0
+root.Parent = gui
+local function bcCorner(o, r)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r)
+    c.Parent = o
+    return c
+end
+bcCorner(root, 8)
+
+-- ===== SIZE CONTRACT (KHỐI NÀY KHÔNG ĐƯỢC SỬA) ============================
+-- Mục tiêu: GUI luôn BẰNG ĐÚNG ô tab của menu, và tự cập nhật khi kéo menu
+-- to/nhỏ. Chạy trong hub -> phủ khít container mà hub đã đưa cho nó.
+-- Chạy độc lập -> bám theo khổ tab của hub nếu hub đang mở, nếu không thì
+-- lấy ~55% màn hình (vẫn giữ đúng tỉ lệ 620:384).
+local API = _G.BananaCatHubAPI
+local bcConn = nil        -- connection của API:OnResize, bcClose sẽ ngắt để không leak
+local function bcHubMain()
+    local ok, m = pcall(function() return API and API.Main end)
+    if ok and m and m.AbsoluteSize then return m end
+    -- chỉ nhận đúng ScreenGui của hub (tên "ExMenu"): KHÔNG đoán bừa GUI của game
+    local hub = pg:FindFirstChild("ExMenu") or pg:FindFirstChild("BananaCatHub")
+    if hub then
+        local f = hub:FindFirstChildWhichIsA("Frame")
+        if f and f.AbsoluteSize.X > 300 then return f end
+    end
+end
+local function bcArea()
+    local ok, v = pcall(function() return API and API.TabArea and API:TabArea(BC.Name) end)
+    if ok and v and v.X and v.X > 60 then return v end
+    local m = bcHubMain()
+    if m and m.AbsoluteSize.X > 300 then
+        return Vector2.new(m.AbsoluteSize.X - 30, m.AbsoluteSize.Y - 72)
+    end
+    local vp = Vector2.new(1280, 720)
+    pcall(function() vp = workspace.CurrentCamera.ViewportSize end)
+    local w = math.max(320, math.min(vp.X * 0.55, vp.X - 60))
+    return Vector2.new(w, w * BC.DesignH / BC.DesignW)
+end
+local function bcFit()
+    pcall(function()
+        local par = root.Parent
+        if par and not par:IsA("ScreenGui") then
+            root.Size = UDim2.new(1, 0, 1, 0)
+            root.Position = UDim2.new(0, 0, 0, 0)
+            return
+        end
+        local a = bcArea()
+        root.Size = UDim2.new(0, math.floor(a.X), 0, math.floor(a.Y))
+        root.Position = UDim2.new(0.5, -math.floor(a.X / 2), 0.5, -math.floor(a.Y / 2))
+    end)
+end
+bcConn = nil
+bcFit()
+pcall(function()
+    if API and API.OnResize then bcConn = API:OnResize(bcFit) end
+end)
+local bcHubFrame = bcHubMain()
+if bcHubFrame then
+    pcall(function()
+        bcHubFrame:GetPropertyChangedSignal("AbsoluteSize"):Connect(bcFit)
+    end)
+end
+task.delay(0.25, bcFit)
+task.delay(1.2, bcFit)
+-- ===== END SIZE CONTRACT ===================================================
+
+]==]
+    local body = [==[
+-- ---------- giao diện mẫu (thêm/bớt thoải mái, miễn là CON của panel/root) ----
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -56, 0, 32)
+title.Position = UDim2.new(0, 10, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = BC.Icon .. "  " .. BC.Name
+title.Font = Enum.Font.GothamBold
+title.TextSize = 15
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Parent = root
+
+local closeBtn = Instance.new("TextButton")
+closeBtn.Name = "CloseBtn"
+closeBtn.Size = UDim2.new(0, 26, 0, 26)
+closeBtn.Position = UDim2.new(1, -34, 0, 3)
+closeBtn.BackgroundColor3 = Color3.fromRGB(210, 70, 70)
+closeBtn.Text = "X"
+closeBtn.Font = Enum.Font.GothamBold
+closeBtn.TextSize = 14
+closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+closeBtn.AutoButtonColor = true
+closeBtn.Parent = root
+bcCorner(closeBtn, 6)
+
+local panel = Instance.new("ScrollingFrame")
+panel.Name = "Panel"
+panel.Size = UDim2.new(1, -20, 1, -74)
+panel.Position = UDim2.new(0, 10, 0, 38)
+panel.BackgroundTransparency = 1
+panel.BorderSizePixel = 0
+panel.ScrollBarThickness = 5
+panel.AutomaticCanvasSize = Enum.AutomaticSize.Y
+panel.CanvasSize = UDim2.new(0, 0, 0, 0)
+panel.Parent = root
+local list = Instance.new("UIListLayout")
+list.Padding = UDim.new(0, 6)
+list.SortOrder = Enum.SortOrder.LayoutOrder
+list.Parent = panel
+local pad = Instance.new("UIPadding")
+pad.PaddingRight = UDim.new(0, 8)
+pad.Parent = panel
+
+local bcStatus = Instance.new("TextLabel")
+bcStatus.Name = "Status"
+bcStatus.Size = UDim2.new(1, -20, 0, 22)
+bcStatus.Position = UDim2.new(0, 10, 1, -30)
+bcStatus.BackgroundTransparency = 1
+bcStatus.Text = "Tắt"
+bcStatus.TextColor3 = Color3.fromRGB(255, 214, 90)
+bcStatus.Font = Enum.Font.Gotham
+bcStatus.TextSize = 12
+bcStatus.TextXAlignment = Enum.TextXAlignment.Left
+bcStatus.Parent = root
+
+local function bcButton(txt, color)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, 0, 0, 30)
+    b.BackgroundColor3 = color or Color3.fromRGB(60, 120, 220)
+    b.Text = txt
+    b.Font = Enum.Font.GothamMedium
+    b.TextSize = 13
+    b.TextColor3 = Color3.fromRGB(255, 255, 255)
+    b.AutoButtonColor = true
+    b.Parent = panel
+    bcCorner(b, 6)
+    return b
+end
+
+bcToggle = bcButton(BC.Icon .. "  Bật " .. BC.Name)
+-- VD thêm cài đặt: local speed = bcButton("Tốc độ: 1x")   -- người viết thay/sao dòng này
+
+-- ---------- EXTERNAL OVERLAY (vòng tròn niêm tâm / ESP / HUD ngoài màn hình) ------
+-- Phần này chạy TRÊN MÀN HÌNH GAME, KHÔNG bị kéo vào trong khung menu. Xóa đi nếu
+-- tính năng của bạn không cần can thiệp ngoài màn hình.
+local function bcMakeExternalGui(name, order)
+    -- Ưu tiên dùng API hub (nó đã đánh dấu sẵn BCHub_External + đúng parent an toàn),
+    -- nếu không thì tự tạo để script vẫn chạy được khi không có hub.
+    local ext
+    local ok, API = pcall(function() return _G.BananaCatHubAPI end)
+    if ok and API and API.ExternalGui then
+        ext = API:ExternalGui({Name = name, DisplayOrder = order})
+    else
+        ext = Instance.new("ScreenGui")
+        ext.Name = name
+        ext.IgnoreGuiInset = true
+        ext.ResetOnSpawn = false
+        ext.ZIndexBehavior = Enum.ZIndexBehavior.Global
+        ext.DisplayOrder = order or 9500
+        ext:SetAttribute("BCHub_External", true)
+        local pg2 = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+        local hui = (gethui and gethui()) or game:GetService("CoreGui") or pg2
+        ext.Parent = hui
+    end
+    return ext
+end
+
+local extGui = nil            -- ScreenGui overlay ngoài màn hình (được tạo khi bật tính năng)
+local extCrossOn = false
+local function bcToggleCross()
+    if not extGui then return end
+    extCrossOn = not extCrossOn
+    local ring = extGui:FindFirstChild("BC_Ring")
+    local dot  = extGui:FindFirstChild("BC_Dot")
+    if ring then ring.Visible = extCrossOn end
+    if dot  then dot.Visible  = extCrossOn end
+    -- báo cho hub biết (để các tab khác đồng bộ trạng thái nút 🎯, nếu muốn)
+    pcall(function()
+        if _G.BananaCatHubAPI and _G.BananaCatHubAPI.Crosshair then
+            -- không tự ý bật crosshair toàn cục, chỉ bật local cái của tính năng này
+        end
+    end)
+end
+
+-- Nút bật/tắt VÒNG TRÒN NIÊM TÂM ở giữa màn hình (ngay trong panel của tab)
+local bcCrossBtn = bcButton("🎯  Niêm tâm: TẮT", Color3.fromRGB(160, 60, 255))
+
+-- Khi bấm nút 🎯 của hub (crosshair toàn cục), có thể bắt tín hiệu tùy thích
+-- (vd: thêm chữ/thanh máu quanh vòng tròn). Để nguyên hoặc xóa nếu không cần.
+pcall(function()
+    if _G.BananaCatHubAPI and _G.BananaCatHubAPI.OnResize then
+        -- hook khác nếu cần
+    end
+end)
+
+]==]
+    local foot = [==[
+-- ---------- đóng / trả GUI (KHÔNG xóa khối này) ----------------------------
+local bcEnabled = false
+local bcConns = {}
+local function bcOn(inst, sig, fn)
+    table.insert(bcConns, inst[sig]:Connect(fn))
+end
+
+local function bcClose()
+    if bcConn then pcall(function() bcConn:Disconnect() end) bcConn = nil end
+    for _, c in ipairs(bcConns) do pcall(function() c:Disconnect() end) end
+    for i = #bcConns, 1, -1 do bcConns[i] = nil end
+    bcEnabled = false
+    pcall(function() gui.Enabled = false end)
+    task.delay(0.06, function() pcall(function() gui:Destroy() end) end)
+end
+bcOn(closeBtn, "MouseButton1Click", bcClose)
+
+-- Cho phép code khác (và AI) đóng/tắt tính năng mà không cần biến toàn cục trùng tên:
+_G.BC_FEATURES = _G.BC_FEATURES or {}
+_G.BC_FEATURES[BC.Name] = { name = BC.Name, Close = bcClose, Gui = gui, Root = root }
+
+-- =========================== FEATURE LOGIC ================================
+-- >>> THAY TOÀN BỘ KHỐI NÀY BẰNG THUẬT TOÁN THẬT CỦA TÍNH NĂNG <<<
+-- Quy tắc: mọi vòng lặp phải có task.wait(); mọi thao tác với nhân vật/game
+-- đặt trong pcall; tôn trọng cờ bcEnabled (bấm nút là phải dừng được ngay).
+
+bcOn(bcCrossBtn, "MouseButton1Click", function()
+    if not bcEnabled then
+        -- phải bật tính năng trước (vòng lặp phải sống mới cập nhật overlay)
+        bcToggle:Activate()
+        task.wait(0.1)
+    end
+    bcToggleCross()
+    bcCrossBtn.Text = extCrossOn and "🎯  Niêm tâm: BẬT" or "🎯  Niêm tâm: TẮT"
+end)
+
+bcOn(bcToggle, "MouseButton1Click", function()
+    bcEnabled = not bcEnabled
+    bcToggle.Text = (bcEnabled and "⏹  Tắt " or BC.Icon .. "  Bật ") .. BC.Name
+    bcStatus.Text = bcEnabled and "Đang chạy…" or "Tắt"
+    if bcEnabled then
+        -- ---- TẠO EXTERNAL OVERLAY (vòng tròn niêm tâm ở GIỮA MÀN HÌNH GAME) ----
+        if not extGui or not extGui.Parent then
+            extGui = bcMakeExternalGui(BC.Name .. "_Ext", 9500)
+
+            local ring = Instance.new("Frame")
+            ring.Name = "BC_Ring"
+            ring.Size = UDim2.new(0, 32, 0, 32)
+            ring.Position = UDim2.new(0.5, -16, 0.5, -16)
+            ring.BackgroundTransparency = 1
+            ring.BorderSizePixel = 0
+            ring.AnchorPoint = Vector2.new(0.5, 0.5)
+            ring.Visible = false
+            ring.Parent = extGui
+            local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(1, 0); rc.Parent = ring
+            local rs = Instance.new("UIStroke"); rs.Thickness = 1.5; rs.Color = Color3.fromRGB(255,255,255); rs.Parent = ring
+
+            local dot = Instance.new("Frame")
+            dot.Name = "BC_Dot"
+            dot.Size = UDim2.new(0, 3, 0, 3)
+            dot.Position = UDim2.new(0.5, -2, 0.5, -2)
+            dot.BackgroundColor3 = Color3.fromRGB(255,255,255)
+            dot.BorderSizePixel = 0
+            dot.AnchorPoint = Vector2.new(0.5, 0.5)
+            dot.Visible = false
+            dot.Parent = extGui
+            local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(1, 0); dc.Parent = dot
+
+            -- Thêm 4 nét ngắn 4 phía (xoá đi nếu chỉ muốn vòng tròn đơn thuần)
+            local gap, ll = 22, 10
+            local function ln(w, h, x, y)
+                local f = Instance.new("Frame")
+                f.Size = UDim2.new(0,w,0,h); f.Position = UDim2.new(0.5,x,0.5,y)
+                f.BackgroundColor3 = Color3.fromRGB(255,255,255); f.BorderSizePixel = 0
+                f.AnchorPoint = Vector2.new(0.5,0.5); f.BackgroundTransparency = 0.2
+                f.Name = "BC_Line"; f.Parent = extGui
+            end
+            ln(2, ll, -1, -gap - ll/2)
+            ln(2, ll, -1,  gap + ll/2)
+            ln(ll, 2, -gap - ll/2, -1)
+            ln(ll, 2,  gap + ll/2, -1)
+        end
+
+        table.insert(bcConns, task.spawn(function()
+            while bcEnabled do
+                task.wait(0.2)
+                pcall(function()
+                    -- >>> ĐẶT CODE TÍNH NĂNG Ở ĐÂY <<<
+                    -- VÍ DỤ (xóa và viết code thật ở đây):
+                    -- local char = player.Character
+                    -- local hrp = char and char:FindFirstChild("HumanoidRootPart")
+                    -- extGui.BC_Ring.Visible = extCrossOn  (điều khiển vòng tròn bằng bcCrossBtn)
+                    -- Muốn vẽ ESP/dòng kẻ: thêm Frame/Lua (Drawing) vào extGui ở đây
+                end)
+            end
+        end))
+    else
+        -- Tắt tính năng -> dọn external overlay (tránh sót vòng tròn trên màn hình)
+        extCrossOn = false
+        pcall(function() if extGui then extGui:Destroy() end end)
+        extGui = nil
+        bcCrossBtn.Text = "🎯  Niêm tâm: TẮT"
+    end
+end)
+-- ========================================================================
+
+print("✅ [" .. BC.Name .. "] đã nạp — dán vào tab \"Tạo Tính Năng\" của Banana Cat Hub rồi bấm ▶ Chạy Script")
+return BC.Name
+]==]
+    local out = head .. body .. foot
+    out = (out:gsub("__BC_NAME__", function() return nm end))
+    out = (out:gsub("__BC_ICON__", function() return icon end))
+    out = (out:gsub("__BC_STAMP__", function() return (#stamp > 0) and stamp or "sinh bởi hub" end))
+    return out
+end
+-- ===== FEATURE TEMPLATE (kết thúc) ==========================
+
+-- Nối vào hook BcFit() (khu SetupResizeHandle). Bất cứ lần nào menu đổi kích thước,
+-- mọi GUI đang nhúng đều được đo và co giãn lại cho vừa vùng tab.
+_G.BananaCatHub_SyncEmbeds = function()
+    pcall(S.SyncAllEmbeds)
+end
+pcall(function()
+    trackConn(main:GetPropertyChangedSignal("Size"):Connect(function()
+        BcFit()                 -- GUI đang nhúng trong tab -> đo & scale lại
+        pcall(S.NotifyResize)   -- script đứng ngoài (tự xin size) -> chạy lại bcFit của nó
+    end))
+end)
+
+function S.SyncAllEmbeds()
+    for _, e in ipairs(S.embeds) do
+        if e.host and e.host.Parent then
+            pcall(function() S.FitEmbedded(e) end)
+        end
+    end
+end
+
+-- Dọn mọi host đang nằm trong 1 container (khi chạy lại script của tab / đóng tab / xóa tab)
+-- và TRẢ GUI về nguyên trạng. Đây là điểm khác biệt lớn nhất với bản cũ (bản cũ Destroy luôn).
+function S.ClearEmbedsUnder(containerFrame)
+    if not containerFrame then return 0 end
+    local n = 0
+    for i = #S.embeds, 1, -1 do
+        local e = S.embeds[i]
+        if e.host and e.host.Parent == containerFrame then
+            S.RestoreEmbed(e)
+            n += 1
+        end
+    end
+    -- host "rác" do tab này tạo ra nhưng không còn trong registry (vd. leftovers của bản v4.4a)
+    for _, child in ipairs(containerFrame:GetChildren()) do
+        if child.Name:sub(1, 9) == "Embedded_" then
+            pcall(function() child:Destroy() end)
+        end
+    end
+    return n
+end
+
+-- v4.4b: nhúng 1 ScreenGui/Folder vào containerFrame của tab. KHÔNG Destroy GUI gốc,
+-- KHÔNG sửa Size/Position frame con (chỉ đổi Parent) -> layout của script giữ nguyên 100%.
+-- Trả về host Frame để tab tự co giãn theo kích thước menu (xem S.FitEmbedded).
+function S.EmbedGui(scr, containerFrame)
+    if not S.embedEnabled then return nil end
+    if not scr or not scr.Parent then return nil end
+    if not containerFrame or not containerFrame.Parent then return nil end
+    -- không bao giờ nhúng chính GUI của hub (tự nuốt menu của mình = treo UI)
+    if scr == gui or scr:IsDescendantOf(gui) then return nil end
+    -- v4.4e: GUI có attribute BCHub_External=true là overlay (crosshair/ESP/bảng thống kê
+    -- ngoài màn hình) — KHÔNG được mượn vào tab, phải để nguyên ở PlayerGui/targetGui.
+    local isExt = false
+    pcall(function() isExt = (scr:GetAttribute("BCHub_External") == true) end)
+    if isExt then return nil end
+
+    local hostName = "Embedded_"..scr.Name
+    for _, ex in ipairs(containerFrame:GetChildren()) do
+        if ex.Name == hostName then
+            local e = S.FindEmbedByHost(ex)
+            if e then
+                S.RestoreEmbed(e)
+            else
+                pcall(function() ex:Destroy() end)
+            end
+        end
+    end
+
+    local host = New("Frame", {
+        Size = UDim2.new(1,0,1,0),
+        Position = UDim2.new(0,0,0,0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        ZIndex = 5,
+        Name = hostName,
+        ClipsDescendants = true,
+    }, containerFrame)
+
+    local recs = {}
+    for _, ch in ipairs(scr:GetChildren()) do
+        if ch:IsA("GuiObject") then
+            recs[#recs+1] = {obj = ch, origParent = scr, origPos = ch.Position, origSize = ch.Size}
+        end
+    end
+    if #recs == 0 then
+        pcall(function() host:Destroy() end)
+        return nil
+    end
+    for _, rec in ipairs(recs) do
+        pcall(function() rec.obj.Parent = host end)
+    end
+
+    ForceStretchToParent(host)          -- root only (an toàn cho mấy frame con)
+    local entry = S.RegisterEmbed(host, scr, recs)
+    pcall(function() S.FitEmbedded(entry) end)
+    -- AbsolutePosition/Size của frame vừa đổi cha chỉ đúng sau 1 render step => đo lại 2 lần
+    task.delay(0.08, function() pcall(function() S.FitEmbedded(entry) end) end)
+    task.delay(0.4,  function() pcall(function() S.FitEmbedded(entry) end) end)
+    return host
+end
+
+-- ==================== CROSSHAIR / NIÊM TÂM TOÀN CỤC ====================
+-- Vòng tròn ở giữa màn hình (ngoài menu), dùng cho mọi tab tính năng. Script tính năng cũng
+-- có thể tạo external GUI riêng (xem template) nhưng crosshair mặc định này dùng chung để
+-- bật/tắt nhanh bằng nút 🎯 trên toolbar của từng tab.
+S.crosshairGui   = nil
+S.crosshairBtns  = {}    -- danh sách nút 🎯 trên các tab để cập nhật text đồng loạt
+S.crosshairOn    = false
+S.crosshairColor = Color3.fromRGB(255, 255, 255)
+S.crosshairSize  = 32
+
+function S._buildCrosshair()
+    if S.crosshairGui and S.crosshairGui.Parent then return S.crosshairGui end
+    local g = New("ScreenGui", {
+        Name = "BananaCatHub_Crosshair",
+        IgnoreGuiInset = true,
+        ResetOnSpawn = false,
+        ZIndexBehavior = Enum.ZIndexBehavior.Global,
+        DisplayOrder = 9999,
+    }, targetGui)
+    g:SetAttribute("BCHub_External", true)
+
+    -- Vòng tròn ngoài
+    local ring = New("Frame", {
+        Name = "Ring",
+        Size = UDim2.new(0, S.crosshairSize, 0, S.crosshairSize),
+        Position = UDim2.new(0.5, -S.crosshairSize/2, 0.5, -S.crosshairSize/2),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+    }, g)
+    New("UICorner", {CornerRadius = UDim.new(1, 0)}, ring)
+    New("UIStroke", {Thickness = 1.5, Color = S.crosshairColor, Transparency = 0.1}, ring)
+
+    -- Chấm ở tâm
+    local dot = New("Frame", {
+        Name = "Dot",
+        Size = UDim2.new(0, 3, 0, 3),
+        Position = UDim2.new(0.5, -2, 0.5, -2),
+        BackgroundColor3 = S.crosshairColor,
+        BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(0.5, 0.5),
+    }, g)
+    New("UICorner", {CornerRadius = UDim.new(1, 0)}, dot)
+
+    -- 4 nét ngắn 4 phía (cách vòng tròn 6px, dài 10px)
+    local gap = S.crosshairSize/2 + 6
+    local lineLen = 10
+    local function line(name, w, h, x, y)
+        local ln = New("Frame", {
+            Name = name, Size = UDim2.new(0, w, 0, h),
+            Position = UDim2.new(0.5, x, 0.5, y),
+            BackgroundColor3 = S.crosshairColor, BorderSizePixel = 0,
+            AnchorPoint = Vector2.new(0.5, 0.5), BackgroundTransparency = 0.15,
+        }, g)
+        return ln
+    end
+    line("Top",    2, lineLen, -1, -gap - lineLen/2)
+    line("Bottom", 2, lineLen, -1,  gap + lineLen/2)
+    line("Left",   lineLen, 2, -gap - lineLen/2, -1)
+    line("Right",  lineLen, 2,  gap + lineLen/2, -1)
+
+    S.crosshairGui = g
+    return g
+end
+
+function S.SetCrosshair(on)
+    S.crosshairOn = (on == true)
+    if S.crosshairOn then
+        S._buildCrosshair()
+        if S.crosshairGui then S.crosshairGui.Enabled = true end
+    else
+        if S.crosshairGui then S.crosshairGui.Enabled = false end
+    end
+    for _, b in ipairs(S.crosshairBtns) do
+        pcall(function()
+            if b and b.Parent then
+                b.Text = S.crosshairOn and "🎯 Tâm: BẬT" or "🎯 Tâm"
+                b.BackgroundColor3 = S.crosshairOn and Color3.fromRGB(180, 80, 220) or C.PURPLE
+            end
+        end)
+    end
+end
+
+function S.ToggleCrosshair()
+    S.SetCrosshair(not S.crosshairOn)
+    return S.crosshairOn
+end
+
+-- Đăng ký nút 🎯 trên 1 tab tính năng để hub tự cập nhật text khi crosshair đổi trạng thái
+function S.RegisterCrosshairBtn(btn)
+    if not btn then return end
+    table.insert(S.crosshairBtns, btn)
+    -- đồng bộ text ban đầu
+    pcall(function()
+        btn.Text = S.crosshairOn and "🎯 Tâm: BẬT" or "🎯 Tâm"
+        btn.BackgroundColor3 = S.crosshairOn and Color3.fromRGB(180, 80, 220) or C.PURPLE
+    end)
+    btn.Activated:Connect(function()
+        S.ToggleCrosshair()
+    end)
 end
 
 local function RunFeatureScript(code, name, containerFrame, indicator, statusLabel)
@@ -2407,7 +3982,10 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
 
     if indicator then indicator.BackgroundColor3 = C.RED end
     if statusLabel then statusLabel.Text = "⏳ Đang thực thi..." end
+    ReleaseHubFocus()   -- v4.4b: đang dán code trong TextBox mà chạy luôn thì game vẫn "khóa" input
 
+    local embedCount, lateCandidate = 0, 0
+    local featureUnhook = nil
     local ok, err = pcall(function()
         local fn, lerr = loadstring(code)
         if not fn then error("loadstring thất bại: "..tostring(lerr)) end
@@ -2415,65 +3993,86 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
         local beforeGuis = {}
         for _, g in ipairs(playerGui:GetChildren()) do beforeGuis[g] = true end
         for _, g in ipairs(targetGui:GetChildren()) do beforeGuis[g] = true end
+        -- CoreGui KHÔNG bị đụng tới nữa (trước đây vừa snapshot vừa scan -> dễ bốc UI của game)
+
+        -- Hook Instance.new để biết CHÍNH XÁC ScreenGui nào do script của tab này tạo.
+        -- Gỡ hook ở mọi nhánh (kể cả khi code lỗi) — xem featureUnhook bên dưới.
+        local mine = {}
+        local realNew = Instance.new
+        local hooked = false
+        local myCo = coroutine.running()
         pcall(function()
-            local cg = game:GetService("CoreGui")
-            if cg and cg ~= targetGui then
-                for _, g in ipairs(cg:GetChildren()) do beforeGuis[g] = true end
+            Instance.new = function(cls, ...)
+                local inst = realNew(cls, ...)
+                -- chỉ nhận GUI được tạo BỞI ĐÚNG thread của tab này: script khác (hoặc GUI của
+                -- game) tạo ScreenGui trong lúc hub đang chờ cũng KHÔNG bị gán nhầm cho ta.
+                if hooked and cls == "ScreenGui" and coroutine.running() == myCo then
+                    mine[#mine+1] = inst
+                end
+                return inst
             end
+            hooked = true
         end)
+        featureUnhook = function()
+            if hooked then
+                hooked = false
+                pcall(function() Instance.new = realNew end)
+            end
+        end
 
-        fn()
+        local fnOk, fnErr = pcall(fn)
 
+        -- Script tạo GUI trễ (sau task.wait / HttpGet) vẫn được chờ, nhưng:
+        --   * GUI mà hook bắt được (chắc chắn của ta): chờ tối đa 2.4s
+        --   * GUI "đoán" từ diff (rủi ro ăn nhầm UI của game): CHỈ trong 0.6s đầu && khi
+        --     người dùng bật 🕵. Đây là chỗ bản 4.4a làm ẩu (đoán suốt 2.4s) -> mất nút game.
         local newGuis = {}
         for i = 1, 12 do
-            task.wait(0.2)
-            local found = ScanNewGuis(beforeGuis)
-            for _, g in ipairs(found) do table.insert(newGuis, g) end
+            local guessOK = (S.embedGuessNew == true) and (i <= 3)
+            local found = ScanNewGuis(beforeGuis, mine, guessOK)
+            for _, g in ipairs(found) do newGuis[#newGuis+1] = g end
             if #newGuis > 0 then break end
+            task.wait(0.2)
         end
+        featureUnhook()
+        if not fnOk then error(fnErr) end
 
         for _, g in ipairs(newGuis) do
             if g:IsA("ScreenGui") or g:IsA("Folder") then
-                for _, existing in ipairs(containerFrame:GetChildren()) do
-                    if existing.Name == "Embedded_"..g.Name then
-                        existing:Destroy()
-                    end
-                end
-
-                local host = New("Frame", {
-                    Size = UDim2.new(1,0,1,0),
-                    Position = UDim2.new(0,0,0,0),
-                    BackgroundTransparency = 1,
-                    BorderSizePixel = 0,
-                    ZIndex = 5,
-                    Name = "Embedded_"..g.Name,
-                    ClipsDescendants = false,
-                }, containerFrame)
-
-                for _, child in ipairs(g:GetChildren()) do
-                    pcall(function() child.Parent = host end)
-                end
-                pcall(function() g:Destroy() end)
-
-                ForceStretchToParent(host)
-
-                if not _G.BananaCatHub_EmbedHosts then
-                    _G.BananaCatHub_EmbedHosts = {}
-                end
-                table.insert(_G.BananaCatHub_EmbedHosts, host)
-            elseif g:IsA("GuiObject") then
-                pcall(function()
-                    g.Parent = containerFrame
-                    g.ZIndex = 5
-                    ForceStretchToParent(g)
-                end)
+                if S.EmbedGui(g, containerFrame) then embedCount += 1 end
             end
+        end
+        -- GuiObject "rời" không còn bị bốc sang tab: đó thường là UI của game, động vào là lỗi nút.
+
+        -- Gợi ý đúng lúc: script CÓ tạo GUI nhưng GUI đó sinh quá trễ nên hub không chắc là
+        -- của nó -> nói người dùng bật 🕵 thay vì âm thầm bỏ qua (hoặc đoán ẩu như 4.4a).
+        if embedCount == 0 and not (S.embedGuessNew == true) and #mine == 0 then
+            local late = ScanNewGuis(beforeGuis, nil, true)
+            local real = 0
+            for _, g in ipairs(late) do
+                if g.Parent and not g:IsDescendantOf(containerFrame) then real += 1 end
+            end
+            if real > 0 then lateCandidate = real end
         end
     end)
 
+    if featureUnhook then pcall(featureUnhook) end
+
     if ok then
         if indicator then indicator.BackgroundColor3 = C.GREEN end
-        if statusLabel then statusLabel.Text = "✅ Hoàn thành!" end
+        if statusLabel then
+            if embedCount > 0 then
+                statusLabel.Text = string.format(
+                    "✅ xong · %d GUI đã nhúng vào tab (bấm ✕ để trả về màn hình game)", embedCount)
+            elseif lateCandidate > 0 and not (S.embedGuessNew == true) then
+                statusLabel.Text = string.format(
+                    "✅ xong · GUI sinh trễ (%d) — bật 🕵 'Đoán GUI trễ' nếu muốn nhúng vào tab", lateCandidate)
+            elseif S.embedEnabled then
+                statusLabel.Text = "✅ xong · script không tạo GUI nào để nhúng (bình thường)"
+            else
+                statusLabel.Text = "✅ xong · nhúng đang TẮT, GUI nằm ngoài màn hình"
+            end
+        end
         return true
     else
         if indicator then indicator.BackgroundColor3 = C.RED end
@@ -2483,11 +4082,11 @@ local function RunFeatureScript(code, name, containerFrame, indicator, statusLab
     end
 end
 
-local function CreateFeatureTab(name, icon, codeContent, preserveSource)
+local function CreateFeatureTab(name, icon, codeContent)
     if not name or #name == 0 then name = "Tính Năng " .. (#featureTabs + 1) end
     if not icon or #icon == 0 then icon = "⚙️" end
 
-    if not preserveSource then codeContent = NormalizeCode(codeContent) end
+    codeContent = NormalizeCode(codeContent)
 
     local sf = New("ScrollingFrame", {
         Size=UDim2.new(1,0,1,0),
@@ -2513,21 +4112,24 @@ local function CreateFeatureTab(name, icon, codeContent, preserveSource)
         Font=Enum.Font.GothamBold,
         TextSize=9,
         BorderSizePixel=0,
-        LayoutOrder=#tabs + 1,
+        LayoutOrder=featureTabIndex + #featureTabs,
         TextXAlignment=Enum.TextXAlignment.Left,
         ZIndex=4,
     }, tabBar)
     Corner(btn, UDim.new(0,6))
 
-    local tabIdx = #tabs + 1
+    -- tra cuu index dong (xem giai thich o AddTab)
     btn.Activated:Connect(function()
-        local currentIndex = table.find(tabContent, sf)
-        if currentIndex then SwitchTab(currentIndex) end
+        for i, b in ipairs(tabs) do
+            if b == btn then SwitchTab(i); break end
+        end
     end)
 
     table.insert(tabs, btn)
     table.insert(tabContent, sf)
     tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 34 + 10)
+
+    local tabIdx = #tabs
 
     local featureData = {
         name = name,
@@ -2560,26 +4162,38 @@ local function CreateFeatureTab(name, icon, codeContent, preserveSource)
     Corner(toolbar, UDim.new(0,6))
     Stroke(toolbar, Color3.fromRGB(180,185,200), 1)
 
+    -- Bố cục toolbar (tổng nội dung ~429px cho khung 435px):
+    --   Chạy Script (90px @6) | Chép Code (84px @100) | Sửa (52px @188)
+    --   | 🎯 Tâm (68px @244) | [trạng thái co giãn] (Scale fill từ 316 → -56) | ✕ (40px @-46)
     local runFeatureBtn = New("TextButton", {
-        Size=UDim2.new(0,110,0,26), Position=UDim2.new(0,6,0,5),
+        Size=UDim2.new(0,90,0,26), Position=UDim2.new(0,6,0,5),
         Text="▶ Chạy Script", BackgroundColor3=C.GREEN, BackgroundTransparency=0.1,
-        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=21,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=21,
     }, toolbar)
     Corner(runFeatureBtn, UDim.new(0,5))
 
     local saveFeatureBtn = New("TextButton", {
-        Size=UDim2.new(0,110,0,26), Position=UDim2.new(0,122,0,5),
-        Text="💾 Lưu Vào DS", BackgroundColor3=C.BLUE, BackgroundTransparency=0.1,
-        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=21,
+        Size=UDim2.new(0,84,0,26), Position=UDim2.new(0,100,0,5),
+        Text="📤 Chép Code", BackgroundColor3=C.BLUE, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=21,
     }, toolbar)
     Corner(saveFeatureBtn, UDim.new(0,5))
 
     local editFeatureBtn = New("TextButton", {
-        Size=UDim2.new(0,80,0,26), Position=UDim2.new(0,238,0,5),
+        Size=UDim2.new(0,52,0,26), Position=UDim2.new(0,188,0,5),
         Text="✏️ Sửa", BackgroundColor3=C.ORANGE, BackgroundTransparency=0.1,
         TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=21,
     }, toolbar)
     Corner(editFeatureBtn, UDim.new(0,5))
+
+    -- v4.4e: nút 🎯 bật/tắt vòng tròn niêm tâm ở GIỮA MÀN HÌNH GAME (ngoài menu)
+    local crosshairBtn = New("TextButton", {
+        Size=UDim2.new(0,68,0,26), Position=UDim2.new(0,244,0,5),
+        Text="🎯 Tâm", BackgroundColor3=C.PURPLE, BackgroundTransparency=0.1,
+        TextColor3=C.WHITE, Font=Enum.Font.GothamBold, TextSize=9, BorderSizePixel=0, ZIndex=21,
+    }, toolbar)
+    Corner(crosshairBtn, UDim.new(0,5))
+    S.RegisterCrosshairBtn(crosshairBtn)
 
     local closeFeatureBtn = New("TextButton", {
         Size=UDim2.new(0,40,0,26), Position=UDim2.new(1,-46,0,5),
@@ -2589,9 +4203,11 @@ local function CreateFeatureTab(name, icon, codeContent, preserveSource)
     Corner(closeFeatureBtn, UDim.new(0,5))
 
     local fStatus = New("TextLabel", {
-        Size=UDim2.new(0,180,0,26), Position=UDim2.new(0,324,0,5),
+        -- co giãn theo khung: từ 316px đến nút ✕ (trừ 46+6=52px từ phải)
+        Size=UDim2.new(1,-52-316,0,26), Position=UDim2.new(0,316,0,5),
         Text="", BackgroundTransparency=1, TextColor3=Color3.fromRGB(220,170,0),
-        Font=Enum.Font.GothamMedium, TextSize=9, TextXAlignment=Enum.TextXAlignment.Left, ZIndex=21,
+        Font=Enum.Font.GothamMedium, TextSize=8, TextXAlignment=Enum.TextXAlignment.Left,
+        TextTruncate=Enum.TextTruncate.AtEnd, ZIndex=21,
     }, toolbar)
 
     local editorFrame = New("Frame", {
@@ -2633,10 +4249,11 @@ local function CreateFeatureTab(name, icon, codeContent, preserveSource)
     }, editorFrame)
     Corner(cancelEditBtn, UDim.new(0,5))
 
+    -- v4.4b: ClearHost không còn "phá sạch" — nó trả GUI của script về ScreenGui gốc
+    -- (Position/Size cũ) rồi mới xóa host, nên bấm Chạy lại / ✕ / đổi code không làm
+    -- script của bạn mất UI nữa.
     local function ClearHost()
-        for _, child in ipairs(embedHost:GetChildren()) do
-            pcall(function() child:Destroy() end)
-        end
+        S.ClearEmbedsUnder(embedHost)
     end
 
     runFeatureBtn.Activated:Connect(function()
@@ -2663,10 +4280,13 @@ local function CreateFeatureTab(name, icon, codeContent, preserveSource)
             cnt += 1
             n = bn.." ("..cnt..")"
         end
+        -- Nut nay CHEP MOT BAN cua code sang tab "Code Đã Lưu" cho tiện quản lý.
+        -- Nó KHÔNG phải cách lưu tính năng: tab tính năng đã được tự động lưu riêng
+        -- (xem Store.saveSoon() ở createTabBtn / applyEditBtn / delBtn).
         table.insert(scripts, {name = n, code = c, expanded = false})
-        GitHubSync.Changed("scripts")
         if RebuildScripts then RebuildScripts() end
-        fStatus.Text = "✅ Đã lưu!"
+        Store.saveSoon()
+        fStatus.Text = "✅ Đã chép sang tab Code!"
     end)
 
     editFeatureBtn.Activated:Connect(function()
@@ -2677,9 +4297,9 @@ local function CreateFeatureTab(name, icon, codeContent, preserveSource)
     applyEditBtn.Activated:Connect(function()
         codeContent = NormalizeCode(editorBox.Text)
         featureData.code = codeContent
-        GitHubSync.Changed("features")
         editorFrame.Visible = false
         ClearHost()
+        Store.saveSoon()   -- code đã đổi thì bản lưu trên đĩa cũng phải đổi theo
         fStatus.Text = "✏️ Đã cập nhật code"
     end)
 
@@ -2695,20 +4315,25 @@ local function CreateFeatureTab(name, icon, codeContent, preserveSource)
     return featureData
 end
 
+-- v4.4b: watcher resize. Bản cũ ép Size từng frame con mỗi lần kéo menu (nguồn gốc làm vỡ layout
+-- + nuốt click). Bản mới chỉ cập nhật UIScale của host -> GUI to/tho theo menu mà layout còn nguyên.
 task.spawn(function()
     task.wait(1)
     local lastSize = main.AbsoluteSize
     while main and main.Parent do
-        task.wait(0.1)
+        task.wait(0.15)
         if main.AbsoluteSize ~= lastSize then
             lastSize = main.AbsoluteSize
+            if #S.embeds > 0 then
+                S.SyncAllEmbeds()
+            end
+            S.PruneEmbeds()
+            -- dọn list _G do bản v4.4a để lại (nó lớn vô hạn vì không ai xoá phần tử đã chết)
             if _G.BananaCatHub_EmbedHosts then
-                for _, host in ipairs(_G.BananaCatHub_EmbedHosts) do
-                    if host and host.Parent then
-                        pcall(function()
-                            host.Size = UDim2.new(1, 0, 1, 0)
-                            ForceStretchToParent(host)
-                        end)
+                for i = #_G.BananaCatHub_EmbedHosts, 1, -1 do
+                    local host = _G.BananaCatHub_EmbedHosts[i]
+                    if not host or not host.Parent then
+                        table.remove(_G.BananaCatHub_EmbedHosts, i)
                     end
                 end
             end
@@ -2723,7 +4348,13 @@ Label(createFeatureTab, "➕ Tạo Tab Tính Năng Tích Hợp", cy)
 cy = cy + 16
 Label(createFeatureTab, "Dán NGUYÊN một script hoàn chỉnh HOẶC link raw.", cy)
 cy = cy + 14
-Label(createFeatureTab, "Script sẽ chạy trong tab, GUI sẽ được nhúng vào menu này.", cy)
+Label(createFeatureTab, "Script chạy trong tab; GUI của NÓ được nhúng vào menu (không đụng GUI game).", cy)
+cy = cy + 14
+Label(createFeatureTab, "💾 Tab tạo ra TỰ ĐỘNG được lưu — thoát game vào lại vẫn còn, khỏi cần bấm gì thêm.", cy)
+cy = cy + 14
+Label(createFeatureTab, "🧩 Bấm 🎯 Chạy Script xong nhớ bấm ✕ hoặc kéo menu to ra — hub tự nhả focus", cy)
+cy = cy + 14
+Label(createFeatureTab, "    để bạn quay chuột/bắn lại bình thường. Nếu script vẫn chiếm chuột: 🧩 TẮT nhúng.", cy)
 cy = cy + 18
 
 Label(createFeatureTab, "🏷️ Tên Tính Năng:", cy)
@@ -2778,12 +4409,59 @@ local createTabBtn = Button(createFeatureTab, "➕ Tạo Tab Tính Năng", 8, cy
 local clearFormBtn = Button(createFeatureTab, "🧹 Xóa Form", 196, cy, 100, 28, C.ORANGE)
 cy = cy + 34
 
-local grabSizeCodeBtn = Button(createFeatureTab, "📏 Lấy Code Kích Thước (Auto-Lưu)", 8, cy, 280, 26, C.PURPLE)
+local embedToggleBtn = Button(createFeatureTab, "🧩 Nhúng vào Tab: BẬT", 304, cy - 34, 122, 28, C.GREEN)
+local guessToggleBtn = Button(createFeatureTab, "🕵 Đoán GUI trễ: TẮT", 8, cy, 150, 26, C.GRAY)
+local grabSizeCodeBtn = Button(createFeatureTab, "📏 Code Tự Co Giãn (an toàn, Auto-Lưu)", 164, cy, 262, 26, C.PURPLE)
+cy = cy + 34
+local fixMouseBtn = Button(createFeatureTab, "🖱 Kẹt chuột / không bấm được? Bấm đây", 8, cy, 418, 24, C.RED)
+cy = cy + 30
+-- v4.4e: CODE MẪU mới có sẵn (1) "hợp đồng kích thước" để GUI tự vừa ô tab khi
+-- người khác chạy, (2) khối EXTERNAL OVERLAY + nút 🎯 niêm tâm ở GIỮA MÀN HÌNH
+-- GAME (không bị hub kéo vào trong khung menu) làm ví dụ cho AI/người nhận viết
+-- tiếp các tính năng can thiệp ngoài màn hình (ESP/HUD/crosshair).
+local copyTemplateBtn = Button(createFeatureTab, "📋 Copy Code Mẫu Cho AI (menu + niêm tâm)", 8, cy, 418, 26, C.BLUE)
 cy = cy + 32
 
 local createStatus = Label(createFeatureTab, "", cy)
 createStatus.TextColor3=C.YELLOW; createStatus.TextSize=9; createStatus.ZIndex=6
 cy = cy + 14
+
+-- (handler đặt ở ĐÂY vì createStatus phải nằm trong scope lúc compile closure —
+--  đặt sớm hơn thì Lua biên dịch `createStatus` thành GLOBAL và gán vào nil -> error)
+embedToggleBtn.Activated:Connect(function()
+    S.embedEnabled = not S.embedEnabled
+    if S.embedEnabled then
+        embedToggleBtn.Text = "🧩 Nhúng vào Tab: BẬT"
+        embedToggleBtn.BackgroundColor3 = C.GREEN
+        createStatus.Text = "🧩 BẬT: GUI của script được mượn vào tab. Bấm ✕ trên tab để trả về như cũ."
+    else
+        embedToggleBtn.Text = "🧩 Nhúng vào Tab: TẮT"
+        embedToggleBtn.BackgroundColor3 = C.GRAY
+        -- TẮT = hoàn tác ngay mọi thứ đang nhúng: hub không còn đụng vào GUI nào -> input của
+        -- game (quay chuột, bắn, nút HUD) trở lại bình thường 100%.
+        for _, ft in ipairs(featureTabs) do
+            local hostFrame = ft.frame and ft.frame:FindFirstChild("ScriptHost")
+            if hostFrame then S.ClearEmbedsUnder(hostFrame) end
+        end
+        S.PruneEmbeds()
+        createStatus.Text = "🛡 Chế độ an toàn: hub không sửa GUI nào nữa. Muốn nhúng lại thì bấm BẬT."
+    end
+end)
+
+guessToggleBtn.Activated:Connect(function()
+    S.embedGuessNew = not (S.embedGuessNew == true)
+    if S.embedGuessNew then
+        guessToggleBtn.Text = "🕵 Đoán GUI trễ: BẬT"
+        guessToggleBtn.BackgroundColor3 = C.ORANGE
+        createStatus.Text = "🕵 BẬT: script tạo GUI trễ (sau HttpGet/task.wait) sẽ được nhúng — tiện hơn"
+            .. " nhưng nếu game cũng vừa mở UI đúng lúc thì UI đó có thể bị mượn vào tab (bấm ✕ để trả)."
+    else
+        guessToggleBtn.Text = "🕵 Đoán GUI trễ: TẮT"
+        guessToggleBtn.BackgroundColor3 = C.GRAY
+        createStatus.Text = "🛡 An toàn nhất: chỉ nhúng GUI mà hub chắc chắn là của script."
+            .. " Script tạo GUI trễ sẽ chạy bình thường ngoài màn hình, không bị nhúng."
+    end
+end)
 
 grabSizeCodeBtn.Activated:Connect(function()
     local currentCode = featureCodeIn.Text
@@ -2792,39 +4470,73 @@ grabSizeCodeBtn.Activated:Connect(function()
         return
     end
 
+    -- v4.4b. Wrapper cũ của bản 4.4a QUÉT MỌI ScreenGui trong CoreGui + PlayerGui rồi ép
+    -- Size=(1,0,1,0)/Position=(0,0) lên TỪNG frame con -> đó chính là lý do "mấy nút của game
+    -- bị lỗi" và "không click/bắn được" (một frame trong suốt bị kéo full màn hình, Active,
+    -- nuốt hết input). Wrapper mới KHÔNG hề đụng GUI của game: nó chỉ
+    --   (1) hook Instance.new trong lúc script của bạn chạy -> biết GUI nào là CỦA BẠN,
+    --   (2) gắn UIScale vào root GUI của bạn để nó co giãn theo kích thước menu hub.
     local wrappedCode = [[
--- ===== AUTO-GENERATED SIZE WRAPPER =====
-local _AUTO_SIZE_WRAPPER = true
-
-local function _ForceStretch(obj)
-    if not obj then return end
-    pcall(function()
-        if obj:IsA("GuiObject") then
-            if obj:IsA("Frame") or obj:IsA("ScrollingFrame") or obj:IsA("CanvasGroup") then
-                obj.Size = UDim2.new(1, 0, 1, 0)
-                obj.Position = UDim2.new(0, 0, 0, 0)
-            end
-        end
-    end)
-    for _, c in ipairs(obj:GetChildren()) do
-        _ForceStretch(c)
+-- ===== AUTO-GENERATED FIT WRAPPER v4.4b =====
+-- An toàn: chỉ can thiệp GUI do CHÍNH script này tạo. Không quét CoreGui/PlayerGui.
+local _FIT_WRAPPER = true
+local _bcRealNew = Instance.new
+local _bcMine = {}
+local _bcHookOn = true
+pcall(function()
+    Instance.new = function(cls, ...)
+        local inst = _bcRealNew(cls, ...)
+        if _bcHookOn and cls == "ScreenGui" then _bcMine[#_bcMine + 1] = inst end
+        return inst
     end
-end
+end)
 
 ]] .. currentCode .. [[
 
+pcall(function() _bcHookOn = false; Instance.new = _bcRealNew end)
+
+-- Script có thể tạo GUI trễ (sau HttpGet/task.wait): giữ hook thêm vài giây
+task.delay(4, function()
+    pcall(function() _bcHookOn = false; Instance.new = _bcRealNew end)
+end)
 
 task.defer(function()
-    task.wait(0.5)
-    for _, g in ipairs(game:GetService("CoreGui"):GetChildren()) do
-        if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
-            pcall(function() _ForceStretch(g) end)
+    task.wait(0.4)
+    local hub = nil
+    pcall(function()
+        local hubGui = (gethui and gethui()) or game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+        hub = hubGui and hubGui:FindFirstChild("ExMenu") and hubGui.ExMenu:FindFirstChildWhichIsA("Frame")
+        if not hub then
+            local pg = game:GetService("Players").LocalPlayer:FindFirstChildOfClass("PlayerGui")
+            hub = pg and pg:FindFirstChild("ExMenu") and pg.ExMenu:FindFirstChildWhichIsA("Frame")
         end
-    end
-    for _, g in ipairs(game.Players.LocalPlayer.PlayerGui:GetChildren()) do
-        if g:IsA("ScreenGui") and g.Name ~= "ExMenu" then
-            pcall(function() _ForceStretch(g) end)
-        end
+    end)
+    for _, g in ipairs(_bcMine) do
+        pcall(function()
+            if not g or not g.Parent then return end
+            local root = g:FindFirstChildWhichIsA("Frame")
+                or g:FindFirstChildWhichIsA("ScrollingFrame")
+                or g:FindFirstChildWhichIsA("GuiObject")
+            if not root then return end
+            -- chỉ can chỉnh khi GUI dùng kích thước hard-code (offset). GUI đã dùng Scale
+            -- (1,0,1,0) thì tự theo màn hình rồi, nhân UIScale lên nữa là TRÀN ra ngoài.
+            if root.Size and (root.Size.X.Scale ~= 0 or root.Size.Y.Scale ~= 0) then return end
+            local us = root:FindFirstChild("BananaCatFitScale")
+            if not us then
+                us = _bcRealNew("UIScale")
+                us.Name = "BananaCatFitScale"
+                us.Parent = root
+            end
+            if hub then
+                local function _bcSync()
+                    us.Scale = math.clamp(hub.AbsoluteSize.X / 540, 0.8, 1.6)
+                end
+                _bcSync()
+                hub:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+                    pcall(_bcSync)
+                end)
+            end
+        end)
     end
 end)
 ]]
@@ -2843,13 +4555,90 @@ end)
     end
 
     table.insert(scripts, {name = saveName, code = wrappedCode, expanded = false})
-    GitHubSync.Changed("scripts")
     if RebuildScripts then RebuildScripts() end
+    Store.saveSoon()
 
-    featureCodeIn.Text = wrappedCode
-    featureNameIn.Text = "AutoSize_"..os.date("%H%M%S")
+    -- v4.4b: KHÔNG ghi đè ô code nữa (bản cũ làm MẤT code gốc của bạn trong tab).
+    createStatus.Text = "✅ Đã lưu bản tự co giãn vào tab 'Code Đã Lưu': "..saveName..
+        " · để tab tính năng co giãn theo menu thì KHÔNG cần bản này, hub tự làm khi bấm ▶ Chạy Script."
+end)
 
-    createStatus.Text = "✅ Đã lấy code kích thước! Đã lưu vào 'Code Đã Lưu' với tên: "..saveName
+-- Nút "cứu nguy": trả mọi GUI hub đang mượn về game + nhả focus + trả chuột về mặc định.
+-- Dùng khi bấm ▶ Chạy Script xong mà không quay chuột/bắn được (do CHÍNH script bạn dán chiếm,
+-- không phải do hub) — hub không can thiệp ngược lại script đó, chỉ trả input về cho game.
+fixMouseBtn.Activated:Connect(function()
+    local done = {}
+    ReleaseHubFocus()
+    done[#done+1] = "nhả focus"
+    local restored = 0
+    for _, ft in ipairs(featureTabs) do
+        local hostFrame = ft.frame and ft.frame:FindFirstChild("ScriptHost")
+        if hostFrame then restored = restored + S.ClearEmbedsUnder(hostFrame) end
+    end
+    if restored > 0 then done[#done+1] = "đã trả " .. restored .. " GUI về game" end
+    -- đồng bộ lại host với trạng thái Enabled thật của GUI (phòng khi lệch sau khi script toggle)
+    for _, e in ipairs(S.embeds) do
+        pcall(function() e.host.Visible = e.gui.Enabled end)
+    end
+    pcall(function() UserInputService.MouseBehavior = Enum.MouseBehavior.Default end)
+    done[#done+1] = "chuột về mặc định"
+    createStatus.Text = "🖱 " .. table.concat(done, " · ")
+        .. " — vẫn không được? 🧩 TẮT nhúng rồi bấm ▶ lại (lúc đó hub không đụng GUI nào)"
+end)
+
+copyTemplateBtn.Activated:Connect(function()
+    ReleaseHubFocus()
+    local nm = (featureNameIn.Text or ""):gsub('[\r	"]', " "):gsub("^%s+", ""):gsub("%s+$", "")
+    if #nm == 0 then nm = "Tính Năng Mới" end
+    local ic = (featureIconIn.Text or ""):gsub('[\r	"]', " ")
+    if #ic == 0 then ic = "⚙️" end
+    local stamp
+    pcall(function() stamp = os.date("sinh %H:%M %d/%m/%Y") end)
+    local code = S.FeatureTemplate(nm, ic, stamp)
+
+    -- copy ra clipboard: executor nào cũng có 1 trong 3 hàm này
+    local copied = false
+    for _, fname in ipairs({"setclipboard", "toclipboard", "set_clipboard"}) do
+        if not copied then
+            local f = _G[fname]
+            if type(f) == "function" then copied = (pcall(f, code)) end
+        end
+    end
+    -- điền vào ô code CHỈ KHI đang trống -> không bao giờ làm mất code bạn đang soạn
+    local inBox = false
+    if #featureCodeIn.Text == 0 then
+        featureCodeIn.Text = code
+        inBox = true
+    end
+    -- lưu 1 bản vào "Code Đã Lưu" để thoát game vào lại vẫn còn
+    local saveName = "Mẫu " .. nm
+    local baseName = saveName
+    local cnt = 1
+    while true do
+        local exists = false
+        for _, sc in ipairs(scripts) do
+            if sc.name == saveName then exists = true break end
+        end
+        if not exists then break end
+        cnt = cnt + 1
+        saveName = baseName .. " (" .. cnt .. ")"
+    end
+    table.insert(scripts, {name = saveName, code = code, expanded = false})
+    if RebuildScripts then RebuildScripts() end
+    Store.saveSoon()
+
+    createStatus.Text = (copied and ("📋 ĐÃ COPY " .. #code .. " ký tự vào clipboard")
+        or ("⚠️ Executor không có setclipboard — lấy code ở tab 'Code Đã Lưu'"))
+        .. " · đã lưu '" .. saveName .. "'"
+        .. (inBox and " · đã điền vào ô code" or " · ô code giữ nguyên code của bạn")
+        .. " · gửi NGUYÊN đoạn code đó cho AI/người viết script, dán lại rồi bấm ▶ Chạy Script."
+    local oldLabel = copyTemplateBtn.Text
+    copyTemplateBtn.Text = "✅ Đã copy code mẫu cho: " .. nm
+    task.delay(2.6, function()
+        if copyTemplateBtn and copyTemplateBtn.Parent then copyTemplateBtn.Text = oldLabel end
+    end)
+    print("[BananaCatHub] 📋 Code mẫu '" .. nm .. "' (" .. #code .. " ký tự) — clipboard: "
+        .. tostring(copied))
 end)
 
 Label(createFeatureTab, "━━━━━━━━━━━━━━━━━━━━━━", cy)
@@ -2900,8 +4689,9 @@ local function RebuildFeatureList()
         }, row)
         Corner(goBtn, UDim.new(0,4))
         goBtn.Activated:Connect(function()
-            local currentIndex = table.find(tabContent, ft.frame)
-            if currentIndex then SwitchTab(currentIndex) end
+            for i, b in ipairs(tabs) do
+                if b == ft.btn then SwitchTab(i); break end
+            end
         end)
 
         local delBtn = New("TextButton", {
@@ -2917,13 +4707,15 @@ local function RebuildFeatureList()
             end
             if idx then
                 if activeTab == ft.frame then SwitchTab(1) end
+                -- v4.4b: trả GUI của script về ScreenGui gốc TRƯỚC khi xóa frame, nếu không
+                -- GUI đó mất cha là biến mất hẳn khỏi game (bản cũ để nguyên như vậy).
+                local hostFrame = ft.frame and ft.frame:FindFirstChild("ScriptHost")
+                if hostFrame then S.ClearEmbedsUnder(hostFrame) end
                 ft.btn:Destroy()
                 ft.frame:Destroy()
                 table.remove(tabs, idx)
                 table.remove(tabContent, idx)
                 table.remove(featureTabs, i)
-                GitHubSync.Changed("features")
-                tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 34 + 10)
                 for j, t in ipairs(tabs) do
                     t.LayoutOrder = j
                 end
@@ -2933,6 +4725,7 @@ local function RebuildFeatureList()
                     end
                 end
                 RebuildFeatureList()
+                Store.saveSoon()   -- ⭐ xóa cũng phải ghi xuống đĩa, nếu không tab sẽ "sống lại" khi rejoin
             end
         end)
 
@@ -2966,9 +4759,9 @@ createTabBtn.Activated:Connect(function()
 
     CreateFeatureTab(n, ic, c)
     RebuildFeatureList()
-    GitHubSync.Changed("features")
+    Store.saveSoon()   -- ⭐ lưu ngay vào file để thoát game vào lại vẫn còn tab này
 
-    createStatus.Text = "✅ Đã tạo tab: "..n
+    createStatus.Text = "✅ Đã tạo tab: "..n.." (đã lưu)"
     featureNameIn.Text = ""
     featureIconIn.Text = "⚙️"
     featureCodeIn.Text = ""
@@ -2984,1278 +4777,57 @@ clearFormBtn.Activated:Connect(function()
 end)
 
 RebuildFeatureList()
+-- v4.4d: CanvasSize của tab này đang 0 -> không cuộn được, các dòng dưới bị cắt mất.
+pcall(function()
+    createFeatureTab.CanvasSize = UDim2.new(0, 0, 0, cy + 40)
+end)
 
--- ==================== TAB 6: GITHUB — OPTIONAL CLOUD STORAGE ====================
-do
-    -- A separate function keeps the original chunk below Luau's local-register limit.
-    local function InitializeGitHub()
-        -- BEGIN GITHUB STORAGE CORE (dependency-injected; never executes downloaded code)
-        local function CreateGitHubStore(deps)
-            local store = {}
-            local token, epoch = "", 0
-            local target = {repo="", branch="", codePath="banana-cat/saved-code.json", featureFolder="banana-cat/features"}
-            local known, sourceKnown = {}, {}
-            local MAX_FILE, MAX_BATCH, MAX_RECORDS = 900 * 1024, 4 * 1024 * 1024, 200
-            local formats = {scripts="banana-cat-hub/scripts", features="banana-cat-hub/features"}
-
-            local function fail(message) error(message, 0) end
-            local function trim(text) return (text:gsub("^%s+", ""):gsub("%s+$", "")) end
-            local function text(value, label, limit, empty)
-                if type(value) ~= "string" or #value > limit or (not empty and #value == 0) or not utf8.len(value) then
-                    fail(label.." không hợp lệ hoặc quá dài.")
-                end
-                return value
-            end
-            local function path(value, allowEmpty)
-                value = trim(text(value, "Đường dẫn", 400, allowEmpty))
-                if value == "" and allowEmpty then return value end
-                if value == "" or value:find("[%c\\]") or value:sub(1,1) == "/" or value:sub(-1) == "/" or value:find("//",1,true) then
-                    fail("Dùng đường dẫn tương đối trong kho, không dùng / đầu dòng, \\ hoặc ký tự điều khiển.")
-                end
-                for part in value:gmatch("[^/]+") do
-                    if part == "." or part == ".." or part:lower() == ".git" then fail("Đường dẫn không được chứa . / .. / .git.") end
-                end
-                return value
-            end
-            local function repoName(value)
-                value = trim(text(value, "Tên kho", 300, false)):gsub("^https://github%.com/", ""):gsub("/+$", ""):gsub("%.git$", "")
-                if not value:match("^[%w_.-]+/[%w_.-]+$") then fail("Nhập kho theo dạng owner/repository.") end
-                return value
-            end
-            local function escape(value)
-                return (value:gsub("([^%w%-%._~])", function(char) return string.format("%%%02X", string.byte(char)) end))
-            end
-            local function escapePath(value)
-                local parts = {}
-                for part in value:gmatch("[^/]+") do table.insert(parts, escape(part)) end
-                return table.concat(parts, "/")
-            end
-            local function array(value, label)
-                if type(value) ~= "table" then fail(label.." phải là danh sách.") end
-                local count = 0
-                for key in pairs(value) do
-                    if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then fail(label.." không đúng cấu trúc.") end
-                    count += 1
-                end
-                if count ~= #value or count > MAX_RECORDS then fail(label.." không liên tục hoặc vượt 200 mục.") end
-                return value
-            end
-            local function identifier(value)
-                text(value, "ID", 100, false)
-                if not value:match("^[%w_-]+$") then fail("ID chỉ được chứa chữ, số, dấu - và _.") end
-                return value
-            end
-            local function filename(value)
-                value = path(value)
-                if not (value:lower():match("%.lua$") or value:lower():match("%.luau$")) then fail("File tính năng phải có đuôi .lua hoặc .luau.") end
-                return value
-            end
-            local function jsonDecode(value, label)
-                local ok, result = pcall(deps.decode, value)
-                if not ok or type(result) ~= "table" then fail(label.." không phải JSON hợp lệ. Không ghi đè file này.") end
-                return result
-            end
-            local function jsonEncode(value)
-                local ok, result = pcall(deps.encode, value)
-                if not ok or type(result) ~= "string" then fail("Không mã hóa được dữ liệu UTF-8 sang JSON.") end
-                return result
-            end
-            local function base64Decode(value)
-                if type(value) ~= "string" then fail("GitHub không trả nội dung base64.") end
-                value = value:gsub("%s", "")
-                if #value % 4 ~= 0 or #value > math.ceil(MAX_FILE / 3) * 4 then fail("Nội dung base64 quá lớn hoặc không hợp lệ.") end
-                local alphabet, lookup, output = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/", {}, {}
-                for i = 1, #alphabet do lookup[alphabet:sub(i,i)] = i - 1 end
-                for i = 1, #value, 4 do
-                    local a,b,c,d = value:sub(i,i), value:sub(i+1,i+1), value:sub(i+2,i+2), value:sub(i+3,i+3)
-                    if lookup[a] == nil or lookup[b] == nil or (c ~= "=" and lookup[c] == nil) or (d ~= "=" and lookup[d] == nil)
-                        or (c == "=" and d ~= "=") or ((c == "=" or d == "=") and i + 3 ~= #value) then
-                        fail("Nội dung base64 không hợp lệ.")
-                    end
-                    local bits = lookup[a] * 262144 + lookup[b] * 4096 + (lookup[c] or 0) * 64 + (lookup[d] or 0)
-                    table.insert(output, string.char(math.floor(bits / 65536)))
-                    if c ~= "=" then table.insert(output, string.char(math.floor(bits / 256) % 256)) end
-                    if d ~= "=" then table.insert(output, string.char(bits % 256)) end
-                end
-                return table.concat(output)
-            end
-            local function api(method, endpoint, body, allowMissing)
-                if token == "" then fail("Chưa kết nối GitHub. Nhập PAT và bấm Kết nối.") end
-                local requestEpoch = epoch
-                local options = {
-                    Url="https://api.github.com"..endpoint, Method=method,
-                    Headers={Authorization="Bearer "..token, Accept="application/vnd.github+json", ["X-GitHub-Api-Version"]="2022-11-28", ["User-Agent"]="BananaCatHub-GitHub/1.0"},
-                }
-                if body then options.Body = jsonEncode(body); options.Headers["Content-Type"] = "application/json" end
-                local ok, response = pcall(deps.request, options)
-                -- Never display transport exceptions: some executors include request headers in them.
-                if requestEpoch ~= epoch then fail("Kết nối đã đổi. Yêu cầu cũ có thể đã hoàn tất; kiểm tra GitHub trước khi thử lại.") end
-                if not ok or type(response) ~= "table" then fail("Không gọi được GitHub. Cần HTTPS request hỗ trợ Authorization trong môi trường đang dùng.") end
-                local status = tonumber(response.StatusCode or response.status_code or response.status)
-                if status == 404 and allowMissing then return nil end
-                if not status or status < 200 or status >= 300 then
-                    if status == 401 then fail("GitHub 401: PAT sai, hết hạn hoặc đã thu hồi.") end
-                    if status == 403 then fail("GitHub 403: thiếu quyền Contents, cần duyệt SSO, hoặc đã chạm giới hạn API. Kiểm tra quyền và thử lại sau.") end
-                    if status == 404 then fail("GitHub 404: không tìm thấy kho/nhánh/file, hoặc PAT chưa được cấp quyền truy cập.") end
-                    if status == 409 or status == 422 then fail("GitHub "..status..": nhánh đã đổi, kho rỗng hoặc nhánh được bảo vệ. Nạp lại dữ liệu; không ép ghi đè.") end
-                    if status == 429 then fail("GitHub 429: vượt giới hạn API. Chờ rồi thử lại, dữ liệu máy vẫn được giữ.") end
-                    fail("GitHub HTTP "..tostring(status or "?")..". Chưa xác nhận lưu; kiểm tra GitHub trước khi thử lại.")
-                end
-                local responseBody = response.Body or response.body or ""
-                if #responseBody > 2 * MAX_BATCH then fail("Phản hồi GitHub quá lớn.") end
-                if responseBody == "" then return {} end
-                return jsonDecode(responseBody, "Phản hồi GitHub")
-            end
-            local function ready()
-                if token == "" then fail("Chưa kết nối GitHub.") end
-                if target.repo == "" or target.branch == "" then fail("Chọn kho và áp dụng nhánh trước.") end
-                return "/repos/"..target.repo
-            end
-            local function head()
-                local data = api("GET", ready().."/git/ref/heads/"..escapePath(target.branch))
-                if not (data.object and type(data.object.sha) == "string") then fail("Không đọc được HEAD của nhánh. Kho cần có commit đầu tiên, ví dụ README.") end
-                return data.object.sha
-            end
-            local function readAt(filePath, ref)
-                filePath = path(filePath)
-                local data = api("GET", ready().."/contents/"..escapePath(filePath).."?ref="..escape(ref), nil, true)
-                if not data then return false end
-                if data.type ~= "file" or data.encoding ~= "base64" or type(data.size) ~= "number" or data.size > MAX_FILE then
-                    fail(filePath..": cần file văn bản thường, không phải thư mục/link, tối đa 900 KiB.")
-                end
-                return text(base64Decode(data.content), filePath, MAX_FILE, true)
-            end
-            local function record(value, kind, withCode)
-                if type(value) ~= "table" then fail("Mục lưu không hợp lệ.") end
-                local result = {id=identifier(value.id), name=text(value.name, "Tên mục", 200, false)}
-                if kind == "features" then
-                    result.icon = text(value.icon or "⚙️", "Icon", 64, false)
-                    result.file = filename(value.file)
-                end
-                if kind == "scripts" or withCode then result.code = text(value.code, "Code", MAX_FILE, false) end
-                return result
-            end
-            local function records(values, kind, withCode)
-                local result, ids, files = {}, {}, {}
-                for _, value in ipairs(array(values, "Danh sách "..kind)) do
-                    local item = record(value, kind, withCode)
-                    if ids[item.id] then fail("Trùng ID trong danh sách "..kind..".") end
-                    if kind == "features" and files[item.file] then fail("Hai tính năng đang chọn cùng một file: "..item.file) end
-                    ids[item.id] = true
-                    if item.file then files[item.file] = true end
-                    table.insert(result, item)
-                end
-                return result
-            end
-            local function document(content, kind)
-                if content == false then return {} end
-                local data = jsonDecode(content, "File "..kind)
-                if data.format ~= formats[kind] or data.version ~= 1 then fail("File không đúng định dạng Banana Cat "..kind.." v1. Chọn file khác; không ghi đè.") end
-                return records(data[kind], kind, false)
-            end
-            local function manifestPath() return target.featureFolder.."/index.json" end
-            local function checkAncestors(filePath, ref, checked)
-                local parts, prefix = {}, ""
-                for part in filePath:gmatch("[^/]+") do table.insert(parts, part) end
-                for index = 1, #parts - 1 do
-                    prefix = prefix == "" and parts[index] or prefix.."/"..parts[index]
-                    if not checked[prefix] then
-                        local entry = api("GET", ready().."/contents/"..escapePath(prefix).."?ref="..escape(ref), nil, true)
-                        if entry and entry.type then fail(prefix.." đang là file/link, không thể dùng làm thư mục. Chưa ghi đè.") end
-                        checked[prefix] = true
-                        if not entry then break end -- A missing parent cannot contain any existing descendants at this commit.
-                    end
-                end
-            end
-            local function guardedRead(filePath, ref, cache)
-                cache = cache or known
-                local content = readAt(filePath, ref)
-                if content ~= false and cache[filePath] == nil then fail(filePath.." đã tồn tại. Bấm Lấy / Nhập từ GitHub trước khi gửi vào file này (mục Mã nguồn: Lấy mã từ GitHub).") end
-                if cache[filePath] ~= nil and cache[filePath] ~= content then fail(filePath.." đã thay đổi trên GitHub. Nạp lại để giữ cả hai bản; chưa ghi đè.") end
-                return content
-            end
-            local function merge(remote, incoming, kind)
-                local result, positions, changed = {}, {}, false
-                for _, item in ipairs(remote) do table.insert(result, item); positions[item.id] = #result end
-                for _, value in ipairs(incoming) do
-                    local item = record(value, kind, false)
-                    local index = positions[item.id]
-                    local previous = index and result[index]
-                    if not previous or previous.name ~= item.name or previous.code ~= item.code or previous.icon ~= item.icon or previous.file ~= item.file then
-                        changed = true
-                    end
-                    if index then result[index] = item else table.insert(result, item); positions[item.id] = #result end
-                end
-                -- Missing local records are deliberately retained remotely. A local delete is not a cloud delete.
-                return records(result, kind, false), changed
-            end
-
-            local function makePlan(ref, writes)
-                local baseTree
-                if #writes > 0 then
-                    local commit = api("GET", ready().."/git/commits/"..escape(ref))
-                    baseTree = commit.tree and commit.tree.sha
-                    if type(baseTree) ~= "string" then fail("Không đọc được cây file gốc.") end
-                end
-                return {repo=target.repo, branch=target.branch, epoch=epoch, head=ref, baseTree=baseTree, writes=writes, used=false}
-            end
-            local function isLibraryFile(filePath)
-                return filePath == target.codePath or filePath == manifestPath()
-            end
-
-            function store:ValidatePaths(codePath, featureFolder)
-                codePath, featureFolder = path(codePath), path(featureFolder)
-                if not codePath:lower():match("%.json$") then fail("File Code Đã Lưu cần có đuôi .json.") end
-                if codePath == featureFolder.."/index.json" then fail("File Code Đã Lưu không được trùng index.json của tính năng.") end
-                if featureFolder == codePath or featureFolder:sub(1,#codePath+1) == codePath.."/" then fail("Không thể dùng file Code Đã Lưu làm thư mục tính năng.") end
-                return codePath, featureFolder
-            end
-            function store:Configure(repo, branch, codePath, featureFolder)
-                repo = repoName(repo)
-                branch = trim(text(branch, "Nhánh", 200, false))
-                if branch == "" or branch:find("[%c\\]") then fail("Tên nhánh không hợp lệ.") end
-                codePath, featureFolder = self:ValidatePaths(codePath, featureFolder)
-                if target.repo ~= repo or target.branch ~= branch then known, sourceKnown = {}, {} end
-                if target.repo ~= repo or target.branch ~= branch or target.codePath ~= codePath or target.featureFolder ~= featureFolder then epoch += 1 end
-                target = {repo=repo, branch=branch, codePath=codePath, featureFolder=featureFolder}
-                return self:GetTarget()
-            end
-            function store:GetTarget()
-                return {repo=target.repo, branch=target.branch, codePath=target.codePath, featureFolder=target.featureFolder}
-            end
-            function store:IsConnected() return token ~= "" end
-            function store:CheckTarget() return head() end
-            function store:Disconnect() token=""; epoch+=1; known={}; sourceKnown={} end
-            function store:Connect(value)
-                value = trim(text(value, "PAT", 300, false))
-                if not (value:match("^ghp_[%w_]+$") or value:match("^github_pat_[%w_]+$")) then fail("Nhập Personal Access Token dạng ghp_... hoặc github_pat_...") end
-                token=value; epoch+=1; known={}; sourceKnown={}
-                local ok, user = pcall(function() return api("GET", "/user") end)
-                if not ok then token=""; error(user,0) end
-                if type(user.login) ~= "string" then token=""; fail("Không xác định được tài khoản GitHub.") end
-                return user.login
-            end
-            function store:ListRepositories(page)
-                page = math.max(1, math.floor(tonumber(page) or 1))
-                return api("GET", "/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member&page="..page)
-            end
-            function store:GetRepository(repo)
-                return api("GET", "/repos/"..repoName(repo))
-            end
-            function store:ListBranches(repo, page)
-                page = math.max(1, math.floor(tonumber(page) or 1))
-                return api("GET", "/repos/"..repoName(repo).."/branches?per_page=100&page="..page)
-            end
-            function store:ListDirectory(directory, allowMissing)
-                directory = path(directory or "", true)
-                local result = api("GET", ready().."/contents/"..escapePath(directory).."?ref="..escape(target.branch), nil, allowMissing)
-                if not result then return {}, false end
-                if result.type then fail("Đường dẫn duyệt phải là thư mục.") end
-                return result, true
-            end
-            function store:ValidateFilePath(value) return path(value) end
-            function store:ReadSource(filePath)
-                filePath = path(filePath)
-                local ref = head()
-                local code = readAt(filePath, ref)
-                if code == false then fail("File chưa có trên GitHub. Dán code rồi bấm Gửi mã để tạo file mới.") end
-                -- Reading raw source must not acknowledge changes for library/autosave.
-                -- Otherwise a later library save could silently replace raw-source edits.
-                if not isLibraryFile(filePath) then sourceKnown[filePath] = code end
-                return {path=filePath, code=code, head=ref, isLibrary=isLibraryFile(filePath)}
-            end
-            function store:InspectFeatureDestination(value)
-                local fullPath = path(target.featureFolder.."/"..filename(value))
-                local code = readAt(fullPath, head())
-                known[fullPath] = code
-                return {path=fullPath, exists=code ~= false, code=code or ""}
-            end
-            function store:PrepareSourceSave(filePath, code)
-                filePath = path(filePath)
-                code = text(code, "Mã nguồn", MAX_FILE, false)
-                if isLibraryFile(filePath) then fail("Đây là file JSON quản lý thư viện. Dùng mục Code đã lưu / Tính năng để gửi, không ghi mã thô đè lên file này.") end
-                local ref = head()
-                local previous = guardedRead(filePath, ref, sourceKnown)
-                local writes = {}
-                if code ~= previous then
-                    checkAncestors(filePath, ref, {})
-                    table.insert(writes, {path=filePath, content=code, isNew=previous == false})
-                end
-                local plan = makePlan(ref, writes)
-                plan.source = true
-                return plan
-            end
-            function store:ReadTextFile(filePath)
-                local result = readAt(filePath, head())
-                if result == false then fail("Không tìm thấy file cần nhập.") end
-                if result == "" then fail("File cần nhập đang trống.") end
-                return result
-            end
-            function store:SuggestedFile(name, id)
-                local slug = name:lower():gsub("[^%w_-]+", "-"):gsub("^-+", ""):gsub("-+$", ""):sub(1,40)
-                if slug == "" then slug = "feature" end
-                return slug.."-"..identifier(id)..".lua"
-            end
-            function store:ValidateFeatureFile(value) return filename(value) end
-            function store:Load(kind)
-                if kind ~= "scripts" and kind ~= "features" and kind ~= "all" then fail("Loại nhập không hợp lệ.") end
-                local ref, staged, bundle, bytes = head(), {}, {}, 0
-                if kind == "scripts" or kind == "all" then
-                    local content = readAt(target.codePath, ref)
-                    bundle.scripts = document(content, "scripts")
-                    staged[target.codePath] = content
-                    bytes += content and #content or 0
-                end
-                if kind == "features" or kind == "all" then
-                    local filePath = manifestPath()
-                    local content = readAt(filePath, ref)
-                    local items = document(content, "features")
-                    staged[filePath] = content
-                    bytes += content and #content or 0
-                    for _, item in ipairs(items) do
-                        local fullPath = path(target.featureFolder.."/"..item.file)
-                        local code = readAt(fullPath, ref)
-                        if code == false or code == "" then fail("Thiếu code của tính năng: "..fullPath..". Chưa nhập mục nào.") end
-                        item.code = code
-                        staged[fullPath] = code
-                        bytes += #code
-                        if bytes > MAX_BATCH then fail("Tổng dữ liệu vượt 4 MiB. Chia thành nhiều kho/thư mục nhỏ hơn.") end
-                    end
-                    bundle.features = items
-                end
-                for filePath, content in pairs(staged) do known[filePath] = content end
-                return bundle
-            end
-            function store:PrepareSave(bundle)
-                if type(bundle) ~= "table" then fail("Dữ liệu lưu không hợp lệ.") end
-                local localScripts = bundle.scripts and records(bundle.scripts, "scripts", false)
-                local localFeatures = bundle.features and records(bundle.features, "features", true)
-                if not localScripts and not localFeatures then fail("Chọn dữ liệu cần lưu.") end
-                local ref, writes, totalBytes, checkedParents = head(), {}, 0, {}
-                local function propose(filePath, content, previous)
-                    if #content > MAX_FILE then fail(filePath.." vượt 900 KiB. Không ghi dữ liệu bị cắt.") end
-                    totalBytes += #content
-                    if totalBytes > MAX_BATCH then fail("Một lần lưu tối đa 4 MiB. Chia thành các lần lưu nhỏ hơn.") end
-                    if content ~= previous then
-                        checkAncestors(filePath, ref, checkedParents)
-                        for _, other in ipairs(writes) do
-                            if filePath == other.path or filePath:sub(1,#other.path+1) == other.path.."/" or other.path:sub(1,#filePath+1) == filePath.."/" then
-                                fail("Một đường dẫn file không được trùng hoặc làm thư mục cho file khác: "..filePath)
-                            end
-                        end
-                        table.insert(writes, {path=filePath, content=content, isNew=previous == false})
-                    end
-                end
-                if localScripts and #localScripts > 0 then
-                    local previous = guardedRead(target.codePath, ref)
-                    local combined, changed = merge(document(previous, "scripts"), localScripts, "scripts")
-                    if changed then propose(target.codePath, jsonEncode({format=formats.scripts, version=1, scripts=combined}), previous) end
-                end
-                if localFeatures and #localFeatures > 0 then
-                    local indexPath = manifestPath()
-                    local previous = guardedRead(indexPath, ref)
-                    local combined, changed = merge(document(previous, "features"), localFeatures, "features")
-                    -- Validate every destination before constructing a tree. Never reuse another feature's path.
-                    for _, item in ipairs(localFeatures) do
-                        local fullPath = path(target.featureFolder.."/"..item.file)
-                        if fullPath == target.codePath or fullPath == indexPath then fail("Đường dẫn lưu bị trùng: "..fullPath) end
-                        local oldCode = guardedRead(fullPath, ref)
-                        propose(fullPath, item.code, oldCode)
-                    end
-                    if changed then propose(indexPath, jsonEncode({format=formats.features, version=1, features=combined}), previous) end
-                end
-                return makePlan(ref, writes)
-            end
-            function store:Commit(plan)
-                ready()
-                if type(plan) ~= "table" or plan.used or plan.epoch ~= epoch or plan.repo ~= target.repo or plan.branch ~= target.branch then
-                    fail("Kế hoạch lưu đã hết hiệu lực. Xem lại và xác nhận một kế hoạch mới.")
-                end
-                plan.used = true
-                if #plan.writes == 0 then return {count=0, sha=plan.head} end
-                if head() ~= plan.head then fail("Nhánh vừa có commit mới. Nạp lại rồi lưu, không ghi đè thay đổi của người khác.") end
-                local treeEntries = {}
-                for _, item in ipairs(plan.writes) do
-                    table.insert(treeEntries, {path=item.path, mode="100644", type="blob", content=item.content})
-                end
-                local root = ready()
-                local tree = api("POST", root.."/git/trees", {base_tree=plan.baseTree, tree=treeEntries})
-                if type(tree.sha) ~= "string" then fail("GitHub chưa xác nhận tạo cây file.") end
-                local commit = api("POST", root.."/git/commits", {message="Banana Cat Hub: save library ("..#treeEntries.." files)", tree=tree.sha, parents={plan.head}})
-                if type(commit.sha) ~= "string" then fail("GitHub chưa xác nhận tạo commit.") end
-                -- One atomic, non-forced branch update publishes all files together. No DELETE calls.
-                api("PATCH", root.."/git/refs/heads/"..escapePath(target.branch), {sha=commit.sha, force=false})
-                local cache = plan.source and sourceKnown or known
-                for _, item in ipairs(plan.writes) do cache[item.path] = item.content end
-                return {count=#treeEntries, sha=commit.sha}
-            end
-            return store
-        end
-        -- END GITHUB STORAGE CORE
-
-        -- BEGIN GITHUB UI / LIBRARY BRIDGE
-        local alive, busy, configured, updatingFields = true, false, false, false
-        local contextVersion, autoTicket = 0, 0
-        local autoSave, pendingSave, picker = false, nil, nil
-        local revisions, savedRevisions = {scripts=0, features=0}, {scripts=0, features=0}
-        local RefreshFeatures, QueueAutoSave, SetStatus, UpdateSummary, OpenPicker, RenderPicker, LoadSource, UseSource
-        local selectedFeature, lastFeatureFile, draftToken, maskedToken, changingToken = nil, nil, "", false, false
-        local source = {revision=0, changing=false, clean="", origin=""}
-        local settingsFile = "banana_cat_github_settings.json"
-        local function trim(value) return (value:gsub("^%s+", ""):gsub("%s+$", "")) end
-        local function newId() return HttpService:GenerateGUID(false) end
-        local function parentPath(value) return value:match("^(.*)/[^/]+$") or "" end
-        local function RequestGitHub(options)
-            local transport = type(request) == "function" and request or http_request
-            if type(transport) ~= "function" and type(syn) == "table" then transport = syn.request end
-            if type(transport) ~= "function" and type(http) == "table" then transport = http.request end
-            if type(transport) == "function" then return transport(options) end
-            local robloxOptions = table.clone(options)
-            robloxOptions.Headers = table.clone(options.Headers)
-            robloxOptions.Headers["User-Agent"] = nil
-            return HttpService:RequestAsync(robloxOptions)
-        end
-        local store = CreateGitHubStore({request=RequestGitHub,
-            encode=function(value) return HttpService:JSONEncode(value) end,
-            decode=function(value) return HttpService:JSONDecode(value) end,
-        })
-        local settings = {}
-        if readfile and isfile then
-            pcall(function()
-                if isfile(settingsFile) then
-                    local data = readfile(settingsFile)
-                    if #data <= 4096 then
-                        local parsed = HttpService:JSONDecode(data)
-                        if type(parsed) == "table" and parsed.version == 1 then
-                            for _, key in ipairs({"repo", "branch", "codePath", "featureFolder"}) do
-                                if type(parsed[key]) == "string" and #parsed[key] <= 400 then settings[key] = parsed[key] end
-                            end
-                        end
-                    end
-                end
-            end)
-        end
-        pcall(function()
-            if settings.repo and settings.branch then
-                store:Configure(settings.repo, settings.branch, settings.codePath or "banana-cat/saved-code.json", settings.featureFolder or "banana-cat/features")
-            end
-        end)
-
-        -- Navigation never scrolls away. Each task has its own short, scrollable page.
-        local githubTab = AddTab("GitHub", "🐙", 6)
-        githubTab.Name="GitHubWorkspace"
-        githubTab.ScrollingEnabled=false; githubTab.ScrollBarThickness=0
-        githubTab.AutomaticCanvasSize=Enum.AutomaticSize.None; githubTab.CanvasSize=UDim2.new(0,0,0,0)
-        local pages, navButtons, columns = {}, {}, {}
-        local activePage, column, order = "connection", nil, 0
-        local function MakeButton(parent, caption, color, name)
-            local button=New("TextButton", {Name=name or "TextButton", Text=caption, TextWrapped=true,
-                Size=UDim2.new(1,0,0,30), BackgroundColor3=color or C.BLUE, TextColor3=C.WHITE,
-                Font=Enum.Font.GothamBold, TextSize=10, BorderSizePixel=0, ZIndex=(parent.ZIndex or 5)+2,
-            }, parent)
-            Corner(button,UDim.new(0,5)); return button
-        end
-        local nav=New("Frame", {Name="GitHubNavigation",Size=UDim2.new(1,-12,0,34),Position=UDim2.new(0,6,0,4),BackgroundTransparency=1,ZIndex=6},githubTab)
-        for index, item in ipairs({{"connection","1. Kết nối"},{"saved","2. Code đã lưu"},{"features","3. Tính năng"},{"source","4. Mã nguồn"}}) do
-            local key=item[1]
-            local button=MakeButton(nav,item[2],C.GRAY,"GitHubNav_"..key)
-            button.Size=UDim2.new(0.25,-4,1,0); button.Position=UDim2.new((index-1)*0.25,0,0,0)
-            navButtons[key]=button
-            local page=New("ScrollingFrame", {Name="GitHubPage_"..key,
-                Size=UDim2.new(1,0,1,-88),Position=UDim2.new(0,0,0,88),BackgroundTransparency=1,
-                ScrollBarThickness=4,CanvasSize=UDim2.new(0,0,0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,
-                ScrollingDirection=Enum.ScrollingDirection.Y,BorderSizePixel=0,Visible=false,ZIndex=5,
-            },githubTab)
-            pages[key]=page
-            local content=New("Frame", {Size=UDim2.new(1,-20,0,0),Position=UDim2.new(0,8,0,5),
-                BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y,BorderSizePixel=0,ZIndex=5},page)
-            New("UIListLayout", {Padding=UDim.new(0,6),SortOrder=Enum.SortOrder.LayoutOrder},content)
-            New("UIPadding", {PaddingBottom=UDim.new(0,16)},content)
-            columns[key]=content
-        end
-        local targetInfo=New("TextLabel", {Name="GitHubActiveTarget",Size=UDim2.new(1,-16,0,18),Position=UDim2.new(0,8,0,41),
-            Text="Chưa kết nối — bắt đầu ở mục 1",TextColor3=C.GRAY,TextSize=10,Font=Enum.Font.GothamBold,
-            BackgroundTransparency=1,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=6},githubTab)
-        local statusButton=MakeButton(githubTab,"ℹ Chạm vào thông báo để xem đầy đủ",C.BLUE,"GitHubStatus")
-        statusButton.Size=UDim2.new(1,-16,0,23); statusButton.Position=UDim2.new(0,8,0,61)
-        statusButton.TextWrapped=false; statusButton.TextTruncate=Enum.TextTruncate.AtEnd
-        local function ShowPage(key)
-            if not pages[key] then return end
-            activePage=key
-            for name,page in pairs(pages) do page.Visible=name==key; navButtons[name].BackgroundColor3=name==key and C.BLUE or C.GRAY end
-            pages[key].CanvasPosition=Vector2.new(0,0)
-            if key=="features" and RefreshFeatures then RefreshFeatures() end
-        end
-        for key,button in pairs(navButtons) do button.Activated:Connect(function() ShowPage(key) end) end
-        local function ordered(object) order+=1; object.LayoutOrder=order; return object end
-        local function Note(message,color,bold)
-            return ordered(New("TextLabel", {Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
-                BackgroundTransparency=1,Text=message,TextWrapped=true,TextColor3=color or C.DARK,
-                Font=bold and Enum.Font.GothamBold or Enum.Font.GothamMedium,TextSize=11,
-                TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top,ZIndex=6},column))
-        end
-        local function Field(title,placeholder,value,name)
-            Note(title,C.BLUE,true)
-            local box=ordered(New("TextBox", {Name=name or "TextBox",Size=UDim2.new(1,0,0,28),Text=value or "",PlaceholderText=placeholder,
-                PlaceholderColor3=C.GRAY,BackgroundColor3=C.WHITE,TextColor3=C.DARK,Font=Enum.Font.Code,TextSize=11,
-                BorderSizePixel=0,ClearTextOnFocus=false,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=8},column))
-            Corner(box,UDim.new(0,5)); Stroke(box); New("UIPadding",{PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6)},box)
-            return box
-        end
-        local function Buttons(specs,parent)
-            local row=New("Frame",{Size=UDim2.new(1,0,0,32),BackgroundTransparency=1,ZIndex=parent and parent.ZIndex+1 or 6},parent or column)
-            if not parent then ordered(row) end
-            local result={}
-            for i,spec in ipairs(specs) do
-                local button=MakeButton(row,spec[1],spec[2],spec[3])
-                button.Size=UDim2.new(1/#specs,-4,1,0); button.Position=UDim2.new((i-1)/#specs,0,0,0)
-                table.insert(result,button)
-            end
-            return table.unpack(result)
-        end
-        local function Dialog(name,title)
-            local frame=New("Frame",{Name=name,Size=UDim2.new(1,-8,1,-8),Position=UDim2.new(0,4,0,4),
-                BackgroundColor3=C.BG,BorderSizePixel=0,Visible=false,Active=true,ClipsDescendants=true,ZIndex=30},githubTab)
-            Corner(frame,UDim.new(0,7)); Stroke(frame,C.BLUE,2)
-            local heading=New("TextLabel",{Size=UDim2.new(1,-16,0,24),Position=UDim2.new(0,8,0,5),Text=title,
-                BackgroundTransparency=1,TextColor3=C.BLUE,Font=Enum.Font.GothamBold,TextSize=12,
-                TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=32},frame)
-            return frame,heading
-        end
-        local function DialogText(frame)
-            local scroll=New("ScrollingFrame",{Size=UDim2.new(1,-16,1,-76),Position=UDim2.new(0,8,0,33),
-                BackgroundTransparency=1,ScrollBarThickness=4,CanvasSize=UDim2.new(0,0,0,0),
-                AutomaticCanvasSize=Enum.AutomaticSize.Y,BorderSizePixel=0,ZIndex=32},frame)
-            return New("TextLabel",{Size=UDim2.new(1,-6,0,0),AutomaticSize=Enum.AutomaticSize.Y,Text="",TextWrapped=true,
-                TextColor3=C.DARK,BackgroundTransparency=1,Font=Enum.Font.Code,TextSize=11,
-                TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top,ZIndex=33},scroll)
-        end
-        local function Footer(button) button.Parent.Size=UDim2.new(1,-16,0,30); button.Parent.Position=UDim2.new(0,8,1,-36) end
-        local infoDialog=Dialog("GitHubInfoDialog","Thông báo / hướng dẫn")
-        local status=DialogText(infoDialog)
-        local infoCloseBtn=Buttons({{"Đóng thông báo",C.GRAY}},infoDialog); Footer(infoCloseBtn)
-        infoCloseBtn.Activated:Connect(function() infoDialog.Visible=false end)
-        statusButton.Activated:Connect(function() infoDialog.Visible=true end)
-        local confirmation=Dialog("GitHubSaveConfirmation","Xác nhận gửi lên GitHub")
-        local planLabel=DialogText(confirmation)
-        local confirmBtn,cancelSaveBtn=Buttons({{"Xác nhận ghi GitHub",C.GREEN},{"Hủy kế hoạch",C.RED}},confirmation); Footer(confirmBtn)
-
-        column=columns.connection
-        Note("Kết nối → chọn kho/nhánh. Sau đó mở mục 2, 3 hoặc 4 để chọn file.")
-        local tokenIn=Field("Token GitHub (chỉ giữ trong phiên)","ghp_... hoặc github_pat_...","","GitHubToken")
-        local connectBtn,showTokenBtn,disconnectBtn=Buttons({{"Kết nối",C.GREEN},{"Hiện nháp",C.ORANGE},{"Ngắt / Xóa token",C.RED}})
-        local account=Note("Không gửi token vào chat. Ô nhập sẽ được xóa sau khi kết nối.",C.GRAY)
-        local repoIn=Field("Kho lưu trữ","owner/repository",settings.repo or "","GitHubRepository")
-        local repoListBtn=Buttons({{"Chọn kho từ danh sách",C.BLUE}})
-        local branchIn=Field("Nhánh","Mặc định theo kho được chọn",settings.branch or "","GitHubBranch")
-        local branchListBtn,applyTargetBtn=Buttons({{"Chọn nhánh",C.BLUE},{"Dùng kho / nhánh này",C.PURPLE}})
-        local permissionsBtn=Buttons({{"Hướng dẫn quyền token",C.GRAY}})
-        Note("Đồng bộ chung — tùy chọn",C.BLUE,true)
-        local saveAllBtn,loadAllBtn=Buttons({{"Gửi cả hai",C.GREEN},{"Lấy cả hai",C.PURPLE}})
-        local autoBtn=Buttons({{"Tự lưu khi thêm / sửa: TẮT",C.GRAY}})
-        local summary=Note("",C.GRAY)
-        Note("Tự lưu nối với các nút lưu/tạo/sửa cũ. Mặc định TẮT. Xóa trên máy không tự xóa trên GitHub.",C.GRAY)
-
-        column=columns.saved
-        Note("Tất cả mục Code Đã Lưu nằm trong MỘT file JSON.")
-        local chooseCodeBtn,newCodeFileBtn=Buttons({{"Chọn file JSON",C.BLUE},{"File JSON mới",C.PURPLE}})
-        local codePathIn=Field("File lưu chung trên GitHub","banana-cat/saved-code.json",store:GetTarget().codePath,"GitHubCodePath")
-        local applyCodePathBtn=Buttons({{"Dùng file JSON này",C.GRAY}})
-        local saveScriptsBtn,loadScriptsBtn=Buttons({{"Gửi Code đã lưu",C.GREEN},{"Lấy Code đã lưu",C.PURPLE}})
-        local codeDestination=Note("",C.GRAY)
-        Note("File có sẵn: Lấy Code đã lưu trước khi gửi để giữ dữ liệu cũ.",C.ORANGE)
-        local chooseSavedScriptBtn=Buttons({{"Chọn script để xem / gửi mã riêng",C.BLUE}})
-        local inspectCodeJsonBtn=Buttons({{"Xem nội dung file JSON trên GitHub",C.GRAY}})
-        Note("Muốn một file .lua/.js thay vì cả danh sách JSON? Chọn script ở trên hoặc mở mục 4. Mã nguồn.",C.GRAY)
-
-        column=columns.features
-        Note("Chọn tính năng → chọn file Lua → gửi. Mỗi tính năng có file riêng.")
-        local chooseFeatureBtn=Buttons({{"Chọn tính năng trên máy",C.BLUE}})
-        local chooseFeatureFileBtn,newFeatureFileBtn=Buttons({{"Chọn file Lua",C.BLUE},{"File Lua mới",C.PURPLE}})
-        local featureFileIn=Field("File Lua của tính năng đang chọn","auto-farm.lua hoặc tools/esp.luau","","GitHubFeatureFile")
-        local saveOneFeatureBtn,setFeatureFileBtn=Buttons({{"Gửi tính năng này",C.GREEN},{"Đặt tên file",C.GRAY}})
-        local featureDestination=Note("Chưa có tính năng. Tạo ở tab ➕ hoặc lấy từ GitHub bên dưới.",C.GRAY)
-        local saveFeaturesBtn,loadFeaturesBtn=Buttons({{"Gửi tất cả tính năng",C.GREEN},{"Lấy các tính năng về",C.PURPLE}})
-        local viewFeatureCodeBtn,readFeatureCodeBtn=Buttons({{"Xem mã bản máy",C.BLUE},{"Lấy mã file đã chọn",C.BLUE}})
-        local importFeatureFileBtn=Buttons({{"Tạo tính năng từ một file GitHub",C.PURPLE}})
-        local folderIn=Field("Thư mục chứa các file Lua và index.json","banana-cat/features",store:GetTarget().featureFolder,"GitHubFeatureFolder")
-        local chooseFolderBtn,applyFolderBtn=Buttons({{"Chọn thư mục",C.BLUE},{"Dùng thư mục này",C.GRAY}})
-        Note("Đổi file/thư mục chỉ đổi đích gửi; không xóa file cũ. File index.json giữ tên và icon để lấy lại các tab.",C.GRAY)
-
-        column=columns.source
-        Note("Đọc, sửa, sao chép hoặc gửi một file mã nguồn. KHÔNG tự chạy code.")
-        local chooseSourceBtn,newSourceFileBtn=Buttons({{"Chọn file nguồn",C.BLUE},{"File nguồn mới",C.PURPLE}})
-        local sourcePathIn=Field("File mã nguồn trên GitHub","script.js hoặc scripts/example.lua","scripts/example.lua","GitHubSourcePath")
-        local getSourceBtn,sendSourceBtn=Buttons({{"Lấy mã từ GitHub",C.BLUE},{"Gửi mã lên GitHub",C.GREEN}})
-        local sourceInfo=Note("Chọn file hoặc nhập đường dẫn. Có thể dán code vào ô bên dưới.",C.GRAY)
-        local sourceScroll=ordered(New("ScrollingFrame",{Name="GitHubSourceScroll",Size=UDim2.new(1,0,0,190),BackgroundColor3=Color3.fromRGB(245,247,252),
-            BorderSizePixel=0,ScrollBarThickness=5,CanvasSize=UDim2.new(0,0,0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,ZIndex=6},column))
-        Corner(sourceScroll,UDim.new(0,5)); Stroke(sourceScroll)
-        local sourceEditor=New("TextBox",{Name="GitHubSourceEditor",Size=UDim2.new(1,-14,0,170),Position=UDim2.new(0,5,0,5),
-            AutomaticSize=Enum.AutomaticSize.Y,Text="",PlaceholderText="Mã lấy từ GitHub hoặc code bạn muốn gửi...",
-            TextColor3=C.DARK,PlaceholderColor3=C.GRAY,BackgroundTransparency=1,Font=Enum.Font.Code,TextSize=11,
-            ClearTextOnFocus=false,MultiLine=true,TextWrapped=true,TextXAlignment=Enum.TextXAlignment.Left,TextYAlignment=Enum.TextYAlignment.Top,ZIndex=8},sourceScroll)
-        local copySourceBtn,fromCodeBtn=Buttons({{"Sao chép mã",C.BLUE},{"Lấy từ ô Code",C.ORANGE}})
-        local importCodeBtn,importFeatureBtn=Buttons({{"Nhập vào Code Đã Lưu",C.PURPLE},{"Nhập thành tính năng",C.PURPLE}})
-        local toCodeBtn=Buttons({{"Đưa mã vào ô Code (không chạy)",C.GRAY}})
-        Note("File đã có: Lấy mã trước rồi sửa và Gửi. File mới: nhập tên, dán code, Gửi. Nháp khác nội dung được giữ trong Code Đã Lưu trước khi thay.",C.GRAY)
-
-        -- A task-specific picker: it never guesses a destination from the file extension.
-        local pickerDialog,pickerTitle=Dialog("GitHubFilePicker","Chọn file")
-        local pickerHint=New("TextLabel",{Size=UDim2.new(1,-16,0,31),Position=UDim2.new(0,8,0,29),Text="",TextWrapped=true,
-            BackgroundTransparency=1,TextColor3=C.GRAY,Font=Enum.Font.GothamMedium,TextSize=10,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=32},pickerDialog)
-        local directoryIn=New("TextBox",{Name="GitHubPickerDirectory",Size=UDim2.new(1,-84,0,26),Position=UDim2.new(0,8,0,64),
-            Text="",PlaceholderText="Thư mục (để trống = gốc kho)",ClearTextOnFocus=false,BackgroundColor3=C.WHITE,
-            TextColor3=C.DARK,Font=Enum.Font.Code,TextSize=10,TextXAlignment=Enum.TextXAlignment.Left,BorderSizePixel=0,ZIndex=33},pickerDialog)
-        Corner(directoryIn,UDim.new(0,4))
-        local upBtn=MakeButton(pickerDialog,"↑",C.GRAY,"GitHubPickerUp")
-        upBtn.Size=UDim2.new(0,30,0,26);upBtn.Position=UDim2.new(1,-70,0,64)
-        local browseBtn=MakeButton(pickerDialog,"↻",C.BLUE,"GitHubPickerRefresh")
-        browseBtn.Size=UDim2.new(0,30,0,26);browseBtn.Position=UDim2.new(1,-36,0,64)
-        local fileList=New("ScrollingFrame",{Name="GitHubPickerItems",Size=UDim2.new(1,-16,1,-177),Position=UDim2.new(0,8,0,96),
-            BackgroundColor3=C.WHITE,BorderSizePixel=0,ScrollBarThickness=4,CanvasSize=UDim2.new(0,0,0,0),
-            AutomaticCanvasSize=Enum.AutomaticSize.Y,ScrollingDirection=Enum.ScrollingDirection.Y,ZIndex=32},pickerDialog)
-        New("UIListLayout",{Padding=UDim.new(0,3),SortOrder=Enum.SortOrder.LayoutOrder},fileList)
-        local pickerPathIn=New("TextBox",{Name="GitHubPickerPath",Size=UDim2.new(1,-16,0,27),Position=UDim2.new(0,8,1,-73),
-            Text="",PlaceholderText="File đã chọn hoặc tên file mới",ClearTextOnFocus=false,BackgroundColor3=C.WHITE,
-            TextColor3=C.DARK,Font=Enum.Font.Code,TextSize=11,TextXAlignment=Enum.TextXAlignment.Left,BorderSizePixel=0,ZIndex=33},pickerDialog)
-        Corner(pickerPathIn,UDim.new(0,4))
-        local pickConfirmBtn,pickerCloseBtn=Buttons({{"Dùng file này",C.GREEN},{"Đóng chọn file",C.GRAY}},pickerDialog);Footer(pickConfirmBtn)
-        local pickerPrevBtn=MakeButton(pickerDialog,"← Trang",C.GRAY)
-        local pickerNextBtn=MakeButton(pickerDialog,"Trang →",C.GRAY)
-        pickerPrevBtn.Size=UDim2.new(0,68,0,26);pickerPrevBtn.Position=UDim2.new(1,-145,0,64)
-        pickerNextBtn.Size=UDim2.new(0,68,0,26);pickerNextBtn.Position=UDim2.new(1,-73,0,64)
-        local function ClosePicker() picker=nil;pickerDialog.Visible=false end
-        pickerCloseBtn.Activated:Connect(ClosePicker)
-
-        SetStatus=function(message,color)
-            if not alive then return end
-            status.Text=message;statusButton.Text="ℹ "..message
-            statusButton.BackgroundColor3=color or C.BLUE
-        end
-        local function InvalidatePlan() pendingSave=nil;confirmation.Visible=false end
-        local function UpdateAuto()
-            autoBtn.Text=autoSave and "Tự lưu khi thêm / sửa: BẬT" or "Tự lưu khi thêm / sửa: TẮT"
-            autoBtn.BackgroundColor3=autoSave and C.GREEN or C.GRAY
-        end
-        local function StopAuto() autoSave=false;autoTicket+=1;UpdateAuto() end
-        local function EnsureRecords()
-            for _,item in ipairs(scripts) do if not item.id then item.id=newId() end end
-            for _,item in ipairs(featureTabs) do
-                if not item.id then item.id=newId() end
-                if not item.githubFile then item.githubFile=store:SuggestedFile(item.name,item.id) end
+-- ===== KHÔI PHỤC CÁC TAB TÍNH NĂNG ĐÃ LƯU =====
+-- v4.4a: `featureTabs` trước đây KHÔNG được ghi xuống đĩa, nên tab tính năng bạn tạo
+-- biến mất sau khi thoát game. Cách "cứu" duy nhất là nút chép sang tab Code — khiến
+-- tính năng bị lưu nhầm chỗ (đúng như phản ánh). Giờ tab tính năng được lưu đúng chỗ của nó.
+--
+-- Không dựng tab ngay trong Store.load() vì CreateFeatureTab() mãi tới đây mới tồn tại.
+Store.restoreFeatures = function()
+    -- dỡ toàn bộ tab tính năng hiện có (duyệt ngược để index không bị lệch)
+    for i = #featureTabs, 1, -1 do
+        local ft = featureTabs[i]
+        for j, b in ipairs(tabs) do
+            if b == ft.btn then
+                table.remove(tabs, j)
+                table.remove(tabContent, j)
+                break
             end
         end
-        local function UpdateDestinations()
-            local target=store:GetTarget()
-            targetInfo.Text=configured and (target.repo.."  @ "..target.branch.."  • chạm ℹ để xem thông báo") or "Mở 1. Kết nối → chọn kho và nhánh trước"
-            targetInfo.TextColor3=configured and C.GREEN or C.GRAY
-            codeDestination.Text="Đích đã chọn: "..target.codePath..(trim(codePathIn.Text)~=target.codePath and "\nCó tên file chưa áp dụng: bấm Dùng file JSON này." or "")
-            featureDestination.Text=selectedFeature and (selectedFeature.name.." → "..target.featureFolder.."/"..selectedFeature.githubFile) or "Chưa có tính năng: chọn / tạo ở tab ➕, hoặc lấy từ GitHub."
-        end
-        UpdateSummary=function()
-            if not alive then return end
-            local changes={}
-            if revisions.scripts~=savedRevisions.scripts then table.insert(changes,"Code") end
-            if revisions.features~=savedRevisions.features then table.insert(changes,"tính năng") end
-            summary.Text=string.format("Bản máy: %d script • %d tính năng. %s",#scripts,#featureTabs,#changes>0 and ("Chờ gửi: "..table.concat(changes,", ")) or "Không có thay đổi đang chờ.")
-            UpdateDestinations()
-        end
-        local function CheckContext(version)
-            if not alive or version~=contextVersion then error("Thiết lập đã thay đổi. Thực hiện lại với đích mới.",0) end
-        end
-        local function RequireTarget(mode)
-            if not store:IsConnected() then error("Mở 1. Kết nối, nhập token rồi chọn kho trước.",0) end
-            local target=store:GetTarget()
-            if not configured or target.repo=="" or trim(repoIn.Text)~=target.repo or trim(branchIn.Text)~=target.branch then error("Kho/nhánh chưa áp dụng. Mở 1. Kết nối → Dùng kho / nhánh này.",0) end
-            if (mode=="scripts" or mode=="all") and trim(codePathIn.Text)~=target.codePath then error("Mở 2. Code đã lưu → Dùng file JSON này trước khi gửi/lấy.",0) end
-            if (mode=="features" or mode=="selected" or mode=="all") and trim(folderIn.Text)~=target.featureFolder then error("Mở 3. Tính năng → Dùng thư mục này trước khi gửi/lấy.",0) end
-            return target
-        end
-        local function Work(message,callback,onFailure)
-            if not alive then return end
-            if busy then SetStatus("Đang xử lý yêu cầu trước. Chờ một chút rồi thử lại.",C.ORANGE);return end
-            busy=true;SetStatus(message,C.BLUE)
-            local version=contextVersion
-            task.spawn(function()
-                local ok,result=pcall(callback,version)
-                busy=false
-                if not alive then return end
-                if not ok then
-                    if onFailure then onFailure() end
-                    SetStatus("❌ "..tostring(result),C.RED)
-                    if pickerDialog.Visible then pickerHint.Text=tostring(result) end
-                elseif type(result)=="string" then SetStatus(result,C.GREEN) end
-                UpdateSummary()
-            end)
-        end
-        local function SaveSettings()
-            local target=store:GetTarget()
-            if writefile then pcall(function()
-                writefile(settingsFile,HttpService:JSONEncode({version=1,repo=target.repo,branch=target.branch,codePath=target.codePath,featureFolder=target.featureFolder}))
-            end) end
-        end
-        local function ConfigureChanged(connectionChanged)
-            if updatingFields then return end
-            contextVersion+=1;StopAuto();InvalidatePlan()
-            if connectionChanged then configured=false end
-            UpdateDestinations()
-            SetStatus("Có thiết lập chưa áp dụng. Dùng nút bên cạnh ô vừa đổi; tự lưu tạm tắt để tránh gửi nhầm.",C.ORANGE)
-        end
-        for _,field in ipairs({repoIn,branchIn}) do field:GetPropertyChangedSignal("Text"):Connect(function() ConfigureChanged(true) end) end
-        for _,field in ipairs({codePathIn,folderIn}) do field:GetPropertyChangedSignal("Text"):Connect(function() ConfigureChanged(false) end) end
-        local function ApplyConnection()
-            local repo,branch=repoIn.Text,branchIn.Text
-            Work("Đang kiểm tra kho và nhánh...",function(version)
-                local metadata=store:GetRepository(repo)
-                CheckContext(version)
-                if trim(branch)=="" then branch=metadata.default_branch or "main" end
-                local previous=store:GetTarget()
-                local target=store:Configure(metadata.full_name,branch,previous.codePath,previous.featureFolder)
-                store:CheckTarget();CheckContext(version)
-                updatingFields=true;repoIn.Text=target.repo;branchIn.Text=target.branch;updatingFields=false
-                configured=true;InvalidatePlan();SaveSettings();UpdateDestinations()
-                return "✅ Đã chọn "..target.repo.." @ "..target.branch..". Mở 2. Code đã lưu hoặc 3. Tính năng để CHỌN FILE; mục 4 để lấy/gửi mã nguồn."
-            end)
-        end
-        local function ApplyLibraryPath(kind,value)
-            Work("Đang chọn đích lưu...",function(version)
-                local target=RequireTarget("connection")
-                local codePath=kind=="scripts" and value or target.codePath
-                local folder=kind=="features" and value or target.featureFolder
-                target=store:Configure(target.repo,target.branch,codePath,folder)
-                CheckContext(version);StopAuto();InvalidatePlan()
-                updatingFields=true
-                if kind=="scripts" then codePathIn.Text=target.codePath else folderIn.Text=target.featureFolder end
-                updatingFields=false;SaveSettings();UpdateDestinations()
-                return "Đã chọn "..(kind=="scripts" and target.codePath or target.featureFolder)..". Chưa ghi gì lên GitHub. File/thư viện cũ: bấm Lấy trước khi Gửi."
-            end)
-        end
-        applyTargetBtn.Activated:Connect(ApplyConnection)
-        applyCodePathBtn.Activated:Connect(function() ApplyLibraryPath("scripts",codePathIn.Text) end)
-        applyFolderBtn.Activated:Connect(function() ApplyLibraryPath("features",folderIn.Text) end)
-
-        local function DisplayDraft(hidden)
-            changingToken=true;maskedToken=hidden and #draftToken>0
-            tokenIn.Text=maskedToken and string.rep("•",math.min(#draftToken,24)) or draftToken
-            changingToken=false;showTokenBtn.Text=maskedToken and "Hiện nháp" or "Ẩn nháp"
-        end
-        tokenIn:GetPropertyChangedSignal("Text"):Connect(function() if not changingToken and not maskedToken then draftToken=tokenIn.Text end end)
-        tokenIn.Focused:Connect(function() DisplayDraft(false) end)
-        tokenIn.FocusLost:Connect(function() draftToken=trim(draftToken);DisplayDraft(true) end)
-        showTokenBtn.Activated:Connect(function() DisplayDraft(not maskedToken) end)
-        connectBtn.Activated:Connect(function()
-            local value=trim(draftToken)
-            if value=="" then SetStatus("Nhập token trong ô phía trên. Không gửi token vào chat.",C.ORANGE);return end
-            Work("Đang kết nối GitHub...",function(version)
-                local login=store:Connect(value);CheckContext(version)
-                draftToken="";DisplayDraft(true);configured=false;StopAuto();InvalidatePlan()
-                account.Text="✅ @"..login.." • token chỉ giữ trong RAM"
-                return "Đã kết nối @"..login..". Bấm Chọn kho từ danh sách, hoặc nhập owner/repository rồi Dùng kho / nhánh này."
-            end,function() configured=false;StopAuto();if not store:IsConnected() then account.Text="Token chưa được xác thực." end end)
-        end)
-        disconnectBtn.Activated:Connect(function()
-            store:Disconnect();contextVersion+=1;configured=false;StopAuto();InvalidatePlan();ClosePicker()
-            draftToken="";DisplayDraft(true);UpdateDestinations()
-            account.Text="Đã ngắt. Code, nháp và các tính năng trên máy vẫn được giữ."
-            SetStatus("Đã xóa token khỏi phiên. Yêu cầu đã gửi trước đó có thể vẫn hoàn tất trên GitHub.",C.GRAY)
-        end)
-        permissionsBtn.Activated:Connect(function()
-            SetStatus("Fine-grained PAT: chọn kho và cấp Contents: Read and write. Token ghp_: public_repo cho kho công khai hoặc repo cho kho riêng. Tổ chức có thể yêu cầu SSO. Kho cần có commit đầu tiên, ví dụ README. Token chỉ nhập trong hub, không đưa vào code/chat.",C.BLUE)
-            infoDialog.Visible=true
-        end)
-
-        RefreshFeatures=function()
-            if not alive then return end
-            EnsureRecords()
-            if selectedFeature and not table.find(featureTabs,selectedFeature) then selectedFeature=nil;lastFeatureFile=nil end
-            if not selectedFeature then selectedFeature=featureTabs[1] end
-            if selectedFeature and selectedFeature.githubFile~=lastFeatureFile then lastFeatureFile=selectedFeature.githubFile;featureFileIn.Text=lastFeatureFile end
-            if not selectedFeature then featureFileIn.Text="" end
-            chooseFeatureBtn.Text=selectedFeature and ("Đang chọn: "..selectedFeature.name.."  ▾") or "Chọn tính năng trên máy"
-            UpdateDestinations()
-        end
-        GitHubSync.Changed=function(kind,suppressAuto)
-            if not alive then return end
-            local ok=pcall(function()
-                revisions[kind]+=1;InvalidatePlan();EnsureRecords();UpdateSummary()
-                if kind=="features" then RefreshFeatures() end
-                if picker and picker.localKind==kind and RenderPicker then RenderPicker() end
-                if autoSave and not suppressAuto and QueueAutoSave then QueueAutoSave() end
-            end)
-            if not ok then StopAuto();SetStatus("Thay đổi trên máy vẫn được giữ. GitHub chưa cập nhật được; thử gửi thủ công sau. Không chặn các nút lưu cũ.",C.ORANGE) end
-        end
-        local function UniqueName(values, desired)
-            local name, number = desired, 1
-            while true do
-                local exists=false
-                for _, item in ipairs(values) do if item.name == name then exists=true; break end end
-                if not exists then return name end
-                number += 1; name=desired.." ("..number..")"
-            end
-        end
-        -- Import is additive. Conflicting IDs are split into two records; no existing tab is destroyed.
-        GitHubSync.Import = function(bundle)
-            EnsureRecords()
-            local added, conflicts = 0, 0
-            for _, kind in ipairs({"scripts", "features"}) do
-                local incoming = bundle[kind]
-                if incoming then
-                    local values = kind == "scripts" and scripts or featureTabs
-                    for _, remote in ipairs(incoming) do
-                        local existing
-                        for _, item in ipairs(values) do if item.id == remote.id then existing=item; break end end
-                        local same = existing and existing.code == remote.code and (kind == "scripts" or existing.icon == remote.icon)
-                        if not same then
-                            if existing then
-                                existing.id = newId()
-                                if kind == "features" then existing.githubFile=nil end
-                                conflicts += 1
-                            else
-                                for _, item in ipairs(values) do
-                                    if item.name == remote.name and item.code == remote.code and (kind == "scripts" or item.icon == remote.icon) then
-                                        existing=item; same=true; item.id=remote.id
-                                        if kind == "features" then item.githubFile=remote.file end
-                                        break
-                                    end
-                                end
-                            end
-                            if not same then
-                                local name = UniqueName(values, remote.name)
-                                if kind == "scripts" then
-                                    table.insert(scripts, {id=remote.id, name=name, code=remote.code, expanded=false})
-                                else
-                                    local feature = CreateFeatureTab(name, remote.icon, remote.code, true)
-                                    feature.id=remote.id; feature.githubFile=remote.file
-                                end
-                                added += 1
-                            end
-                        end
-                    end
-                    GitHubSync.Changed(kind, true)
-                end
-            end
-            RebuildScripts(); RebuildFeatureList(); RefreshFeatures()
-            return added, conflicts
-        end
-        local function Snapshot(mode,selected)
-            EnsureRecords()
-            if (mode=="features" or mode=="all" or mode=="selected") and selectedFeature and trim(featureFileIn.Text)~=selectedFeature.githubFile then error("Tên file vừa đổi: bấm Đặt tên file trước khi gửi.",0) end
-            local bundle,version={}, {scripts=revisions.scripts,features=revisions.features,source=source.revision,sourceCode=sourceEditor.Text}
-            if mode=="source" then return {path=sourcePathIn.Text,code=sourceEditor.Text},version end
-            if mode=="scripts" or mode=="all" then
-                bundle.scripts={}
-                for _,item in ipairs(scripts) do table.insert(bundle.scripts,{id=item.id,name=item.name,code=item.code}) end
-            end
-            if mode=="features" or mode=="all" or mode=="selected" then
-                bundle.features={}
-                if mode=="selected" and (not selected or not table.find(featureTabs,selected)) then error("Chọn một tính năng trước.",0) end
-                for _,item in ipairs(mode=="selected" and {selected} or featureTabs) do
-                    table.insert(bundle.features,{id=item.id,name=item.name,code=item.code,icon=item.icon,file=item.githubFile})
-                end
-            end
-            return bundle,version
-        end
-        local function SameRevision(mode,version)
-            if mode=="source" then return source.revision==version.source end
-            return ((mode~="scripts" and mode~="all") or revisions.scripts==version.scripts)
-                and ((mode~="features" and mode~="selected" and mode~="all") or revisions.features==version.features)
-        end
-        local function MarkSaved(mode,version)
-            if (mode=="scripts" or mode=="all") and revisions.scripts==version.scripts then savedRevisions.scripts=version.scripts end
-            if (mode=="features" or mode=="all") and revisions.features==version.features then savedRevisions.features=version.features end
-            if mode=="source" and source.revision==version.source then source.clean=version.sourceCode;sourceInfo.Text="Đã gửi mã hiện tại lên GitHub." end
-            UpdateSummary()
-        end
-        local function BeginSave(mode,selected)
-            Work("Đang kiểm tra đích gửi và thay đổi trên GitHub...",function(version)
-                RequireTarget(mode)
-                if mode=="selected" and selected and trim(featureFileIn.Text)~=selected.githubFile then error("Tên file vừa đổi: bấm Đặt tên file trước khi gửi.",0) end
-                local bundle,revision=Snapshot(mode,selected)
-                local plan=mode=="source" and store:PrepareSourceSave(bundle.path,bundle.code) or store:PrepareSave(bundle)
-                CheckContext(version)
-                if not SameRevision(mode,revision) then error("Bản máy vừa đổi. Bấm Gửi lại để lấy mã mới nhất.",0) end
-                if #plan.writes==0 then MarkSaved(mode,revision);return "GitHub đã có nội dung này; không cần tạo commit mới." end
-                pendingSave={plan=plan,mode=mode,revision=revision,context=version}
-                local lines={"Xác nhận gửi vào "..plan.repo.." @ "..plan.branch,"Một commit, "..#plan.writes.." file; không xóa file khác:"}
-                for _,item in ipairs(plan.writes) do table.insert(lines,(item.isNew and "+ Tạo file: " or "~ Cập nhật file có sẵn: ")..item.path) end
-                table.insert(lines,"\nChỉ bấm Xác nhận khi đúng kho, nhánh và file. File có sẵn sẽ nhận nội dung mới; lịch sử commit giữ bản trước.")
-                planLabel.Text=table.concat(lines,"\n");confirmation.Visible=true
-                return "Kế hoạch đang hiện trên màn hình. Kiểm tra file rồi Xác nhận ghi GitHub, hoặc Hủy."
-            end)
-        end
-        confirmBtn.Activated:Connect(function()
-            local pending=pendingSave
-            if not pending then SetStatus("Không có kế hoạch đang chờ. Bấm Gửi để xem lại file đích.",C.ORANGE);return end
-            Work("Đang gửi lên GitHub...",function(version)
-                RequireTarget(pending.mode);CheckContext(pending.context)
-                if not SameRevision(pending.mode,pending.revision) then error("Code đã thay đổi sau khi xem kế hoạch. Bấm Gửi lại.",0) end
-                InvalidatePlan()
-                local result=store:Commit(pending.plan)
-                CheckContext(version);MarkSaved(pending.mode,pending.revision)
-                if autoSave and QueueAutoSave then QueueAutoSave() end
-                return "✅ Đã gửi "..result.count.." file • commit "..result.sha:sub(1,8)..". Không xóa code/tính năng trên máy."
-            end)
-        end)
-        cancelSaveBtn.Activated:Connect(function() InvalidatePlan();SetStatus("Đã hủy kế hoạch, chưa gửi thao tác ghi.",C.GRAY) end)
-        saveScriptsBtn.Activated:Connect(function() BeginSave("scripts") end)
-        saveFeaturesBtn.Activated:Connect(function() BeginSave("features") end)
-        saveAllBtn.Activated:Connect(function() BeginSave("all") end)
-        saveOneFeatureBtn.Activated:Connect(function() BeginSave("selected",selectedFeature) end)
-        sendSourceBtn.Activated:Connect(function() BeginSave("source") end)
-        local function LoadLibrary(kind)
-            InvalidatePlan()
-            Work("Đang lấy và kiểm tra thư viện GitHub...",function(version)
-                RequireTarget(kind)
-                local bundle=store:Load(kind)
-                CheckContext(version)
-                local count,conflicts=GitHubSync.Import(bundle)
-                return "✅ Đã lấy thêm "..count.." mục; giữ cả hai bản cho "..conflicts.." xung đột. Không chạy code, không xóa tính năng cũ."
-            end)
-        end
-        loadScriptsBtn.Activated:Connect(function() LoadLibrary("scripts") end)
-        loadFeaturesBtn.Activated:Connect(function() LoadLibrary("features") end)
-        loadAllBtn.Activated:Connect(function() LoadLibrary("all") end)
-
-        -- Standalone source editor. Replacing a dirty draft first preserves it in the existing local library.
-        local function NameForPath(value)
-            local name=(value:match("([^/]+)$") or "GitHub Script"):gsub("%.%w+$","")
-            if name=="" then name="GitHub Script" end
-            local ending=math.min(#name,120)
-            while ending>0 and not utf8.len(name:sub(1,ending)) do ending-=1 end
-            return name:sub(1,ending)
-        end
-        local function KeepDraft(code,name)
-            if code=="" then return false end
-            for _,item in ipairs(scripts) do if item.code==code then return false end end
-            table.insert(scripts,{id=newId(),name=UniqueName(scripts,name),code=code,expanded=false})
-            RebuildScripts();GitHubSync.Changed("scripts",true)
-            return true
-        end
-        local function PutSource(code,filePath,origin,clean)
-            local kept=false
-            if sourceEditor.Text~=source.clean and sourceEditor.Text~=code then kept=KeepDraft(sourceEditor.Text,"Nháp GitHub - "..NameForPath(sourcePathIn.Text)) end
-            source.changing=true;sourceEditor.Text=code;sourcePathIn.Text=filePath;source.changing=false
-            source.revision+=1;source.clean=clean and code or "";source.origin=origin
-            InvalidatePlan();sourceScroll.CanvasPosition=Vector2.new(0,0);ShowPage("source")
-            sourceInfo.Text=origin.." • "..#code.." byte"..(kept and "\nNháp cũ đã giữ trong Code Đã Lưu." or "")
-            return kept
-        end
-        local function SourceChanged()
-            if source.changing then return end
-            source.revision+=1
-            if pendingSave and pendingSave.mode=="source" then InvalidatePlan() end
-            sourceInfo.Text="Đang soạn: "..sourcePathIn.Text.." • chưa gửi. Chỉ ghi GitHub sau khi Gửi và Xác nhận."
-        end
-        sourcePathIn:GetPropertyChangedSignal("Text"):Connect(SourceChanged)
-        sourceEditor:GetPropertyChangedSignal("Text"):Connect(SourceChanged)
-        UseSource=function(mode)
-            Work("Đang giữ mã vào hub, không thực thi...",function()
-                local code=sourceEditor.Text
-                if code=="" then error("Chưa có mã. Chọn file và Lấy mã từ GitHub, hoặc dán code trước.",0) end
-                local target=store:GetTarget()
-                if trim(sourcePathIn.Text)==target.codePath or trim(sourcePathIn.Text)==target.featureFolder.."/index.json" then
-                    error("Đây là JSON thư viện. Mở 2. Code đã lưu / 3. Tính năng và bấm Lấy để nhập đúng danh sách.",0)
-                end
-                local name=NameForPath(sourcePathIn.Text)
-                if mode=="features" then
-                    CreateFeatureTab(UniqueName(featureTabs,name),"🐙",code,true)
-                    RebuildFeatureList();GitHubSync.Changed("features")
-                    return "✅ Đã tạo thêm tab tính năng. Các tab cũ vẫn giữ nguyên; chưa chạy code."
-                elseif mode=="editor" then
-                    if codeIn.Text~=code then KeepDraft(codeIn.Text,"Nháp ô Code - "..(nameIn.Text~="" and nameIn.Text:sub(1,80) or "script")) end
-                    codeIn.Text=code;nameIn.Text=name;SwitchTab(1)
-                    return "Đã đưa mã vào ô Code; nháp cũ được giữ trong Code Đã Lưu nếu cần. Chưa thực thi."
-                end
-                table.insert(scripts,{id=newId(),name=UniqueName(scripts,name),code=code,expanded=false})
-                RebuildScripts();GitHubSync.Changed("scripts")
-                return "✅ Đã thêm vào Code Đã Lưu. Không tự chạy mã."
-            end)
-        end
-        LoadSource=function(filePath,afterImport)
-            local expectedRevision=source.revision
-            Work("Đang lấy mã nguồn từ GitHub...",function(version)
-                RequireTarget("source")
-                local result=store:ReadSource(filePath)
-                CheckContext(version)
-                if source.revision~=expectedRevision then error("Bạn vừa sửa ô mã/đường dẫn khi đang tải. Nháp vẫn giữ nguyên; bấm Lấy mã lại khi sẵn sàng.",0) end
-                local kept=PutSource(result.code,result.path,"Đã lấy từ GitHub",true)
-                if afterImport then
-                    -- Defer until Work releases its lock. The revision guard prevents importing later edits accidentally.
-                    local importedRevision=source.revision
-                    task.defer(function() if alive and source.revision==importedRevision then UseSource(afterImport) end end)
-                end
-                return "✅ Đã lấy mã: "..result.path..". Có thể xem/sửa/sao chép ngay; không tự chạy."..(kept and " Nháp cũ đã giữ trong Code Đã Lưu." or "")
-            end)
-        end
-        getSourceBtn.Activated:Connect(function() LoadSource(trim(sourcePathIn.Text)) end)
-        importCodeBtn.Activated:Connect(function() if sourceEditor.Text=="" then LoadSource(trim(sourcePathIn.Text),"scripts") else UseSource("scripts") end end)
-        importFeatureBtn.Activated:Connect(function() if sourceEditor.Text=="" then LoadSource(trim(sourcePathIn.Text),"features") else UseSource("features") end end)
-        toCodeBtn.Activated:Connect(function() UseSource("editor") end)
-        fromCodeBtn.Activated:Connect(function()
-            Work("Đang lấy code trên máy...",function()
-                if codeIn.Text=="" then error("Ô Code đang trống. Nhập code ở tab Code trước.",0) end
-                PutSource(codeIn.Text,sourcePathIn.Text,"Mã từ ô Code — chọn file rồi Gửi",false)
-                return "Đã lấy mã từ ô Code. Chọn file đích và bấm Gửi mã lên GitHub."
-            end)
-        end)
-        copySourceBtn.Activated:Connect(function()
-            local code=sourceEditor.Text
-            if code=="" then SetStatus("Chưa có mã để sao chép.",C.ORANGE);return end
-            local clipboard=type(setclipboard)=="function" and setclipboard or toclipboard
-            if type(clipboard)=="function" then
-                local ok=pcall(clipboard,code)
-                SetStatus(ok and "Đã sao chép toàn bộ mã nguồn." or "Không sao chép được; chọn mã trong ô để copy thủ công.",ok and C.GREEN or C.ORANGE)
-            else
-                sourceEditor:CaptureFocus();sourceEditor.SelectionStart=1;sourceEditor.CursorPosition=#code+1
-                SetStatus("Môi trường không có clipboard tự động. Đã chọn mã để bạn copy thủ công.",C.ORANGE)
-            end
-        end)
-        inspectCodeJsonBtn.Activated:Connect(function()
-            local ok,target=pcall(function() return RequireTarget("scripts") end)
-            if ok then LoadSource(target.codePath) else SetStatus(tostring(target),C.ORANGE) end
-        end)
-        viewFeatureCodeBtn.Activated:Connect(function()
-            Work("Đang mở mã tính năng...",function()
-                if not selectedFeature then error("Chọn một tính năng trên máy trước.",0) end
-                local target=store:GetTarget()
-                PutSource(selectedFeature.code,target.featureFolder.."/"..selectedFeature.githubFile,"Mã tính năng trên máy",false)
-                return "Đã mở mã tính năng. Có thể sửa bản nháp hoặc gửi file riêng; chưa sửa tab tính năng gốc."
-            end)
-        end)
-        readFeatureCodeBtn.Activated:Connect(function()
-            if not selectedFeature then SetStatus("Chọn tính năng trước.",C.ORANGE);return end
-            LoadSource(store:GetTarget().featureFolder.."/"..selectedFeature.githubFile)
-        end)
-        local function SetFeatureFile(value)
-            StopAuto();InvalidatePlan()
-            local item=selectedFeature
-            Work("Đang chọn file cho tính năng...",function(version)
-                RequireTarget("features")
-                if not item or not table.find(featureTabs,item) then error("Chọn một tính năng trên máy trước.",0) end
-                local file=store:ValidateFeatureFile(value)
-                for _,other in ipairs(featureTabs) do if other~=item and other.githubFile==file then error("File này đã được tính năng khác sử dụng. Chọn file riêng để không ghi đè nhau.",0) end end
-                local info=store:InspectFeatureDestination(file)
-                CheckContext(version)
-                if not table.find(featureTabs,item) then error("Tính năng vừa bị xóa. Chọn lại mục cần gửi.",0) end
-                StopAuto();item.githubFile=file;GitHubSync.Changed("features",true);RefreshFeatures()
-                return "Đã chọn "..info.path..". "..(info.exists and "File đã có mã: dùng Lấy mã file đã chọn để xem; chỉ cập nhật sau Gửi và Xác nhận." or "File mới sẽ được tạo khi bạn Gửi và Xác nhận.")
-            end)
-        end
-        setFeatureFileBtn.Activated:Connect(function() SetFeatureFile(featureFileIn.Text) end)
-        featureFileIn:GetPropertyChangedSignal("Text"):Connect(function()
-            if not selectedFeature or featureFileIn.Text==selectedFeature.githubFile then return end
-            StopAuto();InvalidatePlan()
-            SetStatus("Tên file tính năng chưa áp dụng. Bấm Đặt tên file rồi Gửi; tự lưu tạm tắt.",C.ORANGE)
-        end)
-
-        -- Picker callbacks distinguish library JSON, per-feature Lua, folders and arbitrary source files.
-        local FetchPicker
-        local function PickRow(caption,callback,enabled)
-            local button=MakeButton(fileList,caption,enabled==false and C.GRAY or Color3.fromRGB(220,230,248))
-            button.Size=UDim2.new(1,-6,0,28);button.TextColor3=enabled==false and C.WHITE or C.DARK
-            button.TextWrapped=false;button.TextTruncate=Enum.TextTruncate.AtEnd;button.TextXAlignment=Enum.TextXAlignment.Left
-            New("UIPadding",{PaddingLeft=UDim.new(0,6)},button)
-            button.Activated:Connect(callback)
-        end
-        RenderPicker=function()
-            local current=picker
-            if not current or not alive then return end
-            for _,child in ipairs(fileList:GetChildren()) do if not child:IsA("UIListLayout") then child:Destroy() end end
-            fileList.CanvasPosition=Vector2.new(0,0)
-            local entries=current.localKind=="features" and featureTabs or current.localKind=="scripts" and scripts or current.entries or {}
-            local term=current.simple and directoryIn.Text:lower() or ""
-            local shown=0
-            for _,item in ipairs(entries) do
-                local caption=current.mode=="repo" and item.full_name or item.name
-                if type(caption)=="string" and (term=="" or caption:lower():find(term,1,true)) then
-                    shown+=1
-                    if current.simple then
-                        local label=current.localKind=="features" and (caption.." → "..item.githubFile) or caption
-                        PickRow(label,function()
-                            if picker~=current then return end
-                            ClosePicker()
-                            if current.mode=="repo" then
-                                repoIn.Text=item.full_name;branchIn.Text=item.default_branch or "main";ApplyConnection()
-                            elseif current.mode=="branch" then branchIn.Text=item.name;ApplyConnection()
-                            elseif current.localKind=="features" then
-                                if table.find(featureTabs,item) then selectedFeature=item;lastFeatureFile=nil;RefreshFeatures();ShowPage("features") end
-                            elseif table.find(scripts,item) then
-                                Work("Đang mở mã script đã lưu...",function()
-                                    PutSource(item.code,"banana-cat/scripts/"..store:SuggestedFile(item.name,item.id),"Mã từ Code Đã Lưu — có thể gửi file riêng",false)
-                                    return "Đã mở mã "..item.name..". Chọn file nguồn hoặc dùng tên gợi ý rồi Gửi."
-                                end)
-                            end
-                        end)
-                    else
-                        local isDirectory=item.type=="dir"
-                        local allowed=isDirectory or (item.type=="file" and current.mode~="folder")
-                        if current.mode=="code" and not isDirectory then allowed=allowed and caption:lower():match("%.json$")~=nil end
-                        if current.mode=="feature" and not isDirectory then allowed=allowed and (caption:lower():match("%.lua$")~=nil or caption:lower():match("%.luau$")~=nil) end
-                        PickRow((isDirectory and "📁 " or "📄 ")..caption,function()
-                            if picker~=current then return end
-                            if not allowed then SetStatus("Loại file không phù hợp. JSON cho Code đã lưu; Lua/Luau cho tính năng. Mục 4 đọc các file văn bản khác.",C.ORANGE);return end
-                            if isDirectory then current.directory=item.path;FetchPicker(current)
-                            else
-                                pickerPathIn.Text=current.mode=="feature" and item.path:sub(#current.root+2) or item.path
-                                pickerHint.Text="Đã chọn: "..item.path..". Bấm nút xanh bên dưới để dùng file."
-                            end
-                        end,allowed)
-                    end
-                end
-            end
-            if shown==0 then PickRow(current.simple and "Không có mục phù hợp ở trang này." or "Chưa có file. Có thể nhập tên mới ở ô bên dưới.",function() end,false) end
-        end
-        FetchPicker=function(current)
-            Work("Đang tải danh sách để chọn...",function(version)
-                local items,exists
-                if current.localKind then items={}
-                elseif current.mode=="repo" then items=store:ListRepositories(current.page)
-                elseif current.mode=="branch" then items=store:ListBranches(repoIn.Text,current.page)
-                else
-                    RequireTarget("connection")
-                    if current.mode=="feature" and current.directory~=current.root and current.directory:sub(1,#current.root+1)~=current.root.."/" then
-                        error("Chọn file bên trong thư mục tính năng; đổi thư mục ở màn hình trước nếu cần.",0)
-                    end
-                    items,exists=store:ListDirectory(current.directory,true)
-                    table.sort(items,function(a,b) if a.type~=b.type then return a.type=="dir" end;return tostring(a.name)<tostring(b.name) end)
-                end
-                CheckContext(version)
-                if picker~=current then return end
-                current.entries=items
-                if not current.simple then directoryIn.Text=current.directory end
-                if current.mode=="folder" then pickerPathIn.Text=current.directory end
-                pickerHint.Text=current.simple and (current.localKind and "Chạm tên để chọn. Có thể lọc tên bên dưới." or "Trang "..current.page.." • chạm tên để chọn; nút ← / → đổi trang.")
-                    or (exists==false and "Thư mục chưa có. Nhập tên file/thư mục mới; chỉ tạo khi gửi." or ("Kho: "..store:GetTarget().repo.." @ "..store:GetTarget().branch.." • chọn file rồi bấm nút xanh."))
-                RenderPicker()
-            end)
-        end
-        OpenPicker=function(mode,create,afterImport)
-            if busy then SetStatus("Đang xử lý yêu cầu trước. Chờ một chút rồi chọn file.",C.ORANGE);return end
-            local ok,message=pcall(function()
-                local target
-                if mode~="localfeature" and mode~="localscript" and mode~="repo" and mode~="branch" then target=RequireTarget(mode=="feature" and "features" or "connection") end
-                EnsureRecords()
-                if mode=="feature" and not selectedFeature then error("Chọn/tạo một tính năng trên máy trước, hoặc dùng Tạo tính năng từ một file GitHub.",0) end
-                local simple=mode=="repo" or mode=="branch" or mode=="localfeature" or mode=="localscript"
-                local current={mode=mode,page=1,simple=simple,entries={},create=create,afterImport=afterImport,
-                    localKind=mode=="localfeature" and "features" or mode=="localscript" and "scripts" or nil}
-                local titles={repo="Chọn kho GitHub",branch="Chọn nhánh",code="Chọn file JSON • Code Đã Lưu",feature="Chọn file Lua • Tính năng",
-                    folder="Chọn thư mục tính năng",source="Chọn file mã nguồn",localfeature="Chọn tính năng trên máy",localscript="Chọn script đã lưu để xem/gửi mã"}
-                picker=current;pickerDialog.Visible=true;pickerTitle.Text=(create and "File mới — " or "")..titles[mode]
-                current.root=mode=="feature" and target.featureFolder or ""
-                local chosen=mode=="code" and codePathIn.Text or mode=="feature" and selectedFeature.githubFile or mode=="folder" and folderIn.Text or sourcePathIn.Text
-                current.directory=mode=="feature" and (current.root..(parentPath(chosen)~="" and "/"..parentPath(chosen) or "")) or mode=="folder" and chosen or parentPath(chosen)
-                if simple then current.directory="" end
-                pickerPathIn.Text=create and "" or chosen
-                pickerPathIn.PlaceholderText=mode=="feature" and "Tên file tương đối: tools/example.lua" or mode=="code" and "Ví dụ: banana-cat/saved-code.json" or mode=="folder" and "Ví dụ: banana-cat/features" or "Ví dụ: script.js hoặc scripts/example.lua"
-                pickerPathIn.Visible=not simple;pickConfirmBtn.Parent.Visible=not simple
-                directoryIn.Text="";directoryIn.PlaceholderText=simple and "Lọc tên..." or "Thư mục (trống = gốc kho)"
-                directoryIn.Size=simple and UDim2.new(1,-160,0,26) or UDim2.new(1,-84,0,26)
-                upBtn.Visible=not simple;browseBtn.Visible=not simple
-                pickerPrevBtn.Visible=mode=="repo" or mode=="branch";pickerNextBtn.Visible=pickerPrevBtn.Visible
-                fileList.Size=UDim2.new(1,-16,1,simple and -136 or -177)
-                pickConfirmBtn.Text=mode=="folder" and "Dùng thư mục này" or mode=="source" and not create and "Chọn và lấy mã" or "Dùng file này"
-                FetchPicker(current)
-            end)
-            if not ok then SetStatus(tostring(message),C.ORANGE) end
-        end
-        -- A close button stays reachable in every picker mode, including the local/repository lists.
-        local pickerX=MakeButton(pickerDialog,"✕",C.RED,"GitHubPickerClose")
-        pickerX.Size=UDim2.new(0,28,0,23);pickerX.Position=UDim2.new(1,-34,0,4)
-        pickerTitle.Size=UDim2.new(1,-52,0,24)
-        pickerX.Activated:Connect(ClosePicker)
-        pickConfirmBtn.Activated:Connect(function()
-            local current=picker
-            if not current then return end
-            local value=trim(pickerPathIn.Text)
-            if value=="" then pickerHint.Text="Chọn một file trong danh sách hoặc nhập tên file mới ở ô phía dưới.";return end
-            if current.mode=="code" then
-                ClosePicker();codePathIn.Text=value;ShowPage("saved");ApplyLibraryPath("scripts",value)
-            elseif current.mode=="folder" then
-                ClosePicker();folderIn.Text=value;ShowPage("features");ApplyLibraryPath("features",value)
-            elseif current.mode=="feature" then
-                ClosePicker();featureFileIn.Text=value;ShowPage("features");SetFeatureFile(value)
-            elseif current.mode=="source" then
-                ClosePicker();sourcePathIn.Text=value;ShowPage("source")
-                if current.create then SetStatus("Đã chọn tên file mới. Dán/soạn code rồi Gửi mã lên GitHub; chưa tạo file ngay.",C.BLUE)
-                else LoadSource(value,current.afterImport) end
-            end
-        end)
-        browseBtn.Activated:Connect(function() if picker then picker.directory=trim(directoryIn.Text);FetchPicker(picker) end end)
-        upBtn.Activated:Connect(function()
-            if not picker then return end
-            local directory=parentPath(picker.directory)
-            if picker.mode=="feature" and (#directory<#picker.root or directory:sub(1,#picker.root)~=picker.root) then directory=picker.root end
-            picker.directory=directory;FetchPicker(picker)
-        end)
-        pickerPrevBtn.Activated:Connect(function() if picker then picker.page=math.max(1,picker.page-1);FetchPicker(picker) end end)
-        pickerNextBtn.Activated:Connect(function() if picker then picker.page+=1;FetchPicker(picker) end end)
-        directoryIn:GetPropertyChangedSignal("Text"):Connect(function() if picker and picker.simple then RenderPicker() end end)
-        repoListBtn.Activated:Connect(function() OpenPicker("repo") end)
-        branchListBtn.Activated:Connect(function() OpenPicker("branch") end)
-        chooseCodeBtn.Activated:Connect(function() OpenPicker("code") end)
-        newCodeFileBtn.Activated:Connect(function() OpenPicker("code",true) end)
-        chooseFolderBtn.Activated:Connect(function() OpenPicker("folder") end)
-        chooseFeatureBtn.Activated:Connect(function() OpenPicker("localfeature") end)
-        chooseFeatureFileBtn.Activated:Connect(function() OpenPicker("feature") end)
-        newFeatureFileBtn.Activated:Connect(function() OpenPicker("feature",true) end)
-        chooseSavedScriptBtn.Activated:Connect(function() OpenPicker("localscript") end)
-        chooseSourceBtn.Activated:Connect(function() OpenPicker("source") end)
-        newSourceFileBtn.Activated:Connect(function() OpenPicker("source",true) end)
-        importFeatureFileBtn.Activated:Connect(function() OpenPicker("source",false,"features") end)
-
-        QueueAutoSave=function()
-            if not autoSave or not alive or not configured then return end
-            autoTicket+=1
-            local ticket=autoTicket
-            task.delay(1.2,function()
-                if not autoSave or not alive or ticket~=autoTicket or not configured or pendingSave then return end
-                if busy then QueueAutoSave();return end
-                local dirtyScripts=revisions.scripts~=savedRevisions.scripts
-                local dirtyFeatures=revisions.features~=savedRevisions.features
-                if not dirtyScripts and not dirtyFeatures then return end
-                local mode=dirtyScripts and (dirtyFeatures and "all" or "scripts") or "features"
-                Work("Tự lưu: đang kiểm tra thay đổi trên GitHub...",function(version)
-                    RequireTarget(mode)
-                    local bundle,revision=Snapshot(mode)
-                    local plan=store:PrepareSave(bundle)
-                    CheckContext(version)
-                    if not autoSave or not SameRevision(mode,revision) then QueueAutoSave();return "Nháp vừa đổi; đã hoãn tự lưu tới lượt tiếp theo." end
-                    local result=store:Commit(plan)
-                    CheckContext(version);MarkSaved(mode,revision);QueueAutoSave()
-                    return result.count>0 and ("✅ Tự lưu "..result.count.." file • commit "..result.sha:sub(1,8)) or "GitHub đã có nội dung này; không tạo commit thừa. Xóa bản máy không xóa bản GitHub."
-                end,StopAuto)
-            end)
-        end
-        autoBtn.Activated:Connect(function()
-            if not autoSave then
-                local ok,message=pcall(function() RequireTarget("all") end)
-                if not ok then SetStatus(tostring(message),C.ORANGE);return end
-            end
-            autoSave=not autoSave;UpdateAuto()
-            if autoSave then SetStatus("Đã bật tự lưu thư viện sau thao tác thêm/lưu/sửa (chờ 1,2 giây). Mã nguồn ở mục 4 chỉ gửi khi bạn bấm Gửi và Xác nhận.",C.GREEN);QueueAutoSave()
-            else autoTicket+=1;SetStatus("Đã tắt tự lưu. Yêu cầu đã gửi trước đó có thể vẫn hoàn tất.",C.GRAY) end
-        end)
-        gui.Destroying:Connect(function()
-            alive=false;autoSave=false;autoTicket+=1;contextVersion+=1
-            draftToken="";pendingSave=nil;picker=nil;store:Disconnect()
-        end)
-        EnsureRecords();RefreshFeatures();UpdateSummary();UpdateAuto();ShowPage("connection")
-        SetStatus("Chọn mục 1 để kết nối; mục 2/3 có nút Chọn file riêng, mục 4 để lấy/gửi mã nguồn.",C.BLUE)
-        -- END GITHUB UI / LIBRARY BRIDGE
+        if activeTab == ft.frame then SwitchTab(1) end
+        pcall(function() ft.btn:Destroy() end)
+        pcall(function() ft.frame:Destroy() end)
+        table.remove(featureTabs, i)
     end
-    local githubOK = pcall(InitializeGitHub)
-    if not githubOK then
-        GitHubSync.Changed = function() end
-        warn("[BananaCatHub] Không khởi tạo được tab GitHub; các tính năng cũ vẫn hoạt động.")
+
+    -- dựng lại từ dữ liệu đọc được trên đĩa
+    for _, f in ipairs(Store.loadedFeatures) do
+        CreateFeatureTab(f.name, f.icon, f.code)
     end
+
+    for j, t in ipairs(tabs) do t.LayoutOrder = j end
+    tabBar.CanvasSize = UDim2.new(0, 0, 0, #tabs * 34 + 10)
+    RebuildFeatureList()
+    -- phai goi lai: nhãn trạng thái ở TAB2 đã được dựng từ TRƯỚC khi các tab tính năng
+    -- được khôi phục, nên số "N tab" trên đó vẫn là 0 nếu không làm mới lại ở đây.
+    if Store.refreshStatus then Store.refreshStatus() end
+end
+
+if #Store.loadedFeatures > 0 then
+    Store.restoreFeatures()
+    createStatus.Text = string.format("💾 Đã khôi phục %d tab tính năng từ bộ nhớ", #Store.loadedFeatures)
 end
 
 -- ==================== TOGGLE MENU & DRAG ====================
 local function ToggleMainFrame()
     main.Visible = not main.Visible
     togBtn.Text = main.Visible and "✕" or "🍌"
+    if not main.Visible then ReleaseHubFocus() end   -- v4.4b: đóng menu là phải trả input cho game
 end
 
 closeBtn.Activated:Connect(function()
@@ -4274,53 +4846,48 @@ dragLockBtn.Activated:Connect(function()
     end
 end)
 
-local dragging, dragStart, startPos
 trackConn(titleBar.InputBegan:Connect(function(i)
     if S.dragMenu and (i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch) then
-        dragging=true
-        dragStart=i.Position
-        startPos=main.Position
+        S.dragging=true
+        S.dragStart=i.Position
+        S.startPos=main.Position
     end
 end))
 
 trackConn(UserInputService.InputChanged:Connect(function(i)
-    if dragging and startPos and dragStart and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
-        local d=i.Position-dragStart
-        main.Position=UDim2.new(startPos.X.Scale, startPos.X.Offset+d.X, startPos.Y.Scale, startPos.Y.Offset+d.Y)
+    if S.dragging and S.startPos and S.dragStart and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+        local d=i.Position-S.dragStart
+        main.Position=UDim2.new(S.startPos.X.Scale, S.startPos.X.Offset+d.X, S.startPos.Y.Scale, S.startPos.Y.Offset+d.Y)
     end
 end))
 
 trackConn(UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
-        dragging=false
+        S.dragging=false
     end
 end))
-
-local togDragging = false
-local togDragStart, togStartPos
-local togMoved = false
 
 trackConn(togBtn.InputBegan:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
         if S.dragMenu then
-            togDragging = true
-            togDragStart = i.Position
-            togStartPos = togBtn.Position
-            togMoved = false
+            S.togDragging = true
+            S.togDragStart = i.Position
+            S.togStartPos = togBtn.Position
+            S.togMoved = false
         end
     end
 end))
 
 trackConn(UserInputService.InputChanged:Connect(function(i)
-    if togDragging and S.dragMenu and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-        local delta = i.Position - togDragStart
+    if S.togDragging and S.dragMenu and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+        local delta = i.Position - S.togDragStart
         if delta.Magnitude > 5 then
-            togMoved = true
+            S.togMoved = true
         end
-        if togMoved then
+        if S.togMoved then
             togBtn.Position = UDim2.new(
-                togStartPos.X.Scale, togStartPos.X.Offset + delta.X,
-                togStartPos.Y.Scale, togStartPos.Y.Offset + delta.Y
+                S.togStartPos.X.Scale, S.togStartPos.X.Offset + delta.X,
+                S.togStartPos.Y.Scale, S.togStartPos.Y.Offset + delta.Y
             )
         end
     end
@@ -4328,9 +4895,9 @@ end))
 
 trackConn(UserInputService.InputEnded:Connect(function(i)
     if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-        if togDragging then
-            togDragging = false
-            if not togMoved then
+        if S.togDragging then
+            S.togDragging = false
+            if not S.togMoved then
                 ToggleMainFrame()
             end
         end
@@ -4352,4 +4919,10 @@ end))
 main.Visible = true
 togBtn.Text = "✕"
 
-print("✅ Banana Cat Hub v4.3: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + AI AI + Tạo Tính Năng + GitHub — sẵn sàng!")
+print(string.format(
+    "✅ Banana Cat Hub v4.4f — sẵn sàng! Đã nạp lại %d script + %d waypoint + %d tab tính năng từ bộ nhớ (chế độ: %s%s)",
+    Store.loadedScripts, Store.loadedWp, #Store.loadedFeatures, Store.mode,
+    Store.lastError and (" | ⚠️ " .. Store.lastError) or ""
+))
+print("   💾 File lưu: " .. Store.SAVE_FILE .. " (trong thư mục workspace của executor — sống qua cả lần rejoin)")
+print("   Tính năng: Code + Code Đã Lưu + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + AI AI + Tạo Tính Năng")
