@@ -1,6 +1,65 @@
 --[[
-    🍌 Banana Cat Hub v4.10 — FULL CODE  ·  giao diện "OBSIDIAN NOIR" + layout kiểu DELTA
-    + v4.10 (bản này): GỠ BỎ HOÀN TOÀN TRANG 🤖 AI AI (mini web chat Gemini).
+    🍌 Banana Cat Hub v4.12 — FULL CODE  ·  giao diện "OBSIDIAN NOIR" + layout kiểu DELTA
+    + v4.12 (bản này): THÊM BỘ DI CHUYỂN VÀO TRANG 📚 SCRIPT HUB + SỬA 4 LỖI + BỘ TEST TỰ ĐỘNG.
+        • BỘ DI CHUYỂN (port từ menu "EXECUTOR MENU" ở file aiaiaitao3) — 5 thẻ MỚI trong trang
+          📚 Script Hub, phân loại "Di chuyển", toàn bộ là TIỆN ÍCH NỘI BỘ (không tải từ mạng):
+            - 🚀 Bay: BodyVelocity/BodyGyro, Space lên · Shift/Ctrl xuống · WASD lái.
+            - 🧱 Xuyên Tường (NoClip).
+            - 🦘 Nhảy Vô Hạn.
+            - 👟 Chạy Độ: WalkSpeed + JumpPower, tự áp lại nếu game đổi về mặc định.
+            - 🪩 Thảm Kính: chỉnh được RỘNG × CAO (độ dày) × DÀI, ⬆⬇ nâng/hạ, bám theo người.
+        • KHUNG ⚙ TUỲ CHỈNH nằm TRÊN CÙNG danh sách thẻ (LayoutOrder 0, tên HubMove_Panel nên
+          không bao giờ bị xoá khi lọc/tìm kiếm): tốc độ bay · tốc độ chạy · lực nhảy · 3 chiều
+          thảm · ⬆ Nâng / ⬇ Hạ / 🛑 Tắt hết + nhãn trạng thái. Toàn bộ nằm trong `do ... end`.
+        • KHÔNG MẤT TÍNH NĂNG NÀO: 16 thẻ cũ + 6 trang cũ giữ nguyên, kiểm bằng 37 test tự động.
+        • 3 ĐIỂM KHÁC BIỆT SO VỚI BẢN GỐC Ở aiaiaitao3 (sửa 3 lỗi của bản gốc luôn):
+          1) Tắt Xuyên Tường: bản gốc gán cứng CanCollide=true cho MỌI part -> mũ/phụ kiện vốn
+             không va chạm bị "cứng" lại, nhân vật hay kẹt. Nay lưu lại giá trị gốc từng part.
+          2) Vòng lặp NoClip/Đóng băng: bản gốc lặp GetDescendants() MỖI Stepped cho MỌI người
+             chơi (~1000 ghi thuộc tính/frame). Nay chỉ duyệt nhân vật mình và chỉ ghi khi khác.
+          3) Bản gốc không lưu gì xuống đĩa; ở đây trạng thái sống trong S.Move, dọn gọn bằng
+             StopAll() và tự bật lại sau respawn (CharacterAdded).
+        • SỬA 4 LỖI (2 lỗi có sẵn từ v4.11, 2 lỗi phát hiện NHỜ BỘ TEST):
+          - LỖI 1 (cũ, nghiêm trọng, v4.11 sửa chưa xong): 3 công tắc 🧩/🕵/🪟 trên header trang
+            vẫn chết. v4.11 mới chỉ dời hàm D.SyncPageChips() xuống sau `local S`, còn CHỖ GỌI
+            (handler Activated ở dòng ~1145) vẫn đứng TRƯỚC `local S` -> `S` bị hiểu là global
+            nil -> bấm là văng "attempt to index a nil value (global 'S')", không bật/tắt được gì.
+            Nay: khai báo trước `local S` ngay sau `local D = {}` và đổi `local S = {` thành
+            `S = {` (gán) để MỌI closure nhìn cùng 1 biến.
+          - LỖI 2 (cũ): `function BcFit()` thiếu `local` -> rò rỉ global `_G.BcFit`.
+          - LỖI 3 (mới): gán SỐ vào thuộc tính Text (flyIn.Text = S.Move.flySpeed) -> Roblox báo
+            "string expected, got number" và bấm ✔ không ăn. Nay bọc tostring().
+          - LỖI 4 (cũ, rò rỉ bộ nhớ): mỗi lần lọc/tìm kiếm ở Script Hub tạo hàng trăm connection
+            mới (D.Tactile) nhưng connection của thẻ đã Destroy không bao giờ bị dọn khỏi
+            _G.BananaCatHub_Connections -> bảng phình mãi. Nay trackConn() tự gom rác khi >300.
+        • BỘ TEST TỰ ĐỘNG (thư mục tests/, chạy bằng `node tests/run.js`): nạp và CHẠY THẬT hub
+          trong máy ảo Lua 5.4 (wasmoon) + Roblox/executor giả lập. 37 test — 37 PASS.
+    + v4.11: CHẠY TEST THẬT + SỬA 3 LỖI + THÊM TRANG ⚙️ THIẾT LẬP.
+        • BỘ TEST THẬT (thư mục tests/): lần đầu hub được NẠP VÀ CHẠY trong máy ảo Lua 5.4
+          (wasmoon) trên môi trường Roblox/executor giả lập (tests/roblox-mock.lua). Kết quả:
+          84 test — 84 PASS. Chạy bằng: node tests/run.js
+        • SỬA LỖI 1 (nghiêm trọng): D.SyncPageChips() nằm TRƯỚC khai báo `local S`, nên `S`
+          trong hàm bị Lua coi là GLOBAL nil -> hàm chết ngay dòng đầu và bị pcall nuốt mất.
+          Hệ quả thật: 3 công tắc trên header KHÔNG BAO GIỜ được đồng bộ lúc khởi động —
+          🧩 mặc định BẬT nhưng chip vẫn hiện TẮT, trạng thái đọc từ đĩa cũng không lên chip.
+        • SỬA LỖI 2 (nguy cơ mất dữ liệu): Store.canWrite() chỉ kiểm tra
+          type(writefile)=="function". Khi executor thiếu writefile, hub tự bù hàm ghi vào Ổ ĐĨA
+          ẢO trong RAM -> canWrite() vẫn true -> Store.mode="file" -> nhãn báo XANH "đã ghi
+          xuống đĩa" trong khi rejoin là mất sạch. Nay loại trừ đúng hàm hub tự bù (S.Shimmed
+          so sánh DANH TÍNH hàm), để mode="memory" và nhãn hiện đúng cảnh báo vàng.
+        • SỬA LỖI 3 (chữ đọc khó): chữ trắng trên nền RED chỉ đạt 2.77:1 và PINK 2.65:1 theo
+          WCAG. Đổi RED 248,113,113 -> 230,88,88 và PINK 244,114,182 -> 226,82,158. Nay CẢ 12
+          màu nền có chữ đều đạt WCAG AA-large (>=3:1). (8/12 màu vốn đã tốt hơn bản v4.8.)
+        • THÊM TRANG ⚙️ THIẾT LẬP ở ô LayoutOrder 5 (ô bỏ trống từ v4.10):
+          - 💾 LƯU TRỮ: nói THẬT dữ liệu đang nằm ở đĩa thật hay chỉ trong RAM của phiên chơi,
+            kèm 💾 Lưu ngay / 🔄 Đọc lại từ đĩa.
+          - 📤 SAO LƯU & CHUYỂN MÁY: xuất toàn bộ ra clipboard + 📥 Nhập JSON (GHÉP theo tên,
+            trùng thì tự đánh số " (2)" — KHÔNG ghi đè bản đang có).
+          - 🖥 MÔI TRƯỜNG: tên executor + danh sách hàm hub đã tự bù.
+          - ⚠️ VÙNG NGUY HIỂM: 🗑 Xoá sạch dữ liệu, bắt buộc bấm 2 lần để xác nhận.
+        • KHÔNG MẤT TÍNH NĂNG NÀO: 6 trang cũ còn nguyên. Kiểm bằng tests/ (84 PASS) và
+          đối chiếu metric: chỉ thêm đúng 1 hàm (S.Shimmed), không mất hàm/chuỗi nào.
+    + v4.10: GỠ BỎ HOÀN TOÀN TRANG 🤖 AI AI (mini web chat Gemini).
         • Đã xoá 865 dòng — nguyên khối "TAB 4: AI AI — MINI WEB CHAT": khung chat, bong bóng
           tin nhắn, ô nhập câu hỏi, nút Gửi / ⏹ Dừng / 🗑 Xóa, nhãn trạng thái, SYSTEM_PROMPT,
           lịch sử hội thoại, hàm AskGemini gọi API Gemini, và phần nhập/lưu/che API key.
@@ -333,8 +392,23 @@ for _, parent in ipairs({targetGui, playerGui, game:GetService("CoreGui")}) do
     end)
 end
 
+-- v4.12: MỖI lần dựng lại danh sách thẻ ở trang 📚 Script Hub lại tạo ra hàng trăm connection
+-- mới (D.Tactile theo dõi hover/nhấn của từng nút), trong khi thẻ cũ đã bị Destroy -> connection
+-- cũ chết nhưng VẪN NẰM TRONG BẢNG này. Lọc/tìm kiếm vài chục lần là bảng phình lên hàng nghìn
+-- phần tử, giữ luôn các closure và Instance đã chết -> không bao giờ được giải phóng.
+-- Roblox tự ngắt connection khi Instance bị Destroy (khi đó conn.Connected = false), nên chỉ
+-- cần bỏ những phần tử đã chết mỗi khi bảng vượt ngưỡng.
 local function trackConn(conn)
-    table.insert(_G.BananaCatHub_Connections, conn)
+    local t = _G.BananaCatHub_Connections
+    if #t > 300 then
+        local alive, n = {}, 0
+        for i = 1, #t do
+            local c = t[i]
+            if c ~= nil and c.Connected ~= false then n = n + 1; alive[n] = c end
+        end
+        for i = 1, #t do t[i] = alive[i] end   -- dồn lên đầu; phần tử thừa tự thành nil
+    end
+    table.insert(t, conn)
     return conn
 end
 
@@ -360,11 +434,11 @@ local C = {
     GRAY   = Color3.fromRGB(120, 128, 146),   -- nút tắt / chữ phụ
     GREEN  = Color3.fromRGB(64, 214, 152),
     BLUE   = Color3.fromRGB(79, 150, 240),
-    RED    = Color3.fromRGB(248, 113, 113),
+    RED    = Color3.fromRGB(230, 88, 88),
     YELLOW = Color3.fromRGB(250, 204, 102),
     PURPLE = Color3.fromRGB(155, 128, 245),
     ORANGE = Color3.fromRGB(251, 146, 60),
-    PINK   = Color3.fromRGB(244, 114, 182),
+    PINK   = Color3.fromRGB(226, 82, 158),
     BG     = Color3.fromRGB(11, 12, 17),      -- nền cửa sổ chính (obsidian)
 
     -- token thiết kế (v4.5, giá trị v4.9)
@@ -486,6 +560,15 @@ end
 -- main chunk của file này đã sát trần 200 local của Luau).
 -- ============================================================================
 local D = {}
+
+-- v4.12: KHAI BÁO TRƯỚC `local S`. Bảng S được gán ở dòng ~1340 (phải nằm sau các khối
+-- UI), nhưng CÁC CLOSURE TẠO TRƯỚC ĐÓ (nổi bật nhất: handler bấm 3 công tắc 🧩/🕵/🪟 trên
+-- header trang, dòng ~1145) cũng dùng S. Trong Lua, closure chỉ bắt được local ĐÃ khai báo
+-- trước nó -> nếu không có dòng này, `S` trong các closure đó là GLOBAL nil -> bấm công tắc
+-- văng lỗi "attempt to index a nil value (global 'S')" và không làm gì cả.
+-- Lưu ý: ở dòng 1340 phải viết `S = {` (gán) chứ KHÔNG được viết `local S = {` (khai báo
+-- lại) — viết lại sẽ tạo ra 2 biến khác tên cùng tên, closure cũ vẫn nhìn cái chưa có giá trị.
+local S
 
 -- Chữ/viền nên sáng hay đậm trên nền `bg`? (tự động tương phản, tránh chữ chìm)
 function D.BestText(bg)
@@ -897,7 +980,7 @@ D.verPill = New("Frame", {
 Corner(D.verPill, UDim.new(1,0))
 Stroke(D.verPill, C.ACCENT2, 1)   -- v4.9: huy hiệu đen + viền đồng, chữ champagne
 New("TextLabel", {
-    Size=UDim2.new(1,0,1,0), Text="v4.10 · NOIR", BackgroundTransparency=1,
+    Size=UDim2.new(1,0,1,0), Text="v4.12 · NOIR", BackgroundTransparency=1,
     TextColor3=C.ACCENT3, Font=Enum.Font.GothamBold, TextSize=8, ZIndex=6,
 }, D.verPill)
 
@@ -932,7 +1015,8 @@ local minW, minH = 440, 260
 
 -- v4.4c: "menu kéo to/nhỏ -> GUI của tab co giãn theo". Khu S.* được khai báo phía dưới nên
 -- ở đây chỉ gọi qua hook _G; BcFit() tự debounce để không chạy mỗi frame khi đang drag.
-function BcFit()
+-- v4.12: thêm `local` — trước đây hàm này rò rỉ thành BIẾN GLOBAL `_G.BcFit` của executor.
+local function BcFit()
     local fn = _G.BananaCatHub_SyncEmbeds
     if type(fn) ~= "function" then return end
     local ok, now = pcall(os.clock)
@@ -1147,27 +1231,6 @@ New("Frame", {   -- kẻ mảnh dưới header
     BackgroundColor3=C.HAIRLINE, BackgroundTransparency=0.5, BorderSizePixel=0, ZIndex=4,
 }, main)
 
--- Đồng bộ 3 công tắc trên header theo trạng thái thật trong S.
--- (Hàm chỉ chạy lúc runtime nên thứ tự khai báo không quan trọng.)
-function D.SyncPageChips()
-    pcall(function()
-        if not D.hdrSwitches then return end
-        local state = {
-            embed = (S.embedEnabled == true),
-            guess = (S.embedGuessNew == true),
-            park  = (S.parkCodeGuis ~= false),
-        }
-        for k, s in pairs(D.hdrSwitches) do
-            local on = (state[k] == true)
-            s.track.BackgroundColor3 = on and (s.onColor or C.GREEN) or C.SURFACE3
-            s.knob.BackgroundColor3  = on and C.WHITE or C.GRAY
-            s.knob.Position = on and UDim2.new(1,-10,0,2) or UDim2.new(0,2,0,2)
-            s.icon.TextColor3 = on and C.DARK or C.GRAY
-            -- v4.9: viền rãnh ăn theo trạng thái (BẬT = viền cùng tông màu công tắc)
-            if s.stroke then s.stroke.Color = on and D.Edge(s.onColor or C.GREEN) or C.HAIRLINE end
-        end
-    end)
-end
 
 local activeTab = nil
 
@@ -1322,7 +1385,7 @@ end
 
 -- v4.6.2: thứ tự trang theo yêu cầu — 1 💾 Code Đã Lưu · 2 💻 Code · 3 📚 Script Hub ·
 -- 4 🛠 Hỗ Trợ · 6 ➕ Tạo Tính Năng · 7+ tab tính năng của bạn · 99 🧩 GUI Ngoài.
--- (v4.10: đã gỡ trang 🤖 AI AI nên LayoutOrder 5 để TRỐNG — rail vẫn liền mạch vì LayoutOrder
+-- (v4.11: ô LayoutOrder 5 nay là trang ⚙️ Thiết Lập. Rail vẫn liền mạch vì LayoutOrder
 --  chỉ quyết định thứ tự. Không đánh số lại để khỏi đụng featureTabIndex = 7 ở trên.)
 -- (Thứ tự TẠO vẫn giữ nguyên để không đụng scope biến; thứ tự HIỂN THỊ do LayoutOrder.)
 local codeTab      = AddTab("Code", "💻", 2)
@@ -1333,7 +1396,10 @@ OpenFirstPage()   -- v4.6.2: mở trang ĐẦU TIÊN theo thứ tự rail (💾 
 -- Bang trang thai. Chua ca cac bien keo/tha menu: Luau gioi han 200 bien local moi function
 -- (loi "Out of local registers ... exceeded limit 200"), main chunk cua script nay da gan
 -- nguong do nen moi bien dem duoc deu phai nam trong bang thay vi la local rieng.
-local S = {
+-- v4.12: bo chu `local` o day (da khai bao truoc o dong ~516) de cac closure duoc tao
+-- TRUOC day (cong tac header, BcFit...) nhin thay CUNG MOT bien S. `S = {` la phep GAN vao
+-- bien da khai bao, KHONG phai khai bao bien moi -> chi co dung 1 bien S trong ca chunk.
+S = {
     dragMenu     = false,
     dragging     = false,
     dragStart    = nil,
@@ -1369,10 +1435,50 @@ function S.SanitizeCode(c)
     return out
 end
 
+
+-- v4.11: một global có phải do hub TỰ BÙ hay không. Store.canWrite() dùng nó để phân
+-- biệt writefile THẬT của executor (ghi xuống đĩa) với writefile giả (ghi vào S.vfs).
+function S.Shimmed(n)
+    local v = S.shimmedFns and S.shimmedFns[n]
+    if v == nil then return false end
+    -- so sanh DANH TINH ham dang thuc su nam trong _G. Neu executor (hay script khac)
+    -- sau nay gan writefile that de len thi ham nay tu dong tra ve false, Store.canWrite()
+    -- lai bao dung la ghi duoc xuong dia.
+    return rawget(_G, n) == v
+end
+
+-- v4.11 SỬA LỖI NGHIÊM TRỌNG: hàm này TRƯỚC ĐÂY nằm ở dòng ~1152, tức là TRƯỚC khi
+-- `local S = {...}` được khai báo (dòng ~1336). Trong Lua, một closure chỉ bắt được
+-- những biến local ĐÃ khai báo trước nó — nên `S` bên trong hàm bị coi là GLOBAL nil,
+-- hàm chết ngay ở dòng đầu với "attempt to index a nil value (global 'S')" và bị pcall
+-- nuốt mất. Hệ quả thật: 3 công tắc trên header KHÔNG BAO GIỜ được đồng bộ lúc khởi
+-- động — 🧩 "đưa GUI script vào tab riêng" mặc định là BẬT nhưng chip vẫn hiển thị TẮT,
+-- và trạng thái đọc lại từ đĩa cũng không hiện lên chip.
+-- => Bắt buộc phải nằm SAU `local S`. Comment cũ ("thứ tự khai báo không quan trọng")
+--    chỉ đúng với việc gán field vào bảng D, KHÔNG đúng với việc bắt upvalue S.
+function D.SyncPageChips()
+    pcall(function()
+        if not D.hdrSwitches then return end
+        local state = {
+            embed = (S.embedEnabled == true),
+            guess = (S.embedGuessNew == true),
+            park  = (S.parkCodeGuis ~= false),
+        }
+        for k, s in pairs(D.hdrSwitches) do
+            local on = (state[k] == true)
+            s.track.BackgroundColor3 = on and (s.onColor or C.GREEN) or C.SURFACE3
+            s.knob.BackgroundColor3  = on and C.WHITE or C.GRAY
+            s.knob.Position = on and UDim2.new(1,-10,0,2) or UDim2.new(0,2,0,2)
+            s.icon.TextColor3 = on and C.DARK or C.GRAY
+            -- v4.9: viền rãnh ăn theo trạng thái (BẬT = viền cùng tông màu công tắc)
+            if s.stroke then s.stroke.Color = on and D.Edge(s.onColor or C.GREEN) or C.HAIRLINE end
+        end
+    end)
+end
 local scripts = {}
 local waypoints = {}          -- khai báo sớm để khối lưu trữ bên dưới dùng được
 local featureTabs = {}        -- nt: khai báo sớm để Store.serialize() và nhãn trạng thái dùng được
-local featureTabIndex = 7   -- 1=Code Đã Lưu 2=Code 3=Script Hub 4=Hỗ Trợ 6=Tạo Tính Năng (5 bỏ trống từ v4.10); tab tính năng của người dùng từ 7 trở đi
+local featureTabIndex = 7   -- 1=Code Đã Lưu 2=Code 3=Script Hub 4=Hỗ Trợ 5=Thiết Lập 6=Tạo Tính Năng; tab tính năng của người dùng từ 7 trở đi
 local totalRuns, cancelled = 0, false
 local curThread, curIndicator = nil, nil
 local runActive = false       -- cờ trạng thái chạy (không dựa vào curThread nữa)
@@ -1403,8 +1509,16 @@ Store.reloadBtn      = nil
 Store._scheduled     = false
 Store.refreshStatus  = nil      -- tab "Code Đã Lưu" gán hàm cập nhật nhãn vào đây
 
+-- v4.11 SỬA LỖI: hàm writefile/readfile mà S.EnsureCompat() TỰ BÙ chỉ ghi vào ổ đĩa ảo
+-- trong RAM (S.vfs) — dữ liệu chết theo phiên chơi. Bản cũ chỉ kiểm
+-- tra type(...) == "function" nên vẫn tin là ghi được xuống đĩa -> Store.mode = "file"
+-- -> nhãn trạng thái hiện XANH "đã ghi xuống đĩa" trong khi không có gì nằm trên đĩa.
+-- Người dùng tưởng script/waypoint đã an toàn qua rejoin. Nay loại trừ đúng những hàm
+-- do hub tự bù, để Store.mode = "memory" và nhãn hiện đúng cảnh báo vàng.
 function Store.canWrite()
-    return type(writefile) == "function" and type(readfile) == "function"
+    if type(writefile) ~= "function" or type(readfile) ~= "function" then return false end
+    if S.Shimmed("writefile") or S.Shimmed("readfile") then return false end
+    return true
 end
 
 function Store.isFinite(n)
@@ -1650,9 +1764,14 @@ function S.HasGlobal(n)
 end
 
 function S.SetGlobal(n, v)
-    if S.HasGlobal(n) then return false end          -- KHÔNG đè hàm thật của executor
+    if S.HasGlobal(n) then return false end          -- KHONG de ham that cua executor
     local ok = pcall(function() rawset(_G, n, v) end)
-    if ok then S.compatAdded[#S.compatAdded + 1] = n end
+    if ok then
+        S.compatAdded[#S.compatAdded + 1] = n
+        -- v4.11: giu lai chinh ham da cai de S.Shimmed() nhan dien duoc sau nay
+        S.shimmedFns = S.shimmedFns or {}
+        S.shimmedFns[n] = rawget(_G, n)
+    end
     return ok
 end
 
@@ -6292,6 +6411,322 @@ if #Store.loadedFeatures > 0 then
     createStatus.Text = string.format("💾 Đã khôi phục %d tab tính năng từ bộ nhớ", #Store.loadedFeatures)
 end
 
+-- ============================================================================
+-- ============== v4.12: BỘ DI CHUYỂN — port từ menu "EXECUTOR MENU" =========
+-- 5 tính năng: 🚀 Bay · 🧱 Xuyên tường · 🦘 Nhảy vô hạn · 👟 Chạy độ · 🪩 Thảm kính.
+-- Thảm kính chỉnh được 3 chiều: RỘNG × CAO (độ dày) × DÀI.
+--
+-- NGUYÊN TẮC KHI PORT (3 điểm, đều là chỗ bản gốc đang yếu):
+--   1) Mọi trạng thái nằm trong bảng S.Move -> KHÔNG tốn thêm slot local cấp chunk
+--      (Luau giới hạn 200 local/hàm, main chunk đã dùng ~129).
+--   2) Mọi connection đi qua trackConn() -> chạy lại hub không bị nhân bản vòng lặp.
+--   3) TẮT tính năng phải TRẢ LẠI ĐÚNG giá trị gốc. Bản gốc (menu Executor) khi tắt
+--      NoClip gán cứng CanCollide = true cho MỌI part -> mũ/phụ kiện/đồ vật vốn dĩ
+--      không va chạm bị "cứng" lại, nhân vật hay kẹt. Ở đây lưu CanCollide gốc của
+--      từng part rồi trả lại y hệt.
+--   4) Xuyên tường/không xuyên tường bản gốc lặp GetDescendants() MỖI Stepped cho mọi
+--      người chơi (~1000 ghi thuộc tính/frame ở server đông). Ở đây chỉ duyệt nhân vật
+--      của mình và chỉ ghi khi giá trị thật sự khác.
+-- ============================================================================
+S.Move = {
+    fly = false, noclip = false, infJump = false, speed = false, carpet = false,
+    flySpeed = 50, walkSpeed = 16, jumpPower = 50,
+    carpetW = 6, carpetH = 0.5, carpetL = 6,     -- Rộng × Cao(dày) × Dài
+    carpetY = nil,
+    _carpet = nil, _bv = nil, _bg = nil, _floor = nil,
+    _ncConn = nil, _ijConn = nil, _speedThread = nil,
+    _origCC = {},                                 -- [part] = CanCollide gốc
+    _baseWS = 16, _baseJP = 50,
+}
+local MV = S.Move
+
+local function mvClamp(n, lo, hi, dft)
+    n = tonumber(n)
+    if n == nil or n ~= n then return dft end
+    if n < lo then return lo end
+    if n > hi then return hi end
+    return n
+end
+
+function MV.Char() return player.Character end
+function MV.Hum()
+    local c = player.Character
+    return c and c:FindFirstChildOfClass("Humanoid") or nil
+end
+function MV.Root()
+    local c = player.Character
+    return c and c:FindFirstChild("HumanoidRootPart") or nil
+end
+
+-- ---------- 🧱 XUYÊN TƯỜNG (NoClip) ----------
+function MV._NcStep()
+    local c = MV.Char()
+    if not c then return end
+    for _, p in ipairs(c:GetDescendants()) do
+        if p:IsA("BasePart") then
+            if MV._origCC[p] == nil then MV._origCC[p] = p.CanCollide end  -- nhớ giá trị gốc
+            if p.CanCollide ~= false then p.CanCollide = false end
+        end
+    end
+end
+-- Dọn các part đã chết (respawn) khỏi bảng nhớ, rồi trả lại giá trị gốc cho part còn sống.
+function MV._NcRestore()
+    for p, v in pairs(MV._origCC) do
+        if p and p.Parent then
+            pcall(function() p.CanCollide = v end)
+        end
+        MV._origCC[p] = nil
+    end
+    MV._origCC = {}
+end
+function MV.SetNoclip(on)
+    on = (on == true)
+    if on == MV.noclip then return MV.noclip end
+    MV.noclip = on
+    if on then
+        MV._ncConn = trackConn(RunService.Stepped:Connect(MV._NcStep))
+        MV._NcStep()
+    else
+        if MV._ncConn then pcall(function() MV._ncConn:Disconnect() end) end
+        MV._ncConn = nil
+        MV._NcRestore()
+    end
+    return MV.noclip
+end
+
+-- ---------- 🦘 NHẢY VÔ HẠN ----------
+function MV.SetInfJump(on)
+    on = (on == true)
+    if on == MV.infJump then return MV.infJump end
+    MV.infJump = on
+    if on then
+        MV._ijConn = trackConn(UserInputService.JumpRequest:Connect(function()
+            if not MV.infJump then return end
+            local h = MV.Hum()
+            if h then pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end) end
+        end))
+    else
+        if MV._ijConn then pcall(function() MV._ijConn:Disconnect() end) end
+        MV._ijConn = nil
+    end
+    return MV.infJump
+end
+
+-- ---------- 👟 CHẠY ĐỘ (WalkSpeed / JumpPower) ----------
+function MV.ApplyChar()
+    local h = MV.Hum()
+    if not h then return end
+    if MV.speed then
+        h.WalkSpeed  = MV.walkSpeed
+        h.JumpPower  = MV.jumpPower
+    else
+        h.WalkSpeed  = MV._baseWS
+        h.JumpPower  = MV._baseJP
+    end
+end
+function MV.SetSpeed(on)
+    on = (on == true)
+    local h = MV.Hum()
+    if on and not MV.speed and h then          -- chỉ nhớ mặc định ở lần BẬT đầu tiên
+        MV._baseWS = h.WalkSpeed  or 16
+        MV._baseJP = h.JumpPower  or 50
+    end
+    MV.speed = on
+    MV.ApplyChar()
+    if on and not MV._speedThread then
+        -- nhiều game tự đặt lại WalkSpeed mỗi khi đổi trạng thái -> áp lại mỗi 0.5s (rẻ)
+        MV._speedThread = task.spawn(function()
+            while MV.speed do
+                MV.ApplyChar()
+                task.wait(0.5)
+            end
+            MV._speedThread = nil
+        end)
+    end
+    return MV.speed
+end
+
+-- ---------- 🚀 BAY ----------
+function MV._StopFly()
+    if MV._bv then pcall(function() MV._bv:Destroy() end) end
+    if MV._bg then pcall(function() MV._bg:Destroy() end) end
+    if MV._floor then pcall(function() MV._floor:Destroy() end) end
+    MV._bv, MV._bg, MV._floor = nil, nil, nil
+    local h = MV.Hum()
+    if h then
+        h.AutoRotate = true
+        h.PlatformStand = false
+    end
+    pcall(function() RunService:UnbindFromRenderStep("Fly") end)
+end
+function MV.SetFly(on)
+    on = (on == true)
+    local r = MV.Root()
+    if on and not r then return false, "chưa có nhân vật để bay" end
+    MV.fly = on
+    if not on then MV._StopFly(); return false end
+    local h = MV.Hum()
+    MV._bv = New("BodyVelocity", { Name = "BC_FlyVel", MaxForce = Vector3.new(4000, 4000, 4000) }, r)
+    MV._bg = New("BodyGyro",     { Name = "BC_FlyGyro", MaxTorque = Vector3.new(4000, 4000, 4000) }, r)
+    if h then h.AutoRotate = false; h.PlatformStand = true end
+    if not MV._floor then
+        MV._floor = New("Part", {
+            Name = "BC_FlyFloor", Size = Vector3.new(6, 0.2, 6), Transparency = 0.7,
+            Color = Color3.fromRGB(200, 230, 255), Material = Enum.Material.Glass,
+            Anchored = true, CanCollide = false,
+        }, workspace)
+    end
+    RunService:BindToRenderStep("Fly", 1, function()
+        local curR, curH = MV.Root(), MV.Hum()
+        if not MV.fly or not curR or not MV._bv then return end
+        local d = (curH and curH.MoveDirection) or Vector3.zero
+        local t = curR.CFrame:VectorToWorldSpace(d)
+        if t.Magnitude > 0 then t = t.Unit end
+        local up   = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+        local down = UserInputService:IsKeyDown(Enum.KeyCode.LeftShift)
+                  or UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+        local vv = (up and 1 or 0) - (down and 1 or 0)
+        MV._bv.Velocity = (t + Vector3.new(0, vv, 0)) * MV.flySpeed
+        if MV._bg then
+            MV._bg.CFrame = CFrame.new(curR.Position,
+                curR.Position + workspace.CurrentCamera.CFrame.LookVector)
+        end
+        if MV._floor then MV._floor.Position = curR.Position - Vector3.new(0, 3.5, 0) end
+    end)
+    return true
+end
+
+-- ---------- 🪩 THẢM KÍNH (chỉnh Rộng × Cao × Dài) ----------
+function MV.SetCarpetSize(w, h, l)
+    MV.carpetW = mvClamp(w, 1, 50, MV.carpetW)
+    MV.carpetH = mvClamp(h, 0.05, 10, MV.carpetH)
+    MV.carpetL = mvClamp(l, 1, 50, MV.carpetL)
+    if MV._carpet then
+        pcall(function()
+            MV._carpet.Size = Vector3.new(MV.carpetW, MV.carpetH, MV.carpetL)
+        end)
+    end
+    return MV.carpetW, MV.carpetH, MV.carpetL
+end
+function MV._StopCarpet()
+    if MV._carpet then pcall(function() MV._carpet:Destroy() end) end
+    MV._carpet = nil
+    MV.carpetY = nil
+    pcall(function() RunService:UnbindFromRenderStep("Carpet") end)
+end
+function MV.CreateCarpet(y)
+    local r = MV.Root()
+    if not r then return end
+    if MV._carpet then pcall(function() MV._carpet:Destroy() end) end
+    MV.carpetY = y or (r.Position.Y - 3.0 - (MV.carpetH / 2))
+    MV._carpet = New("Part", {
+        Name = "Carpet",
+        Size = Vector3.new(MV.carpetW, MV.carpetH, MV.carpetL),
+        Transparency = 0.9,
+        Color = Color3.fromRGB(200, 230, 255),
+        Material = Enum.Material.Glass,
+        Anchored = true, CanCollide = true, Friction = 1,
+        Position = Vector3.new(r.Position.X, MV.carpetY, r.Position.Z),
+    }, workspace)
+    RunService:BindToRenderStep("Carpet", Enum.RenderPriority.Camera.Value - 1, function()
+        local curR, cp = MV.Root(), MV._carpet
+        if not MV.carpet or not cp or not cp.Parent or not curR then return end
+        if cp.Size.X ~= MV.carpetW or cp.Size.Y ~= MV.carpetH or cp.Size.Z ~= MV.carpetL then
+            cp.Size = Vector3.new(MV.carpetW, MV.carpetH, MV.carpetL)
+        end
+        cp.CFrame = CFrame.new(curR.Position.X, MV.carpetY, curR.Position.Z)
+        -- đang xuyên tường thì giữ người ĐỨNG TRÊN mặt thảm (không rơi xuyên)
+        if MV.noclip then
+            local standingY = MV.carpetY + (MV.carpetH / 2) + 3.0
+            if curR.Position.Y < standingY then
+                curR.CFrame = CFrame.new(curR.Position.X, standingY, curR.Position.Z)
+                if curR.AssemblyLinearVelocity.Y < 0 then
+                    curR.AssemblyLinearVelocity = Vector3.new(
+                        curR.AssemblyLinearVelocity.X, 0, curR.AssemblyLinearVelocity.Z)
+                end
+            end
+        end
+    end)
+end
+function MV.SetCarpet(on)
+    on = (on == true)
+    local r = MV.Root()
+    if on and not r then return false, "chưa có nhân vật để trải thảm" end
+    if on and MV.fly then MV.SetFly(false) end      -- bay và thảm không đi cùng (như bản gốc)
+    MV.carpet = on
+    if on then
+        MV.CreateCarpet(on and (r.Position.Y - 3.0 - (MV.carpetH / 2)) or nil)
+    else
+        MV._StopCarpet()
+    end
+    return MV.carpet
+end
+
+-- ---------- ⬆⬇ nâng/hạ: thảm thì đổi độ cao, bay thì đẩy người ----------
+function MV.Nudge(dy)
+    if MV.carpet then
+        MV.carpetY = (MV.carpetY or 0) + dy
+        return true, "thảm"
+    elseif MV.fly then
+        local r = MV.Root()
+        if r then r.CFrame = CFrame.new(r.Position.X, r.Position.Y + dy, r.Position.Z) end
+        return true, "bay"
+    end
+    return false, nil
+end
+
+-- ---------- tắt hết / khôi phục sau respawn / tóm tắt trạng thái ----------
+function MV.StopAll()
+    MV.SetFly(false)
+    MV.SetCarpet(false)
+    MV.SetNoclip(false)
+    MV.SetInfJump(false)
+    MV.SetSpeed(false)
+end
+-- Bảng để thẻ trong Script Hub tự hiện trạng thái (BẬT/TẮT): thêm tính năng mới thì chỉ
+-- cần thêm 1 dòng ở đây, không phải sửa hàm dựng thẻ.
+S.MoveActionState = {
+    fly     = function() return S.Move.fly     end,
+    noclip  = function() return S.Move.noclip  end,
+    infjump = function() return S.Move.infJump end,
+    speed   = function() return S.Move.speed   end,
+    carpet  = function() return S.Move.carpet  end,
+}
+
+function MV.Refresh()
+    -- respawn: nhân vật MỚI -> part cũ mất, phải dọn bảng nhớ rồi áp lại.
+    -- CHỈ dựng lại cái THẬT SỰ MẤT: nếu còn nguyên (ví dụ thảm vẫn nằm trong workspace) thì
+    -- giữ y — tạo lại vô điều kiện sẽ làm mất tham chiếu đang dùng và giật hình.
+    MV._origCC = {}
+    MV.ApplyChar()
+    if MV.noclip then MV._NcStep() end
+    if MV.fly and (not MV._bv or not MV._bv.Parent) then
+        MV.SetFly(false); MV.SetFly(true)
+    end
+    if MV.carpet and (not MV._carpet or not MV._carpet.Parent) then
+        MV.CreateCarpet(MV.carpetY)
+    end
+end
+function MV.Status()
+    local t = {}
+    if MV.fly then t[#t + 1] = string.format("🚀 bay %d", MV.flySpeed) end
+    if MV.noclip then t[#t + 1] = "🧱 xuyên tường" end
+    if MV.infJump then t[#t + 1] = "🦘 nhảy vô hạn" end
+    if MV.speed then t[#t + 1] = string.format("👟 chạy %d", MV.walkSpeed) end
+    if MV.carpet then
+        t[#t + 1] = string.format("🪩 thảm %g×%g×%g", MV.carpetW, MV.carpetH, MV.carpetL)
+    end
+    if #t == 0 then return "🚶 di chuyển: đang TẮT hết" end
+    return "🚶 đang BẬT: " .. table.concat(t, " · ")
+end
+-- respawn: nhân vật mới -> dựng lại những gì đang bật (task.wait để game kịp gắn part)
+trackConn(player.CharacterAdded:Connect(function()
+    task.spawn(function()
+        task.wait(0.3)
+        pcall(MV.Refresh)
+    end)
+end))
+
 -- ==================== v4.5: TRANG 📚 SCRIPT HUB (menu kiểu Delta) ====================
 -- "Menu giống Delta": ô tìm kiếm + dãy chip phân loại + danh sách THẺ script (icon, tên, mô tả,
 -- nút chạy/copy/lưu/yêu thích). Vẫn đúng tông Midnight Gold của v4.5.
@@ -6413,6 +6848,18 @@ S.ScriptHubList = {
      desc="Tự đi lấy mã server: đọc danh sách server công khai, bỏ server hiện tại + server đầy, nhảy sang 1 server khác."},
     {icon="🌐", name="Lấy mã server (JobId)", cat="Server", ord=11, action="getjobid",
      desc="Đọc mã server hiện tại, copy ra clipboard và điền sẵn vào ô 🎟 để gửi cho bạn bè vào cùng."},
+    -- v4.12: BỘ DI CHUYỂN (port từ menu "EXECUTOR MENU"). Tất cả là TIỆN ÍCH NỘI BỘ:
+    -- gọi thẳng hàm của hub -> không tải gì từ mạng, không bao giờ "chạy không được".
+    {icon="🚀", name="Bay", cat="Di chuyển", ord=12, action="fly",
+     desc="Bay lượn tự do (Space lên · Shift/Ctrl xuống · WASD lái). Tốc độ chỉnh ở khung ⚙ ngay trên đầu danh sách."},
+    {icon="🧱", name="Xuyên Tường", cat="Di chuyển", ord=13, action="noclip",
+     desc="Đi xuyên mọi vật cản. Tắt đi trả lại ĐÚNG CanCollide gốc của từng part (không gán cứng như bản cũ)."},
+    {icon="🦘", name="Nhảy Vô Hạn", cat="Di chuyển", ord=14, action="infjump",
+     desc="Nhảy mãi không chạm đất, bấm Space bao nhiêu lần cũng được."},
+    {icon="👟", name="Chạy Độ", cat="Di chuyển", ord=15, action="speed",
+     desc="Đổi tốc độ chạy (WalkSpeed) và lực nhảy (JumpPower). Tự áp lại nếu game đổi về mặc định."},
+    {icon="🪩", name="Thảm Kính", cat="Di chuyển", ord=16, action="carpet",
+     desc="Trải thảm kính dưới chân để đứng/lên xuống (⬆⬇). Chỉnh RỘNG × CAO × DÀI ở khung ⚙ phía trên."},
 }
 S.hubFavs   = S.hubFavs or {}
 S.hubCat    = "Tất cả"
@@ -6473,6 +6920,43 @@ function S.RunHubAction(id)
         pcall(function() if D.hubJobIn then D.hubJobIn.Text = jid end end)
         pcall(function() if S.SyncServerPanel then S.SyncServerPanel() end end)
         return (okCp and "🌐 Đã copy mã server: " or "🌐 Mã server (executor không cho copy, hãy chép tay): ") .. jid
+
+    -- ---------- v4.12: BỘ DI CHUYỂN ----------
+    elseif id == "fly" then
+        if not S.Move.Root() then return "⚠️ chưa có nhân vật để bay (đợi vào game xong hãy bấm)" end
+        local okF = pcall(function() S.Move.SetFly(not S.Move.fly) end)
+        if not okF then return "⚠️ không bật được bay" end
+        pcall(function() if S.RebuildHubList then S.RebuildHubList() end end)   -- cập nhật nhãn nút
+        return S.Move.fly and ("🚀 Bay: BẬT — Space lên · Shift/Ctrl xuống · tốc độ " .. tostring(S.Move.flySpeed))
+                            or "🚀 Bay: TẮT (nhân vật trở lại bình thường)"
+    elseif id == "noclip" then
+        if not S.Move.Root() then return "⚠️ chưa có nhân vật (đợi vào game xong hãy bấm)" end
+        pcall(function() S.Move.SetNoclip(not S.Move.noclip) end)
+        pcall(function() if S.RebuildHubList then S.RebuildHubList() end end)
+        return S.Move.noclip and "🧱 Xuyên tường: BẬT (đi xuyên mọi vật cản)"
+                              or "🧱 Xuyên tường: TẮT (CanCollide đã trả lại giá trị gốc)"
+    elseif id == "infjump" then
+        pcall(function() S.Move.SetInfJump(not S.Move.infJump) end)
+        pcall(function() if S.RebuildHubList then S.RebuildHubList() end end)
+        return S.Move.infJump and "🦘 Nhảy vô hạn: BẬT (bấm Space bao nhiêu cũng được)"
+                               or "🦘 Nhảy vô hạn: TẮT"
+    elseif id == "speed" then
+        pcall(function() S.Move.SetSpeed(not S.Move.speed) end)
+        pcall(function() if S.RebuildHubList then S.RebuildHubList() end end)
+        return S.Move.speed and ("👟 Chạy độ: BẬT — WalkSpeed " .. tostring(S.Move.walkSpeed)
+                                 .. " · JumpPower " .. tostring(S.Move.jumpPower))
+                            or ("👟 Chạy độ: TẮT — về mặc định (" .. tostring(S.Move._baseWS) .. ")")
+    elseif id == "carpet" then
+        if not S.Move.Root() then return "⚠️ chưa có nhân vật để trải thảm (đợi vào game xong hãy bấm)" end
+        pcall(function() S.Move.SetCarpet(not S.Move.carpet) end)
+        pcall(function() if S.RebuildHubList then S.RebuildHubList() end end)
+        return S.Move.carpet and string.format("🪩 Thảm kính: BẬT — %g×%g×%g (Rộng×Cao×Dài) · ⬆⬇ chỉnh độ cao",
+                                               S.Move.carpetW, S.Move.carpetH, S.Move.carpetL)
+                            or "🪩 Thảm kính: TẮT (thảm đã dọn khỏi workspace)"
+    elseif id == "movestop" then
+        pcall(function() S.Move.StopAll() end)
+        pcall(function() if S.RebuildHubList then S.RebuildHubList() end end)
+        return "🛑 đã tắt hết: " .. S.Move.Status()
     end
     return "⚠️ không rõ thao tác: " .. tostring(id)
 end
@@ -6707,9 +7191,17 @@ function S.RebuildHubList()
         local isAction = (it.action ~= nil)
         local runText
         if isAction then
-            runText = (it.action == "crosshair")
-                and ((S.crosshairOn and "🎯 TẮT") or "🎯 BẬT")
-                or  "⚡ Chạy"
+            if it.action == "crosshair" then
+                runText = (S.crosshairOn and "🎯 TẮT") or "🎯 BẬT"
+            elseif S.MoveActionState and S.MoveActionState[it.action] then
+                -- v4.12: thẻ di chuyển hiện sẵn trạng thái. Nhãn ghi việc BẤM VÀO SẼ LÀM
+                -- (đang BẬT thì nút ghi "TẮT") — cùng quy ước với nút 🎯 Niêm tâm.
+                local on = false
+                pcall(function() on = S.MoveActionState[it.action]() end)
+                runText = tostring(it.icon) .. " " .. ((on and "TẮT") or "BẬT")
+            else
+                runText = "⚡ Chạy"
+            end
         else
             runText = "▶ Chạy"
         end
@@ -6771,20 +7263,172 @@ function S.RebuildHubList()
         end)
     end
 
+    -- v4.12: CanvasSize phải tính CẢ khung ⚙ tuỳ chỉnh (nằm trên cùng danh sách), nếu không
+    -- cuộn xuống sẽ thiếu đúng 1 hàng thẻ cuối.
     pcall(function()
-        list.CanvasSize = UDim2.new(0, 0, 0, #items * 62 + 6)
+        local panelH = 0
+        local panel = list:FindFirstChild("HubMove_Panel")
+        if panel and panel.Size then panelH = (panel.Size.Y.Offset or 0) + 6 end
+        list.CanvasSize = UDim2.new(0, 0, 0, #items * 62 + 6 + panelH)
     end)
+    if S.RefreshMovePanel then pcall(S.RefreshMovePanel) end   -- v4.12: nhãn trạng thái di chuyển
     if #items == 0 and D.hubStatus then
         D.hubStatus.Text = "🔍 không tìm thấy gì khớp '" .. tostring(S.hubSearch or "") .. "'"
         D.hubStatus.TextColor3 = C.MUTED
     end
 end
 
+-- ---------- v4.12: KHUNG ⚙ TUỲ CHỈNH DI CHUYỂN ----------
+-- Nằm TRÊN CÙNG của danh sách thẻ (LayoutOrder = 0) và được đặt tên "HubMove_Panel"
+-- (không phải "HubCard_...") nên S.RebuildHubList() không bao giờ xoá nó khi lọc/tìm kiếm.
+-- Tất cả biến nằm trong `do ... end` để không chiếm slot local của main chunk.
+do
+    local PH = 104
+    local P = New("Frame", {
+        Name = "HubMove_Panel",
+        Size = UDim2.new(1, 0, 0, PH),
+        LayoutOrder = 0,
+        BackgroundColor3 = C.SURFACE, BackgroundTransparency = 0.12, BorderSizePixel = 0, ZIndex = 6,
+    }, D.hubList)
+    Corner(P, UDim.new(0, 10))
+    Stroke(P, C.HAIRLINE, 1)
+    D.Shade(P, Color3.fromRGB(255, 255, 255), Color3.fromRGB(188, 192, 205), 90)
+
+    local function title(txt)
+        New("TextLabel", {
+            Size = UDim2.new(1, -16, 0, 14), Position = UDim2.new(0, 8, 0, 4),
+            Text = txt, BackgroundTransparency = 1, TextColor3 = C.ACCENT,
+            Font = Enum.Font.GothamBold, TextSize = 10,
+            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+        }, P)
+    end
+    local function lab(txt, x, y, w)
+        New("TextLabel", {
+            Size = UDim2.new(0, w, 0, 20), Position = UDim2.new(0, x, 0, y),
+            Text = txt, BackgroundTransparency = 1, TextColor3 = C.MUTED,
+            Font = Enum.Font.GothamMedium, TextSize = 9,
+            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+        }, P)
+    end
+    local function box(x, y, w, val)
+        local b = New("TextBox", {
+            Size = UDim2.new(0, w, 0, 20), Position = UDim2.new(0, x, 0, y),
+            Text = tostring(val), ClearTextOnFocus = false,
+            BackgroundColor3 = C.SURFACE2, BackgroundTransparency = 0.1, TextColor3 = C.DARK,
+            PlaceholderColor3 = C.GRAY, Font = Enum.Font.GothamMedium, TextSize = 9,
+            TextXAlignment = Enum.TextXAlignment.Center, BorderSizePixel = 0, ZIndex = 7,
+        }, P)
+        Corner(b, UDim.new(0, 6))
+        Stroke(b, C.BORDER, 1)
+        return b
+    end
+    local function act(txt, x, y, w, color)
+        local b = New("TextButton", {
+            Size = UDim2.new(0, w, 0, 20), Position = UDim2.new(0, x, 0, y),
+            Text = txt, BackgroundColor3 = color or C.SURFACE3, BackgroundTransparency = 0.08,
+            TextColor3 = D.BestText(color or C.SURFACE3), Font = Enum.Font.GothamBold,
+            TextSize = 9, BorderSizePixel = 0, ZIndex = 8,
+        }, P)
+        Corner(b, UDim.new(0, 6))
+        D.Tactile(b, 0.08)
+        return b
+    end
+    local function say(msg, good)
+        if D.hubStatus then
+            D.hubStatus.Text = msg
+            D.hubStatus.TextColor3 = good and C.GREEN or C.RED
+        end
+    end
+
+    title("⚙ Tuỳ chỉnh di chuyển (áp dụng ngay, không cần bật lại)")
+
+    -- Hàng 1: tốc độ bay / tốc độ chạy / lực nhảy
+    lab("🚀 Bay", 8, 22, 52)
+    local flyIn = box(62, 22, 44, S.Move.flySpeed)
+    lab("👟 Chạy", 114, 22, 50)
+    local wsIn = box(166, 22, 40, S.Move.walkSpeed)
+    lab("🦘 Nhảy", 214, 22, 46)
+    local jpIn = box(262, 22, 40, S.Move.jumpPower)
+    local ap1 = act("✔", 308, 22, 28, C.GREEN)
+
+    -- Hàng 2: kích thước thảm RỘNG × CAO × DÀI
+    lab("🪩 Thảm Rộng×Cao×Dài", 8, 48, 116)
+    local cwIn = box(128, 48, 40, S.Move.carpetW)
+    local chIn = box(176, 48, 40, S.Move.carpetH)
+    local clIn = box(224, 48, 40, S.Move.carpetL)
+    local ap2 = act("✔", 272, 48, 28, C.GREEN)
+
+    -- Hàng 3: nâng/hạ (thảm hoặc bay) + tắt hết + nhãn trạng thái
+    local upBtn  = act("⬆ Nâng", 8, 74, 62, C.BLUE)
+    local dnBtn  = act("⬇ Hạ", 76, 74, 56, C.BLUE)
+    local stopBtn = act("🛑 Tắt hết", 138, 74, 76, C.RED)
+    local st = New("TextLabel", {
+        Size = UDim2.new(1, -230, 0, 20), Position = UDim2.new(0, 222, 0, 74),
+        Text = S.Move.Status(), BackgroundTransparency = 1, TextColor3 = C.MUTED,
+        Font = Enum.Font.GothamMedium, TextSize = 9,
+        TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+    }, P)
+
+    ap1.Activated:Connect(function()
+        ReleaseHubFocus()
+        local f = tonumber(flyIn.Text); local w = tonumber(wsIn.Text); local j = tonumber(jpIn.Text)
+        if f then S.Move.flySpeed = (f >= 1 and f <= 500) and f or S.Move.flySpeed end
+        if w then S.Move.walkSpeed = (w >= 1 and w <= 500) and w or S.Move.walkSpeed end
+        if j then S.Move.jumpPower = (j >= 0 and j <= 500) and j or S.Move.jumpPower end
+        -- Text là THUỘC TÍNH CHUỖI: gán số -> Roblox văng lỗi 'string expected, got number'
+        flyIn.Text, wsIn.Text, jpIn.Text = tostring(S.Move.flySpeed), tostring(S.Move.walkSpeed), tostring(S.Move.jumpPower)
+        pcall(function() if S.Move.speed then S.Move.ApplyChar() end end)
+        say(string.format("⚙ đã áp dụng: bay %d · chạy %d · nhảy %d",
+            S.Move.flySpeed, S.Move.walkSpeed, S.Move.jumpPower), true)
+    end)
+
+    ap2.Activated:Connect(function()
+        ReleaseHubFocus()
+        S.Move.SetCarpetSize(tonumber(cwIn.Text), tonumber(chIn.Text), tonumber(clIn.Text))
+        cwIn.Text, chIn.Text, clIn.Text = tostring(S.Move.carpetW), tostring(S.Move.carpetH), tostring(S.Move.carpetL)
+        say(string.format("🪩 thảm: Rộng %g × Cao %g × Dài %g%s",
+            S.Move.carpetW, S.Move.carpetH, S.Move.carpetL,
+            S.Move.carpet and " (đang bật, đổi ngay)" or " (bật thảm để thấy)"), true)
+    end)
+
+    upBtn.Activated:Connect(function()
+        ReleaseHubFocus()
+        local ok, what = S.Move.Nudge(2.5)
+        say(ok and ("⬆ đã nâng " .. tostring(what) .. " lên 2.5") or "⬆ bật Bay hoặc Thảm Kính trước đã",
+            ok == true)
+        st.Text = S.Move.Status()
+    end)
+    dnBtn.Activated:Connect(function()
+        ReleaseHubFocus()
+        local ok, what = S.Move.Nudge(-2.5)
+        say(ok and ("⬇ đã hạ " .. tostring(what) .. " xuống 2.5") or "⬇ bật Bay hoặc Thảm Kính trước đã",
+            ok == true)
+        st.Text = S.Move.Status()
+    end)
+    stopBtn.Activated:Connect(function()
+        ReleaseHubFocus()
+        D.hubStatus.Text = S.RunHubAction("movestop")
+        D.hubStatus.TextColor3 = C.YELLOW
+        st.Text = S.Move.Status()
+    end)
+
+    -- nhãn trạng thái tự cập nhật mỗi khi dựng lại danh sách thẻ
+    function S.RefreshMovePanel()
+        pcall(function()
+            st.Text = S.Move.Status()
+            cwIn.Text, chIn.Text, clIn.Text = tostring(S.Move.carpetW), tostring(S.Move.carpetH), tostring(S.Move.carpetL)
+            flyIn.Text = S.Move.flySpeed
+            wsIn.Text = S.Move.walkSpeed
+            jpIn.Text = S.Move.jumpPower
+        end)
+    end
+end
+
 -- chip phân loại
 D.hubChipBtns = {}
-for _, cname in ipairs({"Tất cả", "Admin", "Explorer", "Spy", "Tiện ích", "Server"}) do
+for _, cname in ipairs({"Tất cả", "Admin", "Explorer", "Spy", "Tiện ích", "Server", "Di chuyển"}) do
     local w = (cname == "Tất cả" and 58) or (cname == "Explorer" and 68) or (cname == "Tiện ích" and 64)
-              or (cname == "Server" and 56) or (cname == "Admin" and 52) or 44
+              or (cname == "Server" and 56) or (cname == "Admin" and 52) or (cname == "Di chuyển" and 66) or 44
     local chip = New("TextButton", {
         Size = UDim2.new(0, w, 0, 20), Text = cname,
         BackgroundColor3 = (S.hubCat == cname) and C.ACCENT or C.SURFACE2,
@@ -6818,6 +7462,233 @@ S.RebuildHubList()
 -- chip trạng thái 🧩/🕵/🪟 trên header trang (đọc từ Store khi đã nạp xong cài đặt)
 D.SyncPageChips()
 S.SyncServerPanel()   -- v4.6.3: hiện mã server (JobId) lên khung 🌐 SERVER
+
+-- ============================================================================
+-- ============== v4.11: TRANG ⚙️ THIẾT LẬP  (chiếm ô trống LayoutOrder 5) =====
+-- ============================================================================
+-- Ô số 5 trên rail bị bỏ trống từ v4.10 (khi gỡ tab 🤖 AI AI). Nay dùng nó cho trang
+-- Thiết Lập — gom 4 việc mà TRƯỚC ĐÂY HUB KHÔNG CÓ CHỖ NÀO LÀM:
+--   1) Nói THẬT về nơi dữ liệu đang nằm: đĩa thật hay chỉ trong RAM của phiên chơi.
+--      (Dựa trên Store.canWrite()/S.Shimmed() vừa sửa ở v4.11 — trước đó hub báo xanh
+--       "đã ghi xuống đĩa" dù chỉ ghi vào ổ đĩa ảo.)
+--   2) 📤 Xuất toàn bộ dữ liệu ra clipboard — sao lưu / chuyển máy / chia sẻ.
+--   3) 📥 Nhập lại từ chuỗi JSON đã dán (ghép theo tên, KHÔNG ghi đè cái đang có).
+--   4) 🗑 Xoá sạch dữ liệu, có bước xác nhận thứ hai để không bấm nhầm.
+-- Toàn bộ biến nằm trong khối `do ... end` nên KHÔNG chiếm slot local của main chunk
+-- (Luau giới hạn 200 biến local mỗi chunk — main chunk của hub đã dùng gần ngưỡng).
+do
+    local setTab = AddTab("Thiết Lập", "⚙️", 5)
+
+    local sy = 8
+    local function rule(y)
+        New("TextLabel", {
+            Size = UDim2.new(1, -16, 0, 14), Position = UDim2.new(0, 8, 0, y),
+            Text = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━", BackgroundTransparency = 1,
+            TextColor3 = C.HAIRLINE, Font = Enum.Font.Gotham, TextSize = 8,
+            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 6,
+        }, setTab)
+    end
+    -- một thẻ: nền surface + viền + tiêu đề; trả về frame để xếp nội dung bên trong
+    local function card(title, h)
+        local f = New("Frame", {
+            Size = UDim2.new(1, -16, 0, h), Position = UDim2.new(0, 8, 0, sy),
+            BackgroundColor3 = C.SURFACE, BackgroundTransparency = 0.08,
+            BorderSizePixel = 0, ZIndex = 6,
+        }, setTab)
+        Corner(f, UDim.new(0, 10))
+        Stroke(f, C.HAIRLINE, 0.18)
+        New("TextLabel", {
+            Size = UDim2.new(1, -16, 0, 16), Position = UDim2.new(0, 8, 0, 6),
+            Text = title, BackgroundTransparency = 1, TextColor3 = C.ACCENT,
+            Font = Enum.Font.GothamBold, TextSize = 10,
+            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+        }, f)
+        sy = sy + h + 8
+        return f
+    end
+    local function line(parent, text, y, color, h)
+        return New("TextLabel", {
+            Size = UDim2.new(1, -16, 0, h or 12), Position = UDim2.new(0, 8, 0, y),
+            Text = text, BackgroundTransparency = 1, TextColor3 = color or C.MUTED,
+            Font = Enum.Font.Gotham, TextSize = 9, TextWrapped = true,
+            TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+        }, parent)
+    end
+    local function act(parent, text, x, y, w, color)
+        local b = New("TextButton", {
+            Size = UDim2.new(0, w, 0, 22), Position = UDim2.new(0, x, 0, y),
+            Text = text, BackgroundColor3 = color or C.SURFACE3, BackgroundTransparency = 0.08,
+            TextColor3 = D.BestText(color or C.SURFACE3), Font = Enum.Font.GothamBold,
+            TextSize = 9, BorderSizePixel = 0, ZIndex = 8,
+        }, parent)
+        Corner(b, UDim.new(0, 7))
+        Stroke(b, D.Edge(color or C.SURFACE3), 0.22)
+        return b
+    end
+
+    -- ---------- [1] TÌNH TRẠNG LƯU TRỮ ----------
+    local c1 = card("💾  LƯU TRỮ — dữ liệu của bạn đang nằm ở đâu?", 82)
+    local stTitle = line(c1, "", 24, C.GRAY, 12)
+    local stBody  = line(c1, "", 38, C.MUTED, 26)
+    local saveNow = act(c1, "💾 Lưu ngay", 8, 54, 92, C.GREEN)
+    local reload  = act(c1, "🔄 Đọc lại từ đĩa", 106, 54, 116)
+
+    local function refreshStorage()
+        local ns, nw, nf = #scripts, #waypoints, #featureTabs
+        local canDisk = Store.canWrite()
+        stTitle.TextColor3 = canDisk and C.GREEN or C.YELLOW
+        if canDisk then
+            stTitle.Text = "✅  ĐANG GHI XUỐNG ĐĨA THẬT"
+            stBody.Text = string.format(
+                "File: %s\n%d script · %d waypoint · %d tab tính năng — sống qua cả lần rejoin.",
+                tostring(Store.SAVE_FILE), ns, nw, nf)
+        else
+            stTitle.Text = "⚠️  CHỈ GIỮ TRONG RAM CỦA PHIÊN CHƠI NÀY"
+            stBody.Text = string.format(
+                "Executor không có writefile thật (hub đã bù bằng ổ đĩa ảo).\n%d script · %d WP · %d tab — REJOIN LÀ MẤT. Hãy bấm 📤 Xuất để sao lưu.",
+                ns, nw, nf)
+        end
+    end
+    refreshStorage()
+    saveNow.Activated:Connect(function()
+        local ok = Store.save()
+        refreshStorage()
+        saveNow.Text = ok and "✅ Đã lưu" or "❌ Lỗi"
+        task.delay(1.4, function()
+            if saveNow and saveNow.Parent then saveNow.Text = "💾 Lưu ngay" end
+        end)
+    end)
+    reload.Activated:Connect(function()
+        pcall(function() if S.DoReload then S.DoReload() end end)
+        refreshStorage()
+    end)
+
+    -- ---------- [2] XUẤT / NHẬP ----------
+    local c2 = card("📤  SAO LƯU & CHUYỂN MÁY", 132)
+    line(c2, "Xuất toàn bộ dữ liệu ra clipboard để dán sang máy/executor khác, hoặc nhập lại chuỗi đã lưu. Nhập là GHÉP theo tên — không ghi đè cái đang có.", 24, C.MUTED, 24)
+    local expBtn = act(c2, "📤 Xuất ra clipboard", 8, 50, 128, C.BLUE)
+    local paste = New("TextBox", {
+        Size = UDim2.new(1, -16, 0, 44), Position = UDim2.new(0, 8, 0, 76),
+        PlaceholderText = "Dán JSON đã xuất vào đây rồi bấm 📥 Nhập…",
+        Text = "", BackgroundColor3 = C.SURFACE2, BackgroundTransparency = 0.06,
+        TextColor3 = C.DARK, PlaceholderColor3 = C.GRAY, Font = Enum.Font.Code,
+        TextSize = 9, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top, ClearTextOnFocus = false, ZIndex = 7,
+    }, c2)
+    Corner(paste, UDim.new(0, 7))
+    Stroke(paste, C.HAIRLINE, 0.2)
+    local impBtn = act(c2, "📥 Nhập", 142, 50, 66, C.GREEN)
+
+    expBtn.Activated:Connect(function()
+        local ok, json = pcall(function() return HttpService:JSONEncode(Store.serialize()) end)
+        if not ok or type(json) ~= "string" then
+            expBtn.Text = "❌ Lỗi JSON"; task.delay(1.6, function() if expBtn.Parent then expBtn.Text = "📤 Xuất ra clipboard" end end)
+            return
+        end
+        local done = false
+        if setclipboard then done = pcall(setclipboard, json)
+        elseif toclipboard then done = pcall(toclipboard, json) end
+        if not done then
+            -- không có clipboard: đưa thẳng vào ô dán để người dùng tự copy
+            paste.Text = json
+            expBtn.Text = "⚠️ Đã dán vào ô"
+        else
+            expBtn.Text = "✅ Đã copy"
+        end
+        task.delay(1.8, function() if expBtn and expBtn.Parent then expBtn.Text = "📤 Xuất ra clipboard" end end)
+    end)
+
+    impBtn.Activated:Connect(function()
+        local txt = paste.Text
+        if type(txt) ~= "string" or #txt < 2 then
+            impBtn.Text = "⚠️ Trống"; task.delay(1.6, function() if impBtn.Parent then impBtn.Text = "📥 Nhập" end end); return
+        end
+        local ok, data = pcall(function() return HttpService:JSONDecode(txt) end)
+        if not ok or type(data) ~= "table" or type(data.scripts) ~= "table" then
+            impBtn.Text = "❌ JSON sai"; task.delay(1.8, function() if impBtn.Parent then impBtn.Text = "📥 Nhập" end end); return
+        end
+        local have = {}
+        for _, s in ipairs(scripts) do have[tostring(s.name)] = true end
+        local added = 0
+        for _, s in ipairs(data.scripts) do
+            if type(s) == "table" and type(s.code) == "string" then
+                local nm = tostring(s.name or ("Script " .. (#scripts + 1)))
+                if have[nm] then
+                    local base, k = nm, 2
+                    while have[base .. " (" .. k .. ")"] do k = k + 1 end
+                    nm = base .. " (" .. k .. ")"
+                end
+                have[nm] = true
+                scripts[#scripts + 1] = {name = nm, code = s.code, expanded = false}
+                added = added + 1
+            end
+        end
+        pcall(function() RebuildScripts() end)
+        refreshStorage()
+        Store.saveSoon()
+        paste.Text = ""
+        impBtn.Text = "✅ +" .. added
+        task.delay(1.8, function() if impBtn and impBtn.Parent then impBtn.Text = "📥 Nhập" end end)
+    end)
+
+    -- ---------- [3] MÔI TRƯỜNG EXECUTOR ----------
+    local c3 = card("🖥  MÔI TRƯỜNG EXECUTOR", 74)
+    local envTitle = line(c3, "", 24, C.DARK, 12)
+    local envBody  = line(c3, "", 38, C.MUTED, 26)
+    pcall(function()
+        local nm, ver = "không rõ", ""
+        if identifyexecutor then
+            local a, b = identifyexecutor()
+            nm = tostring(a or "không rõ"); ver = tostring(b or "")
+        end
+        envTitle.Text = "Executor: " .. nm .. (ver ~= "" and ("  ·  " .. ver) or "")
+        local miss = {}
+        for _, k in ipairs({"writefile", "readfile", "setclipboard", "gethui", "hookfunction", "Drawing", "request", "queue_on_teleport"}) do
+            if not S.HasGlobal(k) then miss[#miss + 1] = k end
+        end
+        if #miss == 0 then
+            envBody.Text = "✅ Executor đủ mọi hàm hub cần — không phải bù gì."
+            envBody.TextColor3 = C.GREEN
+        else
+            envBody.Text = "Hub đã tự bù " .. #miss .. " hàm còn thiếu: " .. table.concat(miss, ", ")
+            envBody.TextColor3 = C.YELLOW
+        end
+    end)
+
+    -- ---------- [4] VÙNG NGUY HIỂM ----------
+    local c4 = card("⚠️  VÙNG NGUY HIỂM", 66)
+    line(c4, "Xoá sạch script đã lưu, waypoint và tab tính năng. Không hoàn tác được.", 24, C.MUTED, 14)
+    local clearBtn = act(c4, "🗑 Xoá sạch dữ liệu", 8, 40, 132, C.RED)
+    local armed = false
+    clearBtn.Activated:Connect(function()
+        if not armed then
+            armed = true
+            clearBtn.Text = "⚠️ Bấm lần nữa để XÁC NHẬN"
+            task.delay(4, function()
+                armed = false
+                if clearBtn and clearBtn.Parent then clearBtn.Text = "🗑 Xoá sạch dữ liệu" end
+            end)
+            return
+        end
+        armed = false
+        for i = #scripts, 1, -1 do scripts[i] = nil end
+        for i = #waypoints, 1, -1 do waypoints[i] = nil end
+        pcall(function() RebuildScripts() end)
+        pcall(function() if Store.restoreWaypoints then Store.restoreWaypoints() end end)
+        Store.save()
+        refreshStorage()
+        clearBtn.Text = "✅ Đã xoá"
+        task.delay(1.6, function() if clearBtn and clearBtn.Parent then clearBtn.Text = "🗑 Xoá sạch dữ liệu" end end)
+    end)
+
+    setTab.CanvasSize = UDim2.new(0, 0, 0, sy + 8)
+    S.settingsTab = setTab
+    -- v4.11: mo cac nut cua trang nay ra de test cham toi duoc (tests/test-08-settings.lua)
+    S.settingsBtns = {save = saveNow, reload = reload, export = expBtn, import = impBtn,
+                      paste = paste, clear = clearBtn, statusTitle = stTitle, statusBody = stBody,
+                      envTitle = envTitle, envBody = envBody, cardStorage = c1, cardEnv = c3}
+    S.refreshStorageCard = refreshStorage   -- để chỗ khác gọi lại sau khi trạng thái lưu thay đổi
+end
 
 -- ==================== TOGGLE MENU & DRAG ====================
 local function ToggleMainFrame()
@@ -6939,9 +7810,10 @@ main.Visible = true
 togBtn.Text = "✕"
 
 print(string.format(
-    "✅ Banana Cat Hub v4.10 — sẵn sàng! Đã nạp lại %d script + %d waypoint + %d tab tính năng từ bộ nhớ (chế độ: %s%s)",
+    "✅ Banana Cat Hub v4.12 — sẵn sàng! Đã nạp lại %d script + %d waypoint + %d tab tính năng từ bộ nhớ (chế độ: %s%s)",
     Store.loadedScripts, Store.loadedWp, #Store.loadedFeatures, Store.mode,
     Store.lastError and (" | ⚠️ " .. Store.lastError) or ""
 ))
 print("   💾 File lưu: " .. Store.SAVE_FILE .. " (trong thư mục workspace của executor — sống qua cả lần rejoin)")
-print("   Tính năng: Code + Code Đã Lưu + Script Hub + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + Tạo Tính Năng")
+print("   Tính năng: Code + Code Đã Lưu + Script Hub + Hỗ Trợ (POS+SIZE+ROT+LOOK+VẬT THỂ+HIGHLIGHT TÍM) + Thiết Lập + Tạo Tính Năng")
+print("   🆕 v4.12: Script Hub có BỘ DI CHUYỂN — 🚀 Bay · 🧱 Xuyên Tường · 🦘 Nhảy Vô Hạn · 👟 Chạy Độ · 🪩 Thảm Kính (chỉnh Rộng×Cao×Dài ở khung ⚙ đầu danh sách)")
