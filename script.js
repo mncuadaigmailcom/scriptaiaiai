@@ -1,5 +1,17 @@
 --[[
     🍌 Banana Cat Hub — FULL CODE  ·  OBSIDIAN NOIR + layout kiểu DELTA
+    v4.61: 👻 Toàn hình — tắt/trận mới: camera bám Humanoid nhân vật hiện tại.
+    v4.60: 👻 Toàn hình — nhân vật ảo trong suốt đi theo mình, camera bám theo ghost.
+    v4.59: 👻 Toàn hình — ngụy CFrame tới người chơi (không FireServer); Evade vẫn LTM + đi được.
+    v4.58: 👻 Toàn hình Evade — mình trong suốt (LTM) và đi được (không kéo CFrame).
+    v4.57: 👻 Toàn hình — đi được (không CFrame lúc physics/camera; NetHide chỉ Last).
+    v4.56: 👻 Toàn hình — người khác không thấy cả Evade (ngụy CFrame Last; không clone camera).
+    v4.55: 👻 Toàn hình — Evade không giật (không kéo CFrame/clone camera; LocalShow trước Camera).
+    v4.54: 👻 Toàn hình — người khác không thấy (ngụy CFrame tới mọi client, không FireServer).
+    v4.53: 👻 Toàn hình — sửa phóng lên trời (ghost không Humanoid/vật lý, không parent workspace).
+    v4.52: 👻 Toàn hình — mình thấy trong suốt, người khác không thấy; không FireServer.
+    v4.51: xóa 👻 toàn hình an toàn · tối ưu mượt (bỏ vòng RenderStep Last mỗi frame).
+    v4.43: 🔐 Anti Ban — tự hop server khác khi bị kick/ban hoặc server nghi.
     v4.42: rút gọn comment/header — KHÔNG cắt hàm, khung, thẻ hay hành vi.
     v4.41: chip Script Hub ẩn khung sai nhóm (Admin không còn 🦘/✨/🚀).
     v4.40: khung ⚙ TUỲ CHỈNH — 🚀 Bay · 💨 Tốc độ camera · 🦘 Nhảy cao · 👟 Di chuyển.
@@ -95,6 +107,10 @@ end
 pcall(function() RunService:UnbindFromRenderStep("Fly") end)
 pcall(function() RunService:UnbindFromRenderStep("Carpet") end)
 pcall(function() RunService:UnbindFromRenderStep("BC_Speed") end)
+pcall(function() RunService:UnbindFromRenderStep("BC_Invis") end)
+pcall(function() RunService:UnbindFromRenderStep("BC_InvisNet") end)
+pcall(function() RunService:UnbindFromRenderStep("BC_SafeInvis") end)
+pcall(function() RunService:UnbindFromRenderStep("BC_SafeInvisFly") end)
 
 local C = {
     WHITE  = Color3.fromRGB(255, 255, 255),
@@ -557,7 +573,7 @@ D.verPill = New("Frame", {
 Corner(D.verPill, UDim.new(1,0))
 Stroke(D.verPill, C.ACCENT2, 1)   -- v4.9: huy hiệu đen + viền đồng, chữ champagne
 New("TextLabel", {
-    Size=UDim2.new(1,0,1,0), Text="v4.42 · NOIR", BackgroundTransparency=1,
+    Size=UDim2.new(1,0,1,0), Text="v4.61 · NOIR", BackgroundTransparency=1,
     TextColor3=C.ACCENT3, Font=Enum.Font.GothamBold, TextSize=8, ZIndex=6,
 }, D.verPill)
 
@@ -3631,7 +3647,7 @@ function S.FitToTab(obj, nm)
 end
 
 _G.BananaCatHubAPI = {
-    Version = "4.42",
+    Version = "4.61",
     HubGui = gui,     -- v4.4e: sửa lỗi cũ — biến tên là `gui`, không phải `hubGui` (trước đây là nil)
     Main = main,
     TabArea = function(self, nm) return S.TabArea(nm) end,
@@ -8198,6 +8214,7 @@ S.MoveActionState = {
     loc_solo = function() return S.Loc and S.Loc.solo end,
     spec_on  = function() return S.Spec and S.Spec.on   end,
     glow     = function() return S.Glow and S.Glow.on   end,
+    invis    = function() return S.Invis and S.Invis.on end,
     safefly  = function() return S.Move.Safe and S.Move.Safe.on end,
 }
 
@@ -8336,6 +8353,139 @@ function S.HopServer()
         .. " người) · tìm được " .. #cand .. " server khác để chọn, đã bỏ qua server hiện tại"
 end
 
+-- ---------- 🔐 ANTI BAN (v4.43) ----------
+S.AntiBan = S.AntiBan or {
+    on = (_G.BananaCatHub_AntiBan == true),
+    busy = false, lastHop = 0, cooldown = 10, hops = 0,
+    lastReason = "", armed = false, snaps = 0, snapAt = 0,
+}
+
+function S.AntiBanIsMsg(msg)
+    local s = string.lower(tostring(msg or ""))
+    if s == "" then return false end
+    local keys = {
+        "you have been banned", "you have been kicked", "you've been banned", "you've been kicked",
+        "banned from this", "kicked from this", "exploit detected", "cheat detected",
+        "cheats detected", "anti-cheat", "anticheat", "kicked by", "banned by",
+        "you are banned", "account banned", "game banned", "server banned", "client kicked",
+    }
+    for i = 1, #keys do
+        if string.find(s, keys[i], 1, true) then return true end
+    end
+    return false
+end
+
+function S.AntiBanStatus()
+    local a = S.AntiBan
+    if not a.on then return "🔐 Anti Ban: TẮT" end
+    local extra = (a.lastReason ~= "" and (" · lần cuối: " .. a.lastReason)) or ""
+    return "🔐 Anti Ban: BẬT · đã hop " .. tostring(a.hops) .. " lần · chờ " .. tostring(a.cooldown) .. "s" .. extra
+end
+
+function S.AntiBanHop(reason)
+    local a = S.AntiBan
+    if not a or not a.on then return false, "off" end
+    if a.busy then return false, "busy" end
+    local now = 0
+    pcall(function() now = tick() end)
+    local cd = tonumber(a.cooldown) or 10
+    if now > 0 and a.lastHop > 0 and (now - a.lastHop) < cd then return false, "cooldown" end
+    a.busy = true
+    a.lastHop = now
+    a.lastReason = tostring(reason or "suspect")
+    a.hops = (tonumber(a.hops) or 0) + 1
+    pcall(function() _G.BananaCatHub_AntiBan = true end)
+    local msg = "⚠️ chưa hop"
+    local ok = pcall(function() msg = S.HopServer() end)
+    if not ok then
+        pcall(function() TeleportService:Teleport(game.PlaceId, player) end)
+        msg = "🔐 không lấy danh sách được → rời PlaceId (không reset đúng server cũ)"
+    end
+    a.busy = false
+    pcall(function() if S.SyncAntiBanPanel then S.SyncAntiBanPanel() end end)
+    pcall(function() if D.Say then D.Say("🔐 " .. tostring(msg), C.ACCENT) end end)
+    return true, msg
+end
+
+function S.AntiBanSet(on)
+    S.AntiBan.on = on and true or false
+    pcall(function() _G.BananaCatHub_AntiBan = S.AntiBan.on end)
+    if S.AntiBan.on then S.AntiBanArm() end
+    if S.SyncAntiBanPanel then pcall(S.SyncAntiBanPanel) end
+    return S.AntiBan.on
+end
+
+function S.AntiBanArm()
+    if S.AntiBan.armed then return end
+    S.AntiBan.armed = true
+    pcall(function()
+        if type(hookfunction) == "function" then
+            local old
+            old = hookfunction(player.Kick, function(...)
+                if S.AntiBan.on then S.AntiBanHop("kick") return end
+                if old then return old(...) end
+            end)
+        end
+    end)
+    pcall(function()
+        trackConn(Players.PlayerRemoving:Connect(function(p)
+            if p == player and S.AntiBan.on then S.AntiBanHop("player_removing") end
+        end))
+    end)
+    pcall(function()
+        local gs = game:GetService("GuiService")
+        trackConn(gs.ErrorMessageChanged:Connect(function()
+            if not S.AntiBan.on then return end
+            local msg = ""
+            pcall(function() msg = tostring(gs.ErrorMessage or "") end)
+            if msg == "" then pcall(function() msg = tostring(gs:GetErrorMessage()) end) end
+            if S.AntiBanIsMsg(msg) then S.AntiBanHop("gui_error") end
+        end))
+    end)
+    pcall(function()
+        trackConn(TeleportService.TeleportInitFailed:Connect(function()
+            if not S.AntiBan.on then return end
+            task.delay(1.2, function()
+                S.AntiBan.busy = false
+                S.AntiBanHop("teleport_fail")
+            end)
+        end))
+    end)
+    pcall(function()
+        trackConn(game:GetService("LogService").MessageOut:Connect(function(msg)
+            if S.AntiBan.on and S.AntiBanIsMsg(msg) then S.AntiBanHop("log") end
+        end))
+    end)
+    local function watchHum(hum)
+        if not hum then return end
+        pcall(function()
+            trackConn(hum:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+                if not S.AntiBan.on then return end
+                local m = S.Move
+                local hot = m and (m.fly or m.noclip or m.sprint or m.infJump or m.highJump or (m.Safe and m.Safe.on))
+                if not hot then return end
+                local now = tick()
+                if now - (S.AntiBan.snapAt or 0) > 4 then S.AntiBan.snaps = 0 end
+                S.AntiBan.snapAt = now
+                S.AntiBan.snaps = (S.AntiBan.snaps or 0) + 1
+                if S.AntiBan.snaps >= 3 then
+                    S.AntiBan.snaps = 0
+                    S.AntiBanHop("speed_reset")
+                end
+            end))
+        end)
+    end
+    pcall(function()
+        if player.Character then watchHum(player.Character:FindFirstChildOfClass("Humanoid")) end
+        trackConn(player.CharacterAdded:Connect(function(ch)
+            task.wait(0.25)
+            watchHum(ch:FindFirstChildOfClass("Humanoid"))
+        end))
+    end)
+end
+if S.AntiBan.on then pcall(S.AntiBanArm) end
+-- ---------- HẾT 🔐 ANTI BAN ----------
+
 S.ScriptHubList = {
     {icon="🛡", name="Infinite Yield", cat="Admin", ord=1,
      desc="Admin commands: kill, speed, jump, noclip, teleport, bring, prefix tùy chỉnh...",
@@ -8363,6 +8513,8 @@ S.ScriptHubList = {
      desc="Vào lại ĐÚNG server đang chơi (giữ nguyên bạn bè/người chơi cùng server). Studio thì nạp lại game."},
     {icon="🔀", name="Hop Server", cat="Server", ord=10, action="hopserver",
      desc="Tự đi lấy mã server: đọc danh sách server công khai, bỏ server hiện tại + server đầy, nhảy sang 1 server khác."},
+    {icon="🔐", name="Anti Ban", cat="Server", ord=10.5, action="antiban",
+     desc="Tự hop SANG SERVER KHÁC (cùng game) khi bị kick/ban hoặc server nghi hành động (bay/xuyên/tốc độ bị reset). Đánh lạc hướng chủ server. Bấm lại để TẮT."},
     {icon="🌐", name="Lấy mã server (JobId)", cat="Server", ord=11, action="getjobid",
      desc="Đọc mã server hiện tại, copy ra clipboard và điền sẵn vào ô 🎟 để gửi cho bạn bè vào cùng."},
     {icon="🚀", name="Bay theo camera", cat="Di chuyển", ord=12, action="fly",
@@ -8379,6 +8531,8 @@ S.ScriptHubList = {
      desc="Y HỆT '🕹️ Bay chạy bộ' của aiaiaitao3: thảm kính dưới chân + ẨN MENU + cụm nút tròn ⬆🪩⬇✕ nổi góc phải màn hình (⬆⬇ đưa cả thảm lẫn bạn lên/xuống). Thêm 2 cái tốt hơn bản gốc: KHÔNG rơi xuyên thảm và tốc độ THEO GAME ×3."},
     {icon="🪩", name="Thảm Kính", cat="Di chuyển", ord=16, action="carpet",
      desc="Thảm kính BÁM THEO chân (chạy trên không). Đặt kính cố định / bay tới kính / bay tới người nằm ở khung ⚙ trên danh sách và tab 👥 Người Chơi — không lặp thẻ."},
+    {icon="👻", name="Toàn Hình", cat="Tiện ích", ord=21.5, action="invis",
+     desc="Mình thấy nhân vật TRONG SUỐT. Người chơi khác KHÔNG thấy (ngụy CFrame vật lý tới mọi client — Transparency client không replicate). KHÔNG FireServer / không remote. Không chìm đất, không cướp 🚀💨🦘🛡✨🔐."},
     {icon="✨", name="Phát Sáng", cat="Tiện ích", ord=22, action="glow",
      desc="CHÍNH BẠN phát sáng: nhuộm sáng cả nhân vật + đèn toả sáng thật quanh người. Chỉnh CHIỀU RỘNG + ĐỘ SÁNG + MÀU ở khung ✨ ngay đầu danh sách. 👁 xuyên tường (sáng xuyên vật cản) · 💡 đèn không bị vật cản chặn · bị game xoá hay respawn thì tự gắn lại."},
     {icon="🛡", name="Bay An Toàn", cat="Di chuyển", ord=23, action="safefly",
@@ -8439,6 +8593,12 @@ function S.RunHubAction(id)
                 .. " — vẫn dùng được ô 🎟 dán mã server bên dưới để vào thủ công"
         end
         return tostring(msg)
+    elseif id == "antiban" then
+        local wanted = not S.AntiBan.on
+        local okAb = pcall(function() S.AntiBanSet(wanted) end)
+        if not okAb then return "⚠️ chưa bật được Anti Ban" end
+        S.Rebuild()
+        return S.AntiBanStatus()
     elseif id == "getjobid" then
         local jid = S.GetJobId()
         if not jid then return "⚠️ Không đọc được mã server (đang ở Studio / server đơn)" end
@@ -8630,6 +8790,18 @@ function S.RunHubAction(id)
         S.Rebuild()
         return "🚫 " .. S.Glow.Status()
 
+    -- ---------- v4.52: 👻 TOÀN HÌNH ----------
+    elseif id == "invis" then
+        pcall(function() S.Invis.Set(not S.Invis.on) end)
+        pcall(function() if S.SyncInvisPanel then S.SyncInvisPanel() end end)
+        S.Rebuild()
+        return S.Invis.Status()
+    elseif id == "invis_off" then
+        pcall(function() S.Invis.Stop() end)
+        pcall(function() if S.SyncInvisPanel then S.SyncInvisPanel() end end)
+        S.Rebuild()
+        return "🚫 " .. S.Invis.Status()
+
     -- ---------- v4.14: 👣 XEM NGƯỜI CHƠI ----------
     elseif id == "spec_on" then
         if S.Spec and S.Spec.on then
@@ -8814,6 +8986,8 @@ S.HubPanelCat = {
     HubMove_Panel = "Di chuyển",
     HubSafe_Panel = "Di chuyển",
     HubGlow_Panel = "Tiện ích",
+    HubInvis_Panel = "Tiện ích",
+    HubAntiBan_Panel = "Server",
 }
 function S.SyncHubPanels()
     local list = D.hubList
@@ -8971,7 +9145,9 @@ function S.RebuildHubList()
     if S.SyncTunePanel then pcall(S.SyncTunePanel) end         -- v4.40: ⚙ tuỳ chỉnh gom
     if S.RefreshMovePanel then pcall(S.RefreshMovePanel) end   -- v4.12: nhãn trạng thái di chuyển
     if S.SyncGlowPanel then pcall(S.SyncGlowPanel) end         -- v4.16: nhãn khung ✨ phát sáng
+    if S.SyncInvisPanel then pcall(S.SyncInvisPanel) end       -- v4.52: 👻 toàn hình
     if S.SyncSafePanel then pcall(S.SyncSafePanel) end         -- v4.17: nhãn khung 🛡 bay an toàn
+    if S.SyncAntiBanPanel then pcall(S.SyncAntiBanPanel) end   -- v4.43: 🔐 anti ban
     if #items == 0 and D.hubStatus then
         D.Say("🔍 không tìm thấy gì khớp '" .. tostring(S.hubSearch or "") .. "'", C.MUTED)
     end
@@ -9138,6 +9314,79 @@ do
     S.SyncTunePanel()
 end
 -- ---------- HẾT KHUNG ⚙ TUỲ CHỈNH ----------
+
+-- ---------- v4.43: KHUNG 🔐 ANTI BAN ----------
+do
+    local P = New("Frame", {
+        Name = "HubAntiBan_Panel", Size = UDim2.new(1, 0, 0, 88), LayoutOrder = 3,
+        BackgroundColor3 = C.SURFACE, BackgroundTransparency = 0.12, BorderSizePixel = 0, ZIndex = 6,
+    }, D.hubList)
+    Corner(P, UDim.new(0, 10)); Stroke(P, C.HAIRLINE, 1)
+    D.Shade(P, Color3.fromRGB(255,255,255), Color3.fromRGB(188,192,205), 90)
+    New("TextLabel", {
+        Size = UDim2.new(1, -16, 0, 16), Position = UDim2.new(0, 8, 0, 4),
+        Text = "🔐 ANTI BAN — tự hop server khác khi bị nghi / định ban",
+        BackgroundTransparency = 1, TextColor3 = C.ACCENT, Font = Enum.Font.GothamBold, TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+    }, P)
+    local function abtn(name, text, x, y, w, color)
+        local b = New("TextButton", {
+            Name = name, Text = text, Size = UDim2.new(0, w, 0, 22), Position = UDim2.new(0, x, 0, y),
+            BackgroundColor3 = color, TextColor3 = D.BestText(color), BorderSizePixel = 0,
+            Font = Enum.Font.GothamBold, TextSize = 9, ZIndex = 8,
+        }, P)
+        Corner(b, UDim.new(0, 6)); D.Tactile(b, 0.08)
+        return b
+    end
+    local onBtn = abtn("AntiBanOn", "🔐 TẮT", 8, 24, 88, C.GRAY)
+    local hopBtn = abtn("AntiBanHopNow", "🔀 Hop ngay", 100, 24, 88, C.PURPLE)
+    New("TextLabel", {
+        Size = UDim2.new(0, 52, 0, 22), Position = UDim2.new(0, 194, 0, 24),
+        Text = "⏳ chờ s", BackgroundTransparency = 1, TextColor3 = C.MUTED,
+        Font = Enum.Font.GothamMedium, TextSize = 9, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+    }, P)
+    local cdBox = New("TextBox", {
+        Name = "AntiBanCooldown", Size = UDim2.new(0, 44, 0, 22), Position = UDim2.new(0, 246, 0, 24),
+        Text = tostring(S.AntiBan.cooldown), ClearTextOnFocus = false, BackgroundColor3 = C.SURFACE2,
+        TextColor3 = C.DARK, Font = Enum.Font.GothamMedium, TextSize = 9, BorderSizePixel = 0, ZIndex = 8,
+    }, P)
+    Corner(cdBox, UDim.new(0, 6))
+    local st = New("TextLabel", {
+        Name = "AntiBanStatus", Size = UDim2.new(1, -16, 0, 32), Position = UDim2.new(0, 8, 0, 50),
+        Text = "", BackgroundTransparency = 1, TextColor3 = C.MUTED, Font = Enum.Font.GothamMedium,
+        TextSize = 9, TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+    }, P)
+    function S.SyncAntiBanPanel()
+        pcall(function()
+            onBtn.Text = S.AntiBan.on and "🔐 BẬT" or "🔐 TẮT"
+            D.SetBg(onBtn, S.AntiBan.on and C.GREEN or C.GRAY)
+            if UserInputService:GetFocusedTextBox() ~= cdBox then
+                cdBox.Text = tostring(S.AntiBan.cooldown or 10)
+            end
+            st.Text = S.AntiBanStatus() .. " · kick/ban/error → hop. Bay/xuyên bị reset tốc độ 3 lần/4s → hop. Không vào lại đúng server cũ."
+        end)
+    end
+    onBtn.Activated:Connect(function()
+        ReleaseHubFocus()
+        S.RunHubAction("antiban")
+        S.SyncAntiBanPanel()
+    end)
+    hopBtn.Activated:Connect(function()
+        ReleaseHubFocus()
+        if not S.AntiBan.on then S.AntiBanSet(true) end
+        local n = tonumber(cdBox.Text)
+        if n then S.AntiBan.cooldown = math.clamp(n, 3, 60) end
+        S.AntiBanHop("manual")
+        S.SyncAntiBanPanel()
+    end)
+    cdBox.FocusLost:Connect(function()
+        local n = tonumber(cdBox.Text)
+        if n then S.AntiBan.cooldown = math.clamp(n, 3, 60) end
+        S.SyncAntiBanPanel()
+    end)
+    S.SyncAntiBanPanel()
+end
+-- ---------- HẾT KHUNG 🔐 ANTI BAN ----------
 
 -- ---------- v4.36: KHUNG 🚀 BAY THEO CAMERA (công tắc 🧱 độc lập) ----------
 do
@@ -10754,6 +11003,350 @@ function S.Spec.Sync()
     end)
 end
 
+-- ---------- 👻 TOÀN HÌNH (v4.52) ----------
+S.Invis = {
+    on = false, _ghost = nil, _gchar = nil, _char = nil,
+    _saved = {}, _hum = nil, _humDisp = nil, _bound = false, _acc = 0, _others = 0,
+    _cf = nil, _vel = nil, _ang = nil, _step = nil, _hb = nil, _evade = nil,
+    _camSub = nil, _hold = nil,
+}
+local IV = S.Invis
+-- Lỗi: Transparency client KHÔNG replicate → người khác vẫn thấy.
+-- Lỗi Evade v4.58: tắt NetHide → người chơi khác vẫn thấy.
+-- Sửa: ngụy CFrame tới mọi client (Last, không FireServer). Evade: LTM 0.45 mỗi frame.
+-- LocalShow Stepped + hum:Move — không ghi Velocity, không Camera CFrame.
+IV.Away = Vector3.new(24000, 40, 24000)
+function S.Invis.IsEvade()
+    if IV._evade ~= nil then return IV._evade end
+    IV._evade = false
+    pcall(function()
+        local gid = tonumber(game.GameId) or 0
+        local pid = tonumber(game.PlaceId) or 0
+        if gid == 3647333358 or pid == 9872472334 then IV._evade = true return end
+        local n = string.lower(tostring(game.Name or ""))
+        if string.find(n, "evade", 1, true) then IV._evade = true end
+    end)
+    return IV._evade
+end
+function S.Invis.IsFirstPerson()
+    local cam = workspace.CurrentCamera
+    local hrp = S.Invis.HRP()
+    if not (cam and hrp) then return false end
+    return (cam.CFrame.Position - hrp.Position).Magnitude < 3
+end
+function S.Invis.Char() return player and player.Character or nil end
+function S.Invis.HRP(ch)
+    ch = ch or S.Invis.Char()
+    return ch and ch:FindFirstChild("HumanoidRootPart")
+end
+function S.Invis.SpoofAll()
+    -- Gửi điều kiện (CFrame vật lý) tới MỌI người chơi qua replicate Roblox. Không FireServer.
+    local n = 0
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= player then n = n + 1 end
+    end
+    IV._others = n
+    return n
+end
+function S.Invis.SpoofToPlayers()
+    S.Invis.SpoofAll()
+    S.Invis.NetHide()
+end
+function S.Invis.KillGhost()
+    pcall(function() if IV._ghost then IV._ghost:Destroy() end end)
+    pcall(function() if IV._hold then IV._hold:Destroy() end end)
+    IV._ghost, IV._gchar, IV._hold = nil, nil, nil
+end
+function S.Invis.Hold()
+    local h = IV._hold
+    if h and h.Parent then return h end
+    h = Instance.new("Folder")
+    h.Name = "BC_InvisHold"
+    h.Parent = workspace
+    IV._hold = h
+    return h
+end
+function S.Invis.LiveSubject()
+    local ch = S.Invis.Char()
+    if not ch then return nil end
+    return ch:FindFirstChildOfClass("Humanoid") or ch:FindFirstChild("HumanoidRootPart")
+end
+function S.Invis.AimCam()
+    -- Camera bám nhân vật ảo. Không đổi kiểu camera (giữ Popper/Custom của game).
+    local cam = workspace.CurrentCamera
+    local g = IV._ghost
+    if not (cam and g) then return end
+    local hrp = g:FindFirstChild("HumanoidRootPart") or g.PrimaryPart
+    if not hrp then return end
+    cam.CameraSubject = hrp
+end
+function S.Invis.RestoreCam()
+    -- Lỗi: trả CameraSubject Humanoid/ghost cũ sau trận mới → đi được nhưng camera đứng.
+    -- Sửa: luôn bám Humanoid nhân vật HIỆN TẠI.
+    local cam = workspace.CurrentCamera
+    IV._camSub = nil
+    if not cam then return end
+    local sub = S.Invis.LiveSubject()
+    if sub then
+        pcall(function() cam.CameraSubject = sub end)
+    end
+end
+function S.Invis.Restore()
+    local saved = IV._saved
+    if saved then
+        for inst, rec in pairs(saved) do
+            pcall(function()
+                if inst and inst.Parent then
+                    if rec.t ~= nil then inst.Transparency = rec.t end
+                    if rec.ltm ~= nil then inst.LocalTransparencyModifier = rec.ltm end
+                    if rec.e ~= nil then inst.Enabled = rec.e end
+                end
+            end)
+        end
+    end
+    IV._saved = {}
+    if IV._hum and IV._humDisp ~= nil then
+        pcall(function() IV._hum.DisplayDistanceType = IV._humDisp end)
+    end
+    IV._hum, IV._humDisp = nil, nil
+    local hrp = S.Invis.HRP()
+    if hrp and IV._cf then
+        pcall(function()
+            hrp.CFrame = IV._cf
+            if IV._vel then hrp.AssemblyLinearVelocity = IV._vel end
+            if IV._ang then hrp.AssemblyAngularVelocity = IV._ang end
+        end)
+    end
+    IV._cf, IV._vel, IV._ang = nil, nil, nil
+    S.Invis.RestoreCam()
+end
+function S.Invis.LocalShow()
+    if not IV.on then return end
+    local hrp = S.Invis.HRP()
+    if not (hrp and IV._cf) then return end
+    -- Trả chỗ thật trước physics. Không ghi Velocity. hum:Move giữ WASD (Evade).
+    hrp.CFrame = IV._cf
+    local ch = S.Invis.Char()
+    local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+    if hum then
+        local md = hum.MoveDirection
+        if md.Magnitude > 0.05 then
+            pcall(function() hum:Move(md, false) end)
+        end
+    end
+end
+function S.Invis.NetHide()
+    if not IV.on then return end
+    local hrp = S.Invis.HRP()
+    if not hrp then return end
+    S.Invis.SpoofAll()
+    IV._cf = hrp.CFrame
+    hrp.CFrame = IV._cf + IV.Away
+end
+function S.Invis.GhostSelf(ch)
+    -- Evade: mình thấy trong suốt (LTM). Không Transparency=1, không kéo HRP, không clone.
+    ch = ch or S.Invis.Char()
+    if not ch then return end
+    local saved = IV._saved
+    if not saved then saved = {}; IV._saved = saved end
+    for _, d in ipairs(ch:GetDescendants()) do
+        if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" then
+            if saved[d] == nil then saved[d] = { ltm = d.LocalTransparencyModifier } end
+            d.LocalTransparencyModifier = 0.45
+        end
+    end
+end
+function S.Invis.HideReal(ch)
+    ch = ch or S.Invis.Char()
+    if not ch then return end
+    if S.Invis.IsEvade() then
+        S.Invis.SpoofAll()
+        S.Invis.GhostSelf(ch)
+        return
+    end
+    local saved = IV._saved
+    if not saved then saved = {}; IV._saved = saved end
+    for _, d in ipairs(ch:GetDescendants()) do
+        if d:IsA("BasePart") then
+            if saved[d] == nil then saved[d] = { t = d.Transparency } end
+            if d.Transparency < 1 then d.Transparency = 1 end
+        elseif d:IsA("Decal") or d:IsA("Texture") then
+            if saved[d] == nil then saved[d] = { t = d.Transparency } end
+            if d.Transparency < 1 then d.Transparency = 1 end
+        elseif d:IsA("ParticleEmitter") or d:IsA("Trail") or d:IsA("Beam")
+            or d:IsA("Fire") or d:IsA("Smoke") or d:IsA("Sparkles") then
+            if saved[d] == nil then saved[d] = { e = d.Enabled } end
+            d.Enabled = false
+        elseif d:IsA("BillboardGui") then
+            if saved[d] == nil then saved[d] = { e = d.Enabled } end
+            d.Enabled = false
+        end
+    end
+    local hum = ch:FindFirstChildOfClass("Humanoid")
+    if hum then
+        if IV._hum ~= hum then
+            IV._hum = hum
+            IV._humDisp = hum.DisplayDistanceType
+        end
+        hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+        hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+    end
+end
+function S.Invis.IsMover(d)
+    return d:IsA("BodyVelocity") or d:IsA("BodyGyro") or d:IsA("BodyPosition")
+        or d:IsA("BodyForce") or d:IsA("BodyAngularVelocity") or d:IsA("BodyThrust")
+        or d:IsA("AlignPosition") or d:IsA("AlignOrientation")
+        or d:IsA("VectorForce") or d:IsA("LinearVelocity") or d:IsA("AngularVelocity")
+        or d:IsA("Torque") or d:IsA("LineForce") or d:IsA("RocketPropulsion")
+end
+function S.Invis.EnsureGhost(ch)
+    ch = ch or S.Invis.Char()
+    if not ch then return end
+    if IV._ghost and IV._ghost.Parent and IV._gchar == ch and IV._ghost ~= ch then
+        S.Invis.AimCam()
+        return
+    end
+    S.Invis.KillGhost()
+    IV._gchar = ch
+    local ok, g = pcall(function()
+        local a = ch.Archivable
+        ch.Archivable = true
+        local c = ch:Clone()
+        ch.Archivable = a
+        return c
+    end)
+    if not (ok and g) or g == ch then return end
+    g.Name = "BC_InvisGhost"
+    g.Parent = nil
+    for _, d in ipairs(g:GetDescendants()) do
+        if d:IsA("Humanoid") or d:IsA("Animator") or d:IsA("Script")
+            or d:IsA("LocalScript") or d:IsA("ModuleScript")
+            or d:IsA("Highlight") or d:IsA("ForceField") or d:IsA("Tool") then
+            pcall(function() d:Destroy() end)
+        elseif S.Invis.IsMover(d) then
+            pcall(function() d:Destroy() end)
+        end
+    end
+    for _, d in ipairs(g:GetDescendants()) do
+        if d:IsA("BasePart") then
+            d.Anchored = true
+            d.CanCollide = false
+            d.CanTouch = false
+            d.CanQuery = false
+            pcall(function() d.EnableFluidForces = false end)
+            pcall(function() d.AssemblyLinearVelocity = Vector3.zero end)
+            pcall(function() d.AssemblyAngularVelocity = Vector3.zero end)
+            d.Transparency = 0.45
+        elseif d:IsA("Decal") or d:IsA("Texture") then
+            d.Transparency = 0.45
+        end
+    end
+    local hold = S.Invis.Hold()
+    if not hold then return end
+    g.Parent = hold
+    if g == ch then pcall(function() g:Destroy() end); return end
+    IV._ghost = g
+    pcall(function() g:PivotTo(ch:GetPivot()) end)
+    S.Invis.AimCam()
+end
+function S.Invis.Follow()
+    -- Lỗi: parent camera + pivot CFrame cũ + bỏ Evade → không thấy ảo / không đi theo.
+    local ch, g = S.Invis.Char(), IV._ghost
+    if not (ch and g and g.Parent) then return end
+    if g == ch or g.Name ~= "BC_InvisGhost" then return end
+    local hold = S.Invis.Hold()
+    if hold and g.Parent ~= hold then g.Parent = hold end
+    pcall(function() g:PivotTo(ch:GetPivot()) end)
+    S.Invis.AimCam()
+end
+function S.Invis.BindNet(on)
+    if on then
+        if not IV._step then
+            IV._step = RunService.Stepped:Connect(function()
+                pcall(S.Invis.LocalShow)
+            end)
+        end
+    else
+        pcall(function() if IV._step then IV._step:Disconnect() end end)
+        pcall(function() if IV._hb then IV._hb:Disconnect() end end)
+        IV._step, IV._hb = nil, nil
+    end
+end
+function S.Invis.Bind(on)
+    if on and not IV._bound then
+        IV._bound = true
+        S.Invis.BindNet(true)
+        pcall(function()
+            -- Camera-1: KHÔNG LocalShow (CFrame lúc này đè bước đi). Chỉ ghost + ẩn mesh.
+            RunService:BindToRenderStep("BC_Invis", Enum.RenderPriority.Camera.Value - 1, function(dt)
+                pcall(S.Invis.Follow)
+                if S.Invis.IsEvade() then
+                    pcall(S.Invis.GhostSelf)
+                end
+                IV._acc = (IV._acc or 0) + (tonumber(dt) or 0.016)
+                if IV._acc < 0.45 then return end
+                IV._acc = 0
+                pcall(S.Invis.HideReal)
+            end)
+        end)
+        pcall(function()
+            RunService:BindToRenderStep("BC_InvisNet", Enum.RenderPriority.Last.Value, function()
+                pcall(S.Invis.SpoofToPlayers)
+            end)
+        end)
+    elseif (not on) and IV._bound then
+        IV._bound = false
+        S.Invis.BindNet(false)
+        pcall(function() RunService:UnbindFromRenderStep("BC_Invis") end)
+        pcall(function() RunService:UnbindFromRenderStep("BC_InvisNet") end)
+    end
+end
+function S.Invis.Set(on)
+    IV.on = (on == true)
+    if IV.on then
+        local ch = S.Invis.Char()
+        S.Invis.SpoofAll()
+        S.Invis.HideReal(ch)
+        S.Invis.EnsureGhost(ch)
+        S.Invis.Bind(true)
+        S.Invis.Follow()
+        S.Invis.AimCam()
+    else
+        S.Invis.Bind(false)
+        S.Invis.RestoreCam()
+        S.Invis.KillGhost()
+        S.Invis.Restore()
+    end
+    return IV.on
+end
+function S.Invis.Stop() return S.Invis.Set(false) end
+function S.Invis.Status()
+    if not IV.on then return "👻 toàn hình: đang TẮT" end
+    local ev = S.Invis.IsEvade() and " · Evade LTM" or ""
+    return string.format("👻 toàn hình: BẬT · mình trong suốt · ngụy CFrame tới %d người chơi · không remote%s", IV._others or 0, ev)
+end
+do
+    trackConn(player.CharacterAdded:Connect(function()
+        IV._saved = {}
+        IV._hum, IV._humDisp = nil, nil
+        IV._cf, IV._vel, IV._ang = nil, nil, nil
+        S.Invis.KillGhost()
+        S.Invis.RestoreCam()
+        if not IV.on then return end
+        task.defer(function()
+            if not IV.on then
+                S.Invis.RestoreCam()
+                return
+            end
+            S.Invis.HideReal()
+            S.Invis.EnsureGhost()
+            S.Invis.Follow()
+            S.Invis.AimCam()
+        end)
+    end))
+end
+-- ---------- HẾT 👻 TOÀN HÌNH ----------
+
 S.Glow = {
     on = false, width = 18, bright = 3,
     color = Color3.fromRGB(120, 220, 255),
@@ -11038,6 +11631,86 @@ do
     end)
     paint()
 end
+
+
+-- ---------- v4.52: KHUNG 👻 TOÀN HÌNH ----------
+do
+    local PH = 88
+    local P = New("Frame", {
+        Name = "HubInvis_Panel",
+        Size = UDim2.new(1, 0, 0, PH), LayoutOrder = 2,
+        BackgroundColor3 = C.SURFACE, BackgroundTransparency = 0.12, BorderSizePixel = 0, ZIndex = 6,
+    }, D.hubList)
+    Corner(P, UDim.new(0, 10))
+    Stroke(P, C.HAIRLINE, 1)
+    D.Shade(P, Color3.fromRGB(255, 255, 255), Color3.fromRGB(188, 192, 205), 90)
+
+    New("TextLabel", {
+        Name = "InvisTitle",
+        Size = UDim2.new(1, -16, 0, 14), Position = UDim2.new(0, 8, 0, 4),
+        Text = "👻 TOÀN HÌNH (mình trong suốt · người khác không thấy)", BackgroundTransparency = 1,
+        TextColor3 = C.ACCENT, Font = Enum.Font.GothamBold, TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 7,
+    }, P)
+
+    local function act(txt, x, y, w, color, name)
+        local b = New("TextButton", {
+            Name = name or "InvisBtn",
+            Size = UDim2.new(0, w, 0, 20), Position = UDim2.new(0, x, 0, y),
+            Text = txt, BackgroundColor3 = color, TextColor3 = D.BestText(color),
+            Font = Enum.Font.GothamBold, TextSize = 9, BorderSizePixel = 0, ZIndex = 8,
+        }, P)
+        Corner(b, UDim.new(0, 6))
+        D.Shade(b, Color3.fromRGB(255, 255, 255), Color3.fromRGB(182, 187, 201), 90)
+        D.Tactile(b, 0.08)
+        return b
+    end
+
+    local onBtn = act("👻 BẬT", 8, 22, 92, C.GRAY, "InvisOn")
+    local stopBtn = act("🚫 Tắt", 106, 22, 70, C.RED, "InvisStop")
+    local statusLbl = New("TextLabel", {
+        Name = "InvisStatus",
+        Size = UDim2.new(1, -192, 0, 20), Position = UDim2.new(0, 182, 0, 22),
+        Text = "", BackgroundTransparency = 1, TextColor3 = C.MUTED,
+        Font = Enum.Font.GothamMedium, TextSize = 8, TextXAlignment = Enum.TextXAlignment.Left,
+        TextTruncate = Enum.TextTruncate.AtEnd, ZIndex = 7,
+    }, P)
+
+    New("TextLabel", {
+        Size = UDim2.new(1, -16, 0, 36), Position = UDim2.new(0, 8, 0, 46),
+        Text = "Nhân vật ảo trong suốt đi theo mình; camera bám ghost. "
+             .. "Không FireServer. Không parent ghost vào camera. Không cướp bay/nhảy/🛡/✨.",
+        TextWrapped = true, BackgroundTransparency = 1, TextColor3 = C.MUTED,
+        Font = Enum.Font.GothamMedium, TextSize = 8, TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Top, ZIndex = 7,
+    }, P)
+
+    local function paint()
+        onBtn.Text = IV.on and "👻 TẮT" or "👻 BẬT"
+        onBtn.BackgroundColor3 = IV.on and C.GREEN or C.GRAY
+        onBtn.TextColor3 = D.BestText(onBtn.BackgroundColor3)
+        statusLbl.Text = S.Invis.Status()
+    end
+    S.SyncInvisPanel = paint
+    S.Invis.RefreshPanel = paint
+
+    onBtn.Activated:Connect(function()
+        ReleaseHubFocus()
+        S.Invis.Set(not IV.on)
+        paint()
+        if D.hubStatus then flash(D.hubStatus, S.Invis.Status(), 2, C.ACCENT) end
+        pcall(S.Rebuild)
+    end)
+    stopBtn.Activated:Connect(function()
+        ReleaseHubFocus()
+        S.Invis.Stop()
+        paint()
+        if D.hubStatus then flash(D.hubStatus, "🚫 " .. S.Invis.Status(), 1.8, C.ACCENT) end
+        pcall(S.Rebuild)
+    end)
+    paint()
+end
+-- ---------- HẾT KHUNG 👻 TOÀN HÌNH ----------
 
 -- ---------- KHUNG 🛡 BAY AN TOÀN (trên cùng danh sách thẻ, dưới ⚙ và ✨) ----------
 do
@@ -12190,7 +12863,7 @@ main.Visible = true
 togBtn.Text = "✕"
 
 print(string.format(
-    "✅ Banana Cat Hub v4.42 — sẵn sàng! Đã nạp lại %d script + %d waypoint + %d tab tính năng từ bộ nhớ (chế độ: %s%s)",
+    "✅ Banana Cat Hub v4.61 — sẵn sàng! Đã nạp lại %d script + %d waypoint + %d tab tính năng từ bộ nhớ (chế độ: %s%s)",
     Store.loadedScripts, Store.loadedWp, #Store.loadedFeatures, Store.mode,
     Store.lastError and (" | ⚠️ " .. Store.lastError) or ""
 ))
